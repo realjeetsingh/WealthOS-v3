@@ -1,0 +1,64 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "realjeetsingh@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidTransaction(data) {
+      return data.type in ['income', 'expense'] &&
+             data.amount is number && data.amount > 0 &&
+             data.category is string && data.category.size() > 0;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+
+      match /transactions/{transactionId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      match /assets/{assetId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      match /liabilities/{liabilityId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      match /accounts/{accountId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      match /goals/{goalId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+
+  }
+}

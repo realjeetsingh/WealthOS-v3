@@ -1,0 +1,103 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile information stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "admin"],
+          "description": "The user's role in the application."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the user profile was created."
+        }
+      },
+      "required": ["name", "email", "role", "createdAt"]
+    },
+    "Transaction": {
+      "title": "Financial Transaction",
+      "description": "A single financial transaction (income or expense).",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["income", "expense"],
+          "description": "The type of transaction."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the transaction."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the transaction (e.g., Food, Salary)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional notes for the transaction."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the transaction occurred."
+        }
+      },
+      "required": ["type", "amount", "category", "timestamp"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "A financial asset owned by the user.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "number" },
+        "type": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "value", "type", "timestamp"]
+    },
+    "Liability": {
+      "title": "Liability",
+      "description": "A financial liability (debt) owed by the user.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "remainingBalance": { "type": "number" },
+        "type": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "remainingBalance", "type", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles."
+    },
+    "/users/{uid}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Subcollection of financial transactions for a specific user."
+    },
+    "/users/{uid}/assets/{assetId}": {
+      "schema": "Asset",
+      "description": "Subcollection of assets for a specific user."
+    },
+    "/users/{uid}/liabilities/{liabilityId}": {
+      "schema": "Liability",
+      "description": "Subcollection of liabilities for a specific user."
+    }
+  }
+}

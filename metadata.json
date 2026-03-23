@@ -1,0 +1,5 @@
+{
+  "name": "Firebase Auth System",
+  "description": "A production-ready authentication system using React, Firebase Auth, and Firestore.",
+  "requestFramePermissions": []
+}
