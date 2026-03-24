@@ -12,6 +12,7 @@ import { compareScenarios } from '../lib/scenarioEngine';
 import { generateFinancialAdvice, FinancialAdvice } from '../lib/decisionEngine';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { handleUpgrade } from '../lib/paymentService';
+import { formatCurrency } from '../lib/formatCurrency';
 import { 
   Lightbulb, 
   AlertTriangle, 
@@ -169,12 +170,8 @@ const Insights: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <Link to="/" className="text-indigo-600 hover:text-indigo-500 flex items-center text-sm font-medium mb-2">
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          Back to Profile
-        </Link>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-indigo-100 rounded-lg">
@@ -223,33 +220,33 @@ const Insights: React.FC = () => {
       )}
 
       {advice ? (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* SECTION 1 — BEST DECISION */}
-          <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
-            <div className="bg-indigo-600 px-6 py-4">
-              <h2 className="text-white font-semibold flex items-center">
-                <CheckCircle2 className="w-5 h-5 mr-2" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-[#4F46E5] px-8 py-5">
+              <h2 className="text-white font-bold flex items-center text-lg">
+                <CheckCircle2 className="w-6 h-6 mr-3" />
                 Recommended Strategy
               </h2>
             </div>
-            <div className="p-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="p-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                  <p className="text-sm text-gray-500 uppercase tracking-wider font-medium">Best Scenario</p>
-                  <p className="text-2xl font-bold text-gray-900">{advice.bestScenario}</p>
+                  <p className="text-sm text-gray-500 uppercase tracking-wider font-bold mb-1">Best Scenario</p>
+                  <p className="text-3xl font-bold text-gray-900">{advice.bestScenario}</p>
                 </div>
-                <div className="bg-green-50 px-4 py-2 rounded-xl border border-green-100">
-                  <p className="text-xs text-green-600 uppercase tracking-wider font-bold">Potential Improvement</p>
-                  <p className="text-xl font-bold text-green-700">
-                    +₹{advice.improvement.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                <div className="bg-green-50 px-6 py-4 rounded-xl border border-green-100">
+                  <p className="text-xs text-[#16A34A] uppercase tracking-wider font-bold mb-1">Potential Improvement</p>
+                  <p className="text-2xl font-bold text-[#16A34A]">
+                    +{formatCurrency(advice.improvement)}
                   </p>
-                  <p className="text-xs text-green-600">over {simulationYears} years</p>
+                  <p className="text-xs text-green-600/70 mt-1">over {simulationYears} years</p>
                 </div>
               </div>
-              <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                <p className="text-gray-700 leading-relaxed">
-                  Based on our simulation, switching to the <span className="font-bold text-indigo-600">{advice.bestScenario}</span> strategy 
-                  could increase your projected net worth by <span className="font-bold text-green-600">₹{advice.improvement.toLocaleString()}</span> compared 
+              <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-gray-700 leading-relaxed text-lg">
+                  Based on our simulation, switching to the <span className="font-bold text-[#4F46E5]">{advice.bestScenario}</span> strategy 
+                  could increase your projected net worth by <span className="font-bold text-[#16A34A]">{formatCurrency(advice.improvement)}</span> compared 
                   to your current path.
                 </p>
               </div>
@@ -257,26 +254,26 @@ const Insights: React.FC = () => {
           </div>
 
           {/* SECTION 2 — RECOMMENDATIONS */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-              <Lightbulb className="w-5 h-5 mr-2 text-yellow-500" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+              <Lightbulb className="w-6 h-6 mr-3 text-yellow-500" />
               Actionable Recommendations
             </h2>
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {advice.recommendations.length > 0 ? (
                 advice.recommendations.map((rec, index) => (
-                  <li key={index} className="flex items-start p-3 bg-blue-50 rounded-xl text-blue-800 text-sm">
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-1.5 mr-3 flex-shrink-0" />
+                  <li key={index} className="flex items-start p-4 bg-indigo-50/50 rounded-xl text-indigo-900 text-base border border-indigo-50">
+                    <div className="w-2 h-2 bg-[#4F46E5] rounded-full mt-2 mr-4 flex-shrink-0" />
                     {rec}
                   </li>
                 ))
               ) : (
-                <li className="text-gray-500 italic text-sm">No specific recommendations at this time.</li>
+                <li className="text-gray-500 italic">No specific recommendations at this time.</li>
               )}
               {!isPremium && (
                 <button 
                   onClick={onUpgrade}
-                  className="w-full flex items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm italic hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm italic hover:bg-gray-50 transition-colors"
                 >
                   <Lock className="w-4 h-4 mr-2" />
                   Upgrade to unlock advanced recommendations
@@ -287,15 +284,15 @@ const Insights: React.FC = () => {
 
           {/* SECTION 3 — WARNINGS */}
           {advice.warnings.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-red-50 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                <AlertTriangle className="w-5 h-5 mr-2 text-red-500" />
+            <div className="bg-white rounded-xl shadow-sm border border-red-50 p-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <AlertTriangle className="w-6 h-6 mr-3 text-[#DC2626]" />
                 Financial Warnings
               </h2>
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 {advice.warnings.map((warning, index) => (
-                  <li key={index} className="flex items-start p-3 bg-red-50 rounded-xl text-red-800 text-sm">
-                    <div className="w-1.5 h-1.5 bg-red-400 rounded-full mt-1.5 mr-3 flex-shrink-0" />
+                  <li key={index} className="flex items-start p-4 bg-red-50 rounded-xl text-[#DC2626] text-base border border-red-100">
+                    <div className="w-2 h-2 bg-[#DC2626] rounded-full mt-2 mr-4 flex-shrink-0" />
                     {warning}
                   </li>
                 ))}
@@ -304,17 +301,17 @@ const Insights: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-          <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-            <TrendingUp className="w-8 h-8 text-gray-300" />
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-16 text-center">
+          <div className="mx-auto w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+            <TrendingUp className="w-10 h-10 text-gray-300" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Insufficient Data</h2>
-          <p className="text-gray-500 max-w-sm mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Insufficient Data</h2>
+          <p className="text-gray-500 max-w-sm mx-auto text-lg">
             Add more transactions, assets, and liabilities to generate personalized financial insights and simulations.
           </p>
           <Link 
             to="/transactions" 
-            className="mt-6 inline-block bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+            className="mt-8 inline-block bg-[#4F46E5] text-white px-8 py-3 rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-sm"
           >
             Add Data
           </Link>

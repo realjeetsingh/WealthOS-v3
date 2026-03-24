@@ -6,6 +6,7 @@
  */
 
 import { Transaction } from '../types';
+import { formatCurrency } from './formatCurrency';
 
 /**
  * 1. getDailyStatus(transactions)
@@ -35,9 +36,9 @@ export const getDailyStatus = (transactions: Transaction[] | null | undefined): 
     .reduce((sum, t) => sum + (t.amount || 0), 0);
 
   if (income > expenses) {
-    return `You saved ₹${(income - expenses).toLocaleString()} today`;
+    return `You saved ${formatCurrency(income - expenses)} today`;
   } else if (expenses > income) {
-    return `You overspent ₹${(expenses - income).toLocaleString()} today`;
+    return `You overspent ${formatCurrency(expenses - income)} today`;
   } else {
     return "Your income and expenses are balanced today";
   }
@@ -48,7 +49,9 @@ export const getDailyStatus = (transactions: Transaction[] | null | undefined): 
  * Compares current month spending vs previous month.
  */
 export const getMonthlyTrend = (transactions: Transaction[] | null | undefined): string => {
-  if (!transactions || !Array.isArray(transactions)) return "No trend data available";
+  if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+    return "Add transactions to see trends";
+  }
 
   const now = new Date();
   const currentMonth = now.getMonth();
@@ -63,27 +66,31 @@ export const getMonthlyTrend = (transactions: Transaction[] | null | undefined):
       const d = t.timestamp?.toDate();
       return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'expense';
     })
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
   const prevMonthExpenses = transactions
     .filter(t => {
       const d = t.timestamp?.toDate();
       return d && d.getMonth() === prevMonth && d.getFullYear() === prevYear && t.type === 'expense';
     })
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+  if (currentMonthExpenses === 0 && prevMonthExpenses === 0) {
+    return "Add transactions to see trends";
+  }
 
   if (prevMonthExpenses === 0) {
-    return currentMonthExpenses > 0 ? "Starting your spending journey this month" : "No spending recorded yet";
+    return "No data from last month";
   }
 
   const diff = currentMonthExpenses - prevMonthExpenses;
 
   if (diff > 0) {
-    return `Spending increased by ₹${diff.toLocaleString()} vs last month`;
+    return `Spending increased by ${formatCurrency(diff)}`;
   } else if (diff < 0) {
-    return `Spending decreased by ₹${Math.abs(diff).toLocaleString()} vs last month`;
+    return `Spending decreased by ${formatCurrency(Math.abs(diff))}`;
   } else {
-    return "Spending is identical to last month";
+    return "Spending unchanged";
   }
 };
 

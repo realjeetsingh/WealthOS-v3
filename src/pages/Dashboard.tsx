@@ -15,6 +15,7 @@ import {
   getProgressSignal 
 } from '../lib/retentionEngine';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { formatCurrency } from '../lib/formatCurrency';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -127,26 +128,22 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const StatCard = ({ title, value, icon: Icon, colorClass }: { title: string, value: number, icon: any, colorClass: string }) => (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
-      <div className={`p-3 rounded-xl ${colorClass}`}>
-        <Icon className="w-6 h-6" />
+  const StatCard = ({ title, value, icon: Icon, colorClass, isHighlighted = false }: { title: string, value: number, icon: any, colorClass: string, isHighlighted?: boolean }) => (
+    <div className={`p-8 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-5 transition-all hover:shadow-md ${isHighlighted ? 'bg-indigo-600 border-indigo-600' : 'bg-white'}`}>
+      <div className={`p-4 rounded-xl ${isHighlighted ? 'bg-white/20 text-white' : colorClass}`}>
+        <Icon className="w-7 h-7" />
       </div>
       <div>
-        <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        <p className={`text-3xl font-bold tracking-tight ${isHighlighted ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(value)}</p>
+        <p className={`text-sm font-medium ${isHighlighted ? 'text-indigo-100' : 'text-gray-500'}`}>{title}</p>
       </div>
     </div>
   );
 
   return (
-    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+    <>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <Link to="/" className="text-indigo-600 hover:text-indigo-500 flex items-center text-sm font-medium mb-2">
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Back to Profile
-          </Link>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Financial Dashboard</h1>
           <p className="mt-2 text-gray-600">Real-time overview of your financial health.</p>
         </div>
@@ -158,67 +155,68 @@ const Dashboard: React.FC = () => {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         <StatCard 
           title="Monthly Income" 
           value={monthlyIncome} 
           icon={TrendingUp} 
-          colorClass="bg-green-50 text-green-600" 
+          colorClass="bg-green-50 text-[#16A34A]" 
         />
         <StatCard 
           title="Monthly Expenses" 
           value={monthlyExpenses} 
           icon={TrendingDown} 
-          colorClass="bg-red-50 text-red-600" 
+          colorClass="bg-red-50 text-[#DC2626]" 
         />
         <StatCard 
           title="Cashflow" 
           value={cashflow} 
           icon={BarChart3} 
-          colorClass={cashflow >= 0 ? "bg-blue-50 text-blue-600" : "bg-orange-50 text-orange-600"} 
+          colorClass={cashflow >= 0 ? "bg-indigo-50 text-[#4F46E5]" : "bg-orange-50 text-orange-600"} 
         />
         <StatCard 
           title="Net Worth" 
           value={netWorth} 
           icon={Wallet} 
-          colorClass="bg-indigo-50 text-indigo-600" 
+          colorClass="bg-indigo-50 text-[#4F46E5]" 
+          isHighlighted={true}
         />
       </div>
 
       {/* Retention Engine Section */}
-      <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2 bg-indigo-50 rounded-lg">
-              <Activity className="w-5 h-5 text-indigo-600" />
+      <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="p-2.5 bg-indigo-50 rounded-lg">
+              <Activity className="w-6 h-6 text-[#4F46E5]" />
             </div>
-            <h3 className="font-bold text-gray-900">Daily Status</h3>
+            <h3 className="font-bold text-gray-900 text-lg">Daily Status</h3>
           </div>
-          <p className="text-gray-600 text-sm leading-relaxed">{dailyStatus}</p>
+          <p className="text-gray-600 leading-relaxed">{dailyStatus}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2 bg-indigo-50 rounded-lg">
-              <Calendar className="w-5 h-5 text-indigo-600" />
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="p-2.5 bg-indigo-50 rounded-lg">
+              <Calendar className="w-6 h-6 text-[#4F46E5]" />
             </div>
-            <h3 className="font-bold text-gray-900">Monthly Trend</h3>
+            <h3 className="font-bold text-gray-900 text-lg">Monthly Trend</h3>
           </div>
-          <p className="text-gray-600 text-sm leading-relaxed">{monthlyTrend}</p>
+          <p className="text-gray-600 leading-relaxed">{monthlyTrend}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2 bg-indigo-50 rounded-lg">
-              <Zap className="w-5 h-5 text-indigo-600" />
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="p-2.5 bg-indigo-50 rounded-lg">
+              <Zap className="w-6 h-6 text-[#4F46E5]" />
             </div>
-            <h3 className="font-bold text-gray-900">Progress Signal</h3>
+            <h3 className="font-bold text-gray-900 text-lg">Progress Signal</h3>
           </div>
-          <p className="text-gray-600 text-sm leading-relaxed">{progressSignal}</p>
+          <p className="text-gray-600 leading-relaxed">{progressSignal}</p>
         </div>
       </div>
 
-      <div className="mt-12 p-8 bg-indigo-900 rounded-3xl text-white relative overflow-hidden">
+      <div className="mt-16 p-10 bg-[#4F46E5] rounded-xl text-white relative overflow-hidden shadow-lg">
         <div className="relative z-10">
           <h2 className="text-2xl font-bold mb-4">Financial Summary</h2>
           <p className="text-indigo-100 max-w-2xl">
@@ -228,7 +226,7 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-indigo-800 rounded-full opacity-20 blur-3xl"></div>
       </div>
-    </div>
+    </>
   );
 };
 
