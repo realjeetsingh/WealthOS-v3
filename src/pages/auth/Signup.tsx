@@ -36,6 +36,7 @@ const Signup: React.FC = () => {
           name,
           email,
           role: 'user',
+          isPremium: false,
           createdAt: serverTimestamp(),
         });
       } catch (firestoreErr) {

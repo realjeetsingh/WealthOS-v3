@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { addTransaction, Transaction } from '../services/financeService';
+import { addTransaction } from '../services/financeService';
+import { Transaction } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { 
   PlusCircle, 
@@ -11,8 +12,10 @@ import {
   Tag, 
   FileText, 
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Transactions: React.FC = () => {
   const { user } = useAuth();
@@ -93,6 +96,15 @@ const Transactions: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+      <div className="mb-6">
+        <Link 
+          to="/dashboard" 
+          className="text-indigo-600 hover:text-indigo-500 flex items-center text-sm font-medium transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Back to Dashboard
+        </Link>
+      </div>
       <div className="space-y-8">
         {/* Header */}
         <div>

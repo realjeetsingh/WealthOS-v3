@@ -5,7 +5,7 @@
  * It does not store data in Firestore or handle UI.
  */
 
-import { Transaction, Asset, Liability } from '../services/financeService';
+import { Transaction, Asset, Liability } from '../types';
 
 /**
  * 1. calculateMonthlyIncome(transactions)
@@ -14,9 +14,10 @@ import { Transaction, Asset, Liability } from '../services/financeService';
 export const calculateMonthlyIncome = (transactions: Transaction[] | null | undefined): number => {
   if (!transactions || !Array.isArray(transactions)) return 0;
   
-  return transactions
+  const result = transactions
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  return isNaN(result) ? 0 : result;
 };
 
 /**
@@ -26,9 +27,10 @@ export const calculateMonthlyIncome = (transactions: Transaction[] | null | unde
 export const calculateMonthlyExpenses = (transactions: Transaction[] | null | undefined): number => {
   if (!transactions || !Array.isArray(transactions)) return 0;
   
-  return transactions
+  const result = transactions
     .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  return isNaN(result) ? 0 : result;
 };
 
 /**
@@ -36,7 +38,8 @@ export const calculateMonthlyExpenses = (transactions: Transaction[] | null | un
  * Returns the difference between income and expenses.
  */
 export const calculateCashflow = (income: number, expenses: number): number => {
-  return (income || 0) - (expenses || 0);
+  const result = (Number(income) || 0) - (Number(expenses) || 0);
+  return isNaN(result) ? 0 : result;
 };
 
 /**
@@ -45,10 +48,13 @@ export const calculateCashflow = (income: number, expenses: number): number => {
  * If income is 0, returns 0.
  */
 export const calculateSavingsRate = (income: number, expenses: number): number => {
-  if (!income || income === 0) return 0;
+  const inc = Number(income) || 0;
+  const exp = Number(expenses) || 0;
+  if (inc === 0) return 0;
   
-  const savings = income - expenses;
-  return savings / income;
+  const savings = inc - exp;
+  const result = savings / inc;
+  return isNaN(result) ? 0 : result;
 };
 
 /**
@@ -57,12 +63,13 @@ export const calculateSavingsRate = (income: number, expenses: number): number =
  */
 export const calculateNetWorth = (assets: Asset[] | null | undefined, liabilities: Liability[] | null | undefined): number => {
   const totalAssets = (assets || [])
-    .reduce((sum, a) => sum + (a.value || 0), 0);
+    .reduce((sum, a) => sum + (Number(a.value) || 0), 0);
     
   const totalLiabilities = (liabilities || [])
-    .reduce((sum, l) => sum + (l.remainingBalance || 0), 0);
+    .reduce((sum, l) => sum + (Number(l.remainingBalance) || 0), 0);
     
-  return totalAssets - totalLiabilities;
+  const result = totalAssets - totalLiabilities;
+  return isNaN(result) ? 0 : result;
 };
 
 /**

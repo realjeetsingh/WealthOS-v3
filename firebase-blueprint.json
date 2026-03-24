@@ -19,13 +19,17 @@
           "enum": ["user", "admin"],
           "description": "The user's role in the application."
         },
+        "isPremium": {
+          "type": "boolean",
+          "description": "Whether the user has a premium subscription."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the user profile was created."
         }
       },
-      "required": ["name", "email", "role", "createdAt"]
+      "required": ["name", "email", "role", "isPremium", "createdAt"]
     },
     "Transaction": {
       "title": "Financial Transaction",

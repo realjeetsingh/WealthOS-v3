@@ -25,31 +25,30 @@ export const compareScenarios = (baseInput: SimulationInput): ScenarioResult[] =
 
   // 1. Scenario A — Base
   const baseTimeline = simulateFinancialLife(baseInput);
-  const baseFinalNetWorth = baseTimeline[baseTimeline.length - 1].netWorth;
-  results.push({ name: "Base", value: baseFinalNetWorth });
+  const baseFinalNetWorth = Number(baseTimeline[baseTimeline.length - 1].netWorth) || 0;
+  results.push({ name: "Base", value: isNaN(baseFinalNetWorth) ? 0 : baseFinalNetWorth });
 
   // 2. Scenario B — Invest More (Increase savings by 10%)
-  // savings = income - expenses
-  // targetSavings = savings * 1.1
-  // newIncome = expenses + targetSavings
-  const currentSavings = baseInput.income - baseInput.expenses;
+  const inc = Number(baseInput.income) || 0;
+  const exp = Number(baseInput.expenses) || 0;
+  const currentSavings = inc - exp;
   const targetSavings = currentSavings * 1.1;
   const investMoreInput: SimulationInput = {
     ...baseInput,
-    income: baseInput.expenses + targetSavings
+    income: exp + targetSavings
   };
   const investMoreTimeline = simulateFinancialLife(investMoreInput);
-  const investMoreFinalNetWorth = investMoreTimeline[investMoreTimeline.length - 1].netWorth;
-  results.push({ name: "Invest More", value: investMoreFinalNetWorth });
+  const investMoreFinalNetWorth = Number(investMoreTimeline[investMoreTimeline.length - 1].netWorth) || 0;
+  results.push({ name: "Invest More", value: isNaN(investMoreFinalNetWorth) ? 0 : investMoreFinalNetWorth });
 
   // 3. Scenario C — Reduce Expenses (Reduce expenses by 10%)
   const reduceExpensesInput: SimulationInput = {
     ...baseInput,
-    expenses: baseInput.expenses * 0.9
+    expenses: exp * 0.9
   };
   const reduceExpensesTimeline = simulateFinancialLife(reduceExpensesInput);
-  const reduceExpensesFinalNetWorth = reduceExpensesTimeline[reduceExpensesTimeline.length - 1].netWorth;
-  results.push({ name: "Reduce Expenses", value: reduceExpensesFinalNetWorth });
+  const reduceExpensesFinalNetWorth = Number(reduceExpensesTimeline[reduceExpensesTimeline.length - 1].netWorth) || 0;
+  results.push({ name: "Reduce Expenses", value: isNaN(reduceExpensesFinalNetWorth) ? 0 : reduceExpensesFinalNetWorth });
 
   return results;
 };

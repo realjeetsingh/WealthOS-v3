@@ -17,8 +17,18 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin' ||
           (request.auth.token.email == "realjeetsingh@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.email is string &&
+             data.role in ['user', 'admin'] &&
+             data.isPremium is bool &&
+             (!('paymentId' in data) || data.paymentId is string) &&
+             (!('premiumSince' in data) || data.premiumSince is timestamp);
     }
 
     function isValidTransaction(data) {
@@ -27,31 +37,92 @@ service cloud.firestore {
              data.category is string && data.category.size() > 0;
     }
 
+    function isValidAsset(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.value is number && data.value >= 0 &&
+             data.type is string;
+    }
+
+    function isValidLiability(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.remainingBalance is number && data.remainingBalance >= 0 &&
+             data.type is string;
+    }
+
+    function isValidAccount(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.balance is number &&
+             data.type is string;
+    }
+
+    function isValidGoal(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.targetAmount is number && data.targetAmount > 0 &&
+             data.currentAmount is number && data.currentAmount >= 0;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
 
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && 
+                      isValidUser(request.resource.data) &&
+                      request.resource.data.isPremium == false && 
+                      request.resource.data.role == 'user';
+      allow update: if (isOwner(userId) && 
+                        isValidUser(request.resource.data) &&
+                        (
+                          // normal profile update
+                          request.resource.data.isPremium == resource.data.get('isPremium', false)
+                          ||
+                          // premium upgrade
+                          (
+                            resource.data.get('isPremium', false) == false &&
+                            request.resource.data.isPremium == true &&
+                            request.resource.data.paymentId is string &&
+                            request.resource.data.premiumSince == request.time
+                          )
+                        )) || isAdmin();
 
       match /transactions/{transactionId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidTransaction(request.resource.data);
+        allow update: if isOwner(userId) && isValidTransaction(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /assets/{assetId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidAsset(request.resource.data);
+        allow update: if isOwner(userId) && isValidAsset(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /liabilities/{liabilityId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidLiability(request.resource.data);
+        allow update: if isOwner(userId) && isValidLiability(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /meta/{metaId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
 
       match /accounts/{accountId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidAccount(request.resource.data);
+        allow update: if isOwner(userId) && isValidAccount(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /goals/{goalId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidGoal(request.resource.data);
+        allow update: if isOwner(userId) && isValidGoal(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
       }
     }
 

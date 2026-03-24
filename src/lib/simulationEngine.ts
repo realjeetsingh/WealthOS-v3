@@ -37,8 +37,15 @@ const DEBT_REDUCTION_RATE = 0.10;
  * Simulates financial progression over a specified number of years.
  */
 export const simulateFinancialLife = (input: SimulationInput): YearlyResult[] => {
-  const { income, expenses, assets, liabilities, years } = input;
+  let { income, expenses, assets, liabilities, years } = input;
   
+  // Step 3: Sanitize inputs
+  income = Number(income) || 0;
+  expenses = Number(expenses) || 0;
+  assets = Number(assets) || 0;
+  liabilities = Number(liabilities) || 0;
+  years = Number(years) || 0;
+
   const timeline: YearlyResult[] = [];
   
   let currentIncome = income;
@@ -53,7 +60,7 @@ export const simulateFinancialLife = (input: SimulationInput): YearlyResult[] =>
     expenses: currentExpenses,
     investment: investment,
     debt: debt,
-    netWorth: investment - debt,
+    netWorth: isNaN(investment - debt) ? 0 : (investment - debt),
     savings: 0
   });
 
@@ -77,17 +84,17 @@ export const simulateFinancialLife = (input: SimulationInput): YearlyResult[] =>
     debt *= (1 - DEBT_REDUCTION_RATE);
     
     // 7. Calculate net worth
-    const netWorth = investment - debt;
+    const netWorth = isNaN(investment - debt) ? 0 : (investment - debt);
     
     // 8. Store result in array
     timeline.push({
       year: i,
-      income: currentIncome,
-      expenses: currentExpenses,
-      investment: investment,
-      debt: debt,
+      income: isNaN(currentIncome) ? 0 : currentIncome,
+      expenses: isNaN(currentExpenses) ? 0 : currentExpenses,
+      investment: isNaN(investment) ? 0 : investment,
+      debt: isNaN(debt) ? 0 : debt,
       netWorth: netWorth,
-      savings: savings
+      savings: isNaN(savings) ? 0 : savings
     });
   }
 

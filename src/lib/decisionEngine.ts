@@ -37,11 +37,11 @@ export const generateFinancialAdvice = (input: DecisionInput): FinancialAdvice =
   }
 
   // 1. Identify best scenario (highest final net worth)
-  const best = scenarios.reduce((prev, current) => (prev.value > current.value) ? prev : current);
+  const best = scenarios.reduce((prev, current) => (Number(prev.value) > Number(current.value)) ? prev : current);
   const base = scenarios.find(s => s.name === "Base") || scenarios[0];
 
   // 2. Calculate improvement (best - base)
-  const improvement = best.value - base.value;
+  const improvement = (Number(best.value) || 0) - (Number(base.value) || 0);
 
   const recommendations: string[] = [];
   const warnings: string[] = [];
@@ -56,21 +56,25 @@ export const generateFinancialAdvice = (input: DecisionInput): FinancialAdvice =
   }
 
   // 4. Warnings - Savings rate
-  const savings = income - expenses;
-  const savingsRate = income > 0 ? savings / income : 0;
+  const inc = Number(income) || 0;
+  const exp = Number(expenses) || 0;
+  const liab = Number(liabilities) || 0;
+  
+  const savings = inc - exp;
+  const savingsRate = inc > 0 ? savings / inc : 0;
 
   if (savingsRate < 0.2) {
     warnings.push("Your savings rate is below 20%. Consider reviewing your budget to increase your safety margin.");
   }
 
   // 5. Warnings - Debt ratio
-  if (liabilities > income * 12) {
+  if (liab > inc * 12) {
     warnings.push("High debt level detected (liabilities exceed 100% of annual income). Prioritize debt repayment.");
   }
 
   return {
     bestScenario: best.name,
-    improvement,
+    improvement: isNaN(improvement) ? 0 : improvement,
     recommendations,
     warnings
   };

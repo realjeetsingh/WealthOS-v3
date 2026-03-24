@@ -8,12 +8,14 @@ interface UserProfile {
   name: string;
   email: string;
   role: string;
+  isPremium: boolean;
   createdAt: any;
 }
 
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
+  isPremium: boolean;
   loading: boolean;
 }
 
@@ -23,6 +25,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const isPremium = userProfile?.isPremium ?? false;
+
+  useEffect(() => {
+    if (userProfile) {
+      console.log("Premium status:", userProfile.isPremium);
+    }
+  }, [userProfile]);
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
@@ -43,10 +53,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Use onSnapshot for real-time profile updates
         unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
+            // STEP 3 — SAFE PROFILE SET: No fallback override
             setUserProfile(docSnap.data() as UserProfile);
           } else {
             setUserProfile(null);
           }
+          // STEP 4 — HANDLE LOADING: Ensure loading = false only after snapshot fires
           setLoading(false);
         }, (error) => {
           setLoading(false);
@@ -67,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading }}>
+    <AuthContext.Provider value={{ user, userProfile, isPremium, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { Transaction, Asset, Liability } from '../services/financeService';
+import { Transaction, Asset, Liability, FinancialSnapshot } from '../types';
 import { 
   calculateMonthlyIncome, 
   calculateMonthlyExpenses, 
@@ -11,6 +11,7 @@ import {
 import { compareScenarios } from '../lib/scenarioEngine';
 import { generateFinancialAdvice, FinancialAdvice } from '../lib/decisionEngine';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { handleUpgrade } from '../lib/paymentService';
 import { 
   Lightbulb, 
   AlertTriangle, 
@@ -18,16 +19,28 @@ import {
   TrendingUp, 
   ArrowLeft,
   Loader2,
-  BrainCircuit
+  BrainCircuit,
+  Crown,
+  Lock,
+  ChevronRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Insights: React.FC = () => {
-  const { user } = useAuth();
+  const { user, userProfile, isPremium } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
+  const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
+  const [usingSnapshot, setUsingSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const onUpgrade = React.useCallback(async () => {
+    console.log("onUpgrade triggered for user:", user?.uid);
+    if (user?.uid) {
+      await handleUpgrade(user.uid, user.email || undefined, userProfile?.name);
+    }
+  }, [user?.uid, user?.email, userProfile?.name]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -35,11 +48,30 @@ const Insights: React.FC = () => {
       return;
     }
 
+    const snapshotPath = `users/${user.uid}/meta/financialSnapshot`;
     const transactionsPath = `users/${user.uid}/transactions`;
     const assetsPath = `users/${user.uid}/assets`;
     const liabilitiesPath = `users/${user.uid}/liabilities`;
 
-    // Listen to Transactions
+    // 1. Optimization Layer: Listen to Financial Snapshot
+    const unsubSnapshot = onSnapshot(
+      doc(db, snapshotPath),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          setSnapshot(docSnap.data() as FinancialSnapshot);
+          setUsingSnapshot(true);
+          setLoading(false);
+        } else {
+          setUsingSnapshot(false);
+        }
+      },
+      (err) => {
+        console.warn("Snapshot fetch failed, falling back to full queries:", err);
+        setUsingSnapshot(false);
+      }
+    );
+
+    // 2. Fallback/Detail Layer: Listen to raw collections
     const unsubTransactions = onSnapshot(
       query(collection(db, transactionsPath)),
       (snapshot) => {
@@ -49,7 +81,6 @@ const Insights: React.FC = () => {
       (err) => handleFirestoreError(err, OperationType.LIST, transactionsPath)
     );
 
-    // Listen to Assets
     const unsubAssets = onSnapshot(
       query(collection(db, assetsPath)),
       (snapshot) => {
@@ -59,41 +90,49 @@ const Insights: React.FC = () => {
       (err) => handleFirestoreError(err, OperationType.LIST, assetsPath)
     );
 
-    // Listen to Liabilities
     const unsubLiabilities = onSnapshot(
       query(collection(db, liabilitiesPath)),
       (snapshot) => {
         const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Liability[];
         setLiabilities(docs);
-        setLoading(false);
+        if (!usingSnapshot) setLoading(false);
       },
       (err) => {
         handleFirestoreError(err, OperationType.LIST, liabilitiesPath);
-        setLoading(false);
+        if (!usingSnapshot) setLoading(false);
       }
     );
 
     return () => {
+      unsubSnapshot();
       unsubTransactions();
       unsubAssets();
       unsubLiabilities();
     };
-  }, [user?.uid]);
+  }, [user?.uid, usingSnapshot]);
 
-  // Pipeline Execution
-  const income = calculateMonthlyIncome(transactions);
-  const expenses = calculateMonthlyExpenses(transactions);
-  const currentAssets = assets.reduce((sum, a) => sum + (a.value || 0), 0);
-  const currentLiabilities = liabilities.reduce((sum, l) => sum + (l.remainingBalance || 0), 0);
+  // Pipeline Execution with Snapshot Fallback
+  const income = Number((usingSnapshot && snapshot) ? snapshot.income : calculateMonthlyIncome(transactions)) || 0;
+  const expenses = Number((usingSnapshot && snapshot) ? snapshot.expenses : calculateMonthlyExpenses(transactions)) || 0;
+  const currentAssets = Number((usingSnapshot && snapshot) ? snapshot.assetsTotal : assets.reduce((sum, a) => sum + (Number(a.value) || 0), 0)) || 0;
+  const currentLiabilities = Number((usingSnapshot && snapshot) ? snapshot.liabilitiesTotal : liabilities.reduce((sum, l) => sum + (Number(l.remainingBalance) || 0), 0)) || 0;
 
-  // Run Scenario Comparison (10 years default)
-  const scenarios = compareScenarios({
+  // FEATURE GATING: Limit simulation years
+  const simulationYears = isPremium ? 10 : 5;
+
+  // Run Scenario Comparison
+  let scenarios = compareScenarios({
     income,
     expenses,
     assets: currentAssets,
     liabilities: currentLiabilities,
-    years: 10
+    years: simulationYears
   });
+
+  // FEATURE GATING: Limit scenarios
+  if (!isPremium) {
+    scenarios = scenarios.slice(0, 3);
+  }
 
   // Run Decision Engine
   let advice: FinancialAdvice | null = null;
@@ -104,6 +143,19 @@ const Insights: React.FC = () => {
       expenses,
       liabilities: currentLiabilities
     });
+
+    // Step 7: Debug Log
+    console.log({
+      income,
+      expenses,
+      netWorth: currentAssets - currentLiabilities,
+      improvement: advice?.improvement
+    });
+
+    // FEATURE GATING: Hide advanced recommendations
+    if (!isPremium && advice) {
+      advice.recommendations = advice.recommendations.slice(0, 1);
+    }
   } catch (error) {
     console.error("Advice generation error:", error);
   }
@@ -123,14 +175,52 @@ const Insights: React.FC = () => {
           <ArrowLeft className="w-4 h-4 mr-1" />
           Back to Profile
         </Link>
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-indigo-100 rounded-lg">
-            <BrainCircuit className="w-6 h-6 text-indigo-600" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <BrainCircuit className="w-6 h-6 text-indigo-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Financial Insights</h1>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Financial Insights</h1>
+          {isPremium ? (
+            <div className="flex items-center space-x-1 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-bold border border-amber-100">
+              <Crown className="w-3 h-3" />
+              <span>PREMIUM</span>
+            </div>
+          ) : (
+            <button 
+              onClick={onUpgrade}
+              className="flex items-center space-x-1 bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold border border-gray-200 hover:bg-gray-200 transition-colors"
+            >
+              <Lock className="w-3 h-3" />
+              <span>FREE PLAN</span>
+            </button>
+          )}
         </div>
         <p className="mt-2 text-gray-600">Smart analysis of your financial future based on current data.</p>
       </div>
+
+      {!isPremium && (
+        <div className="mb-8 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+          <div className="relative z-10">
+            <h3 className="text-xl font-bold mb-2 flex items-center">
+              <Crown className="w-5 h-5 mr-2 text-amber-400" />
+              Upgrade to WealthOS Premium
+            </h3>
+            <p className="text-indigo-100 text-sm max-w-md mb-4">
+              Unlock 10-year projections, unlimited scenarios, and advanced financial recommendations to accelerate your wealth building.
+            </p>
+            <button 
+              onClick={onUpgrade}
+              className="bg-white text-indigo-600 px-6 py-2 rounded-lg font-bold text-sm hover:bg-indigo-50 transition-all flex items-center group"
+            >
+              Upgrade Now
+              <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+          <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-white opacity-10 rounded-full blur-3xl"></div>
+        </div>
+      )}
 
       {advice ? (
         <div className="space-y-6">
@@ -153,7 +243,7 @@ const Insights: React.FC = () => {
                   <p className="text-xl font-bold text-green-700">
                     +₹{advice.improvement.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </p>
-                  <p className="text-xs text-green-600">over 10 years</p>
+                  <p className="text-xs text-green-600">over {simulationYears} years</p>
                 </div>
               </div>
               <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
@@ -182,6 +272,15 @@ const Insights: React.FC = () => {
                 ))
               ) : (
                 <li className="text-gray-500 italic text-sm">No specific recommendations at this time.</li>
+              )}
+              {!isPremium && (
+                <button 
+                  onClick={onUpgrade}
+                  className="w-full flex items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm italic hover:bg-gray-50 transition-colors"
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  Upgrade to unlock advanced recommendations
+                </button>
               )}
             </ul>
           </div>

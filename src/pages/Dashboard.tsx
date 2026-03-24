@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { Transaction, Asset, Liability } from '../services/financeService';
+import { Transaction, Asset, Liability, FinancialSnapshot } from '../types';
 import { 
   calculateMonthlyIncome, 
   calculateMonthlyExpenses, 
   calculateCashflow, 
   calculateNetWorth 
 } from '../lib/financialEngine';
+import { 
+  getDailyStatus, 
+  getMonthlyTrend, 
+  getProgressSignal 
+} from '../lib/retentionEngine';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { 
   TrendingUp, 
@@ -16,7 +21,10 @@ import {
   Wallet, 
   BarChart3, 
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  Activity,
+  Calendar,
+  Zap
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -25,6 +33,8 @@ const Dashboard: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
+  const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
+  const [usingSnapshot, setUsingSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,11 +43,32 @@ const Dashboard: React.FC = () => {
       return;
     }
 
+    const snapshotPath = `users/${user.uid}/meta/financialSnapshot`;
     const transactionsPath = `users/${user.uid}/transactions`;
     const assetsPath = `users/${user.uid}/assets`;
     const liabilitiesPath = `users/${user.uid}/liabilities`;
 
-    // Listen to Transactions
+    // 1. Optimization Layer: Listen to Financial Snapshot
+    const unsubSnapshot = onSnapshot(
+      doc(db, snapshotPath),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          setSnapshot(docSnap.data() as FinancialSnapshot);
+          setUsingSnapshot(true);
+          setLoading(false);
+        } else {
+          setUsingSnapshot(false);
+        }
+      },
+      (err) => {
+        console.warn("Snapshot fetch failed, falling back to full queries:", err);
+        setUsingSnapshot(false);
+      }
+    );
+
+    // 2. Fallback/Detail Layer: Listen to raw collections
+    // We keep these for real-time updates when snapshot is not yet updated
+    // and for the retention engine which needs raw transaction data.
     const unsubTransactions = onSnapshot(
       query(collection(db, transactionsPath)),
       (snapshot) => {
@@ -47,7 +78,6 @@ const Dashboard: React.FC = () => {
       (err) => handleFirestoreError(err, OperationType.LIST, transactionsPath)
     );
 
-    // Listen to Assets
     const unsubAssets = onSnapshot(
       query(collection(db, assetsPath)),
       (snapshot) => {
@@ -57,32 +87,37 @@ const Dashboard: React.FC = () => {
       (err) => handleFirestoreError(err, OperationType.LIST, assetsPath)
     );
 
-    // Listen to Liabilities
     const unsubLiabilities = onSnapshot(
       query(collection(db, liabilitiesPath)),
       (snapshot) => {
         const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Liability[];
         setLiabilities(docs);
-        setLoading(false); // Set loading false after all initial snapshots are handled
+        if (!usingSnapshot) setLoading(false);
       },
       (err) => {
         handleFirestoreError(err, OperationType.LIST, liabilitiesPath);
-        setLoading(false);
+        if (!usingSnapshot) setLoading(false);
       }
     );
 
     return () => {
+      unsubSnapshot();
       unsubTransactions();
       unsubAssets();
       unsubLiabilities();
     };
-  }, [user?.uid]);
+  }, [user?.uid, usingSnapshot]);
 
-  // Calculations
-  const monthlyIncome = calculateMonthlyIncome(transactions);
-  const monthlyExpenses = calculateMonthlyExpenses(transactions);
-  const cashflow = calculateCashflow(monthlyIncome, monthlyExpenses);
-  const netWorth = calculateNetWorth(assets, liabilities);
+  // Calculations with Snapshot Fallback
+  const monthlyIncome = Number((usingSnapshot && snapshot) ? snapshot.income : calculateMonthlyIncome(transactions)) || 0;
+  const monthlyExpenses = Number((usingSnapshot && snapshot) ? snapshot.expenses : calculateMonthlyExpenses(transactions)) || 0;
+  const cashflow = Number((usingSnapshot && snapshot) ? snapshot.cashflow : calculateCashflow(monthlyIncome, monthlyExpenses)) || 0;
+  const netWorth = Number((usingSnapshot && snapshot) ? snapshot.netWorth : calculateNetWorth(assets, liabilities)) || 0;
+
+  // Retention Engine Insights with Snapshot Fallback
+  const dailyStatus = (usingSnapshot && snapshot) ? snapshot.dailyStatus : getDailyStatus(transactions);
+  const monthlyTrend = (usingSnapshot && snapshot) ? snapshot.monthlyTrend : getMonthlyTrend(transactions);
+  const progressSignal = (usingSnapshot && snapshot) ? snapshot.progressSignal : getProgressSignal(monthlyIncome, monthlyExpenses);
 
   if (loading) {
     return (
@@ -148,6 +183,39 @@ const Dashboard: React.FC = () => {
           icon={Wallet} 
           colorClass="bg-indigo-50 text-indigo-600" 
         />
+      </div>
+
+      {/* Retention Engine Section */}
+      <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="p-2 bg-indigo-50 rounded-lg">
+              <Activity className="w-5 h-5 text-indigo-600" />
+            </div>
+            <h3 className="font-bold text-gray-900">Daily Status</h3>
+          </div>
+          <p className="text-gray-600 text-sm leading-relaxed">{dailyStatus}</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="p-2 bg-indigo-50 rounded-lg">
+              <Calendar className="w-5 h-5 text-indigo-600" />
+            </div>
+            <h3 className="font-bold text-gray-900">Monthly Trend</h3>
+          </div>
+          <p className="text-gray-600 text-sm leading-relaxed">{monthlyTrend}</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="p-2 bg-indigo-50 rounded-lg">
+              <Zap className="w-5 h-5 text-indigo-600" />
+            </div>
+            <h3 className="font-bold text-gray-900">Progress Signal</h3>
+          </div>
+          <p className="text-gray-600 text-sm leading-relaxed">{progressSignal}</p>
+        </div>
       </div>
 
       <div className="mt-12 p-8 bg-indigo-900 rounded-3xl text-white relative overflow-hidden">
