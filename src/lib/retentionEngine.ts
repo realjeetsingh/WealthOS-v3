@@ -9,38 +9,18 @@ import { Transaction } from '../types';
 import { formatCurrency } from './formatCurrency';
 
 /**
- * 1. getDailyStatus(transactions)
- * Calculates today's income and expenses and returns a feedback message.
+ * 1. getMonthlyStatus(income, expenses)
+ * Calculates monthly cashflow and returns a feedback message.
  */
-export const getDailyStatus = (transactions: Transaction[] | null | undefined): string => {
-  if (!transactions || !Array.isArray(transactions)) return "No data for today";
+export const getMonthlyStatus = (income: number, expenses: number): string => {
+  const cashflow = (Number(income) || 0) - (Number(expenses) || 0);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const todayTransactions = transactions.filter(t => {
-    const tDate = t.timestamp?.toDate();
-    if (!tDate) return false;
-    tDate.setHours(0, 0, 0, 0);
-    return tDate.getTime() === today.getTime();
-  });
-
-  if (todayTransactions.length === 0) return "No transactions recorded today";
-
-  const income = todayTransactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
-
-  const expenses = todayTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
-
-  if (income > expenses) {
-    return `You saved ${formatCurrency(income - expenses)} today`;
-  } else if (expenses > income) {
-    return `You overspent ${formatCurrency(expenses - income)} today`;
+  if (cashflow > 0) {
+    return `You are saving ${formatCurrency(cashflow)} this month`;
+  } else if (cashflow < 0) {
+    return `You are overspending by ${formatCurrency(Math.abs(cashflow))} this month`;
   } else {
-    return "Your income and expenses are balanced today";
+    return "Your income and expenses are balanced this month";
   }
 };
 

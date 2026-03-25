@@ -15,10 +15,11 @@ export interface ScenarioResult {
 /**
  * compareScenarios(baseInput)
  * 
- * Compares three scenarios:
+ * Compares four scenarios:
  * 1. Base: Original input
- * 2. Invest More: Increase initial savings by 10% (by increasing income)
- * 3. Reduce Expenses: Reduce initial expenses by 10%
+ * 2. Reduce Expenses: Reduce initial expenses by 10%
+ * 3. Optimize Investments: Increase investment return rate from 10% to 12%
+ * 4. Increase Investments: Increase savings by 20% (by increasing income)
  */
 export const compareScenarios = (baseInput: SimulationInput): ScenarioResult[] => {
   const results: ScenarioResult[] = [];
@@ -28,20 +29,8 @@ export const compareScenarios = (baseInput: SimulationInput): ScenarioResult[] =
   const baseFinalNetWorth = Number(baseTimeline[baseTimeline.length - 1].netWorth) || 0;
   results.push({ name: "Base", value: isNaN(baseFinalNetWorth) ? 0 : baseFinalNetWorth });
 
-  // 2. Scenario B — Invest More (Increase savings by 10%)
-  const inc = Number(baseInput.income) || 0;
+  // 2. Scenario B — Reduce Expenses (Reduce expenses by 10%)
   const exp = Number(baseInput.expenses) || 0;
-  const currentSavings = inc - exp;
-  const targetSavings = currentSavings * 1.1;
-  const investMoreInput: SimulationInput = {
-    ...baseInput,
-    income: exp + targetSavings
-  };
-  const investMoreTimeline = simulateFinancialLife(investMoreInput);
-  const investMoreFinalNetWorth = Number(investMoreTimeline[investMoreTimeline.length - 1].netWorth) || 0;
-  results.push({ name: "Invest More", value: isNaN(investMoreFinalNetWorth) ? 0 : investMoreFinalNetWorth });
-
-  // 3. Scenario C — Reduce Expenses (Reduce expenses by 10%)
   const reduceExpensesInput: SimulationInput = {
     ...baseInput,
     expenses: exp * 0.9
@@ -49,6 +38,27 @@ export const compareScenarios = (baseInput: SimulationInput): ScenarioResult[] =
   const reduceExpensesTimeline = simulateFinancialLife(reduceExpensesInput);
   const reduceExpensesFinalNetWorth = Number(reduceExpensesTimeline[reduceExpensesTimeline.length - 1].netWorth) || 0;
   results.push({ name: "Reduce Expenses", value: isNaN(reduceExpensesFinalNetWorth) ? 0 : reduceExpensesFinalNetWorth });
+
+  // 3. Scenario C — Optimize Investments (Increase return rate to 12%)
+  const optimizeInvestmentsInput: SimulationInput = {
+    ...baseInput,
+    investmentReturnRate: 0.12
+  };
+  const optimizeInvestmentsTimeline = simulateFinancialLife(optimizeInvestmentsInput);
+  const optimizeInvestmentsFinalNetWorth = Number(optimizeInvestmentsTimeline[optimizeInvestmentsTimeline.length - 1].netWorth) || 0;
+  results.push({ name: "Optimize Investments", value: isNaN(optimizeInvestmentsFinalNetWorth) ? 0 : optimizeInvestmentsFinalNetWorth });
+
+  // 4. Scenario D — Increase Investments (Increase savings by 20%)
+  const inc = Number(baseInput.income) || 0;
+  const currentSavings = inc - exp;
+  const targetSavings = currentSavings * 1.2;
+  const increaseInvestmentsInput: SimulationInput = {
+    ...baseInput,
+    income: exp + targetSavings
+  };
+  const increaseInvestmentsTimeline = simulateFinancialLife(increaseInvestmentsInput);
+  const increaseInvestmentsFinalNetWorth = Number(increaseInvestmentsTimeline[increaseInvestmentsTimeline.length - 1].netWorth) || 0;
+  results.push({ name: "Increase Investments", value: isNaN(increaseInvestmentsFinalNetWorth) ? 0 : increaseInvestmentsFinalNetWorth });
 
   return results;
 };

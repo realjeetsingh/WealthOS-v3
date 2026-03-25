@@ -36,38 +36,45 @@ export const generateFinancialAdvice = (input: DecisionInput): FinancialAdvice =
     throw new Error("Scenarios are required for financial advice generation.");
   }
 
-  // 1. Identify best scenario (highest final net worth)
-  const best = scenarios.reduce((prev, current) => (Number(prev.value) > Number(current.value)) ? prev : current);
-  const base = scenarios.find(s => s.name === "Base") || scenarios[0];
-
-  // 2. Calculate improvement (best - base)
-  const improvement = (Number(best.value) || 0) - (Number(base.value) || 0);
+  // 3. Calculate savings rate
+  const inc = Number(income) || 0;
+  const exp = Number(expenses) || 0;
+  const liab = Number(liabilities) || 0;
+  const savings = inc - exp;
+  const savingsRate = inc > 0 ? savings / inc : 0;
 
   const recommendations: string[] = [];
   const warnings: string[] = [];
 
-  // 3. Generate recommendations
-  if (best.name === "Invest More") {
-    recommendations.push("Increase monthly investments to maximize long-term compounding.");
-  } else if (best.name === "Reduce Expenses") {
-    recommendations.push("Focus on reducing unnecessary expenses to boost your savings rate.");
-  } else if (best.name === "Base") {
-    recommendations.push("Your current financial path is solid. Maintain your current habits.");
-  }
-
-  // 4. Warnings - Savings rate
-  const inc = Number(income) || 0;
-  const exp = Number(expenses) || 0;
-  const liab = Number(liabilities) || 0;
-  
-  const savings = inc - exp;
-  const savingsRate = inc > 0 ? savings / inc : 0;
-
+  // 4. Generate intelligent recommendations based on savings rate
   if (savingsRate < 0.2) {
-    warnings.push("Your savings rate is below 20%. Consider reviewing your budget to increase your safety margin.");
+    recommendations.push("Focus on reducing unnecessary expenses to boost your savings rate above the 20% threshold.");
+    warnings.push("Your savings rate is below 20%. A higher safety margin is recommended for long-term stability.");
+  } else if (savingsRate >= 0.2 && savingsRate <= 0.4) {
+    recommendations.push("Your savings are healthy. Focus on optimizing your investment portfolio for better risk-adjusted returns.");
+  } else {
+    recommendations.push("Excellent savings rate! Consider increasing your monthly investment contributions to accelerate your path to financial freedom.");
   }
 
-  // 5. Warnings - Debt ratio
+  // 5. Identify best scenario for UI display
+  // We prioritize the scenario that matches our recommendation logic if it's viable
+  let best = scenarios.reduce((prev, current) => (Number(prev.value) > Number(current.value)) ? prev : current);
+  
+  if (savingsRate < 0.2) {
+    const reduceExp = scenarios.find(s => s.name === "Reduce Expenses");
+    if (reduceExp) best = reduceExp;
+  } else if (savingsRate >= 0.2 && savingsRate <= 0.4) {
+    const optimizeInv = scenarios.find(s => s.name === "Optimize Investments");
+    if (optimizeInv) best = optimizeInv;
+  } else {
+    const increaseInv = scenarios.find(s => s.name === "Increase Investments");
+    if (increaseInv) best = increaseInv;
+  }
+
+  const base = scenarios.find(s => s.name === "Base") || scenarios[0];
+  const improvement = (Number(best.value) || 0) - (Number(base.value) || 0);
+
+  // 6. Additional Warnings - Debt ratio
   if (liab > inc * 12) {
     warnings.push("High debt level detected (liabilities exceed 100% of annual income). Prioritize debt repayment.");
   }

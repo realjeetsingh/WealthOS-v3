@@ -13,7 +13,7 @@ import {
   calculateSavingsRate
 } from '../lib/financialEngine';
 import { 
-  getDailyStatus, 
+  getMonthlyStatus, 
   getMonthlyTrend, 
   getProgressSignal 
 } from '../lib/retentionEngine';
@@ -40,7 +40,7 @@ export const updateFinancialSnapshot = async (userId: string) => {
     const savingsRate = calculateSavingsRate(income, expenses);
     
     // Retention insights
-    const dailyStatus = getDailyStatus(transactions);
+    const monthlyStatus = getMonthlyStatus(income, expenses);
     const monthlyTrend = getMonthlyTrend(transactions);
     const progressSignal = getProgressSignal(income, expenses);
 
@@ -50,7 +50,7 @@ export const updateFinancialSnapshot = async (userId: string) => {
       netWorth,
       cashflow,
       savingsRate,
-      dailyStatus,
+      monthlyStatus,
       monthlyTrend,
       progressSignal,
       updatedAt: serverTimestamp()

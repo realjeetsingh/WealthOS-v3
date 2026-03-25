@@ -11,6 +11,7 @@ export interface SimulationInput {
   assets: number;
   liabilities: number;
   years: number;
+  investmentReturnRate?: number;
 }
 
 export interface YearlyResult {
@@ -27,7 +28,7 @@ export interface YearlyResult {
  * Constants for simulation assumptions
  */
 const INCOME_GROWTH_RATE = 0.06;
-const INVESTMENT_RETURN_RATE = 0.10;
+const DEFAULT_INVESTMENT_RETURN_RATE = 0.10;
 const INFLATION_RATE = 0.05;
 const DEBT_REDUCTION_RATE = 0.10;
 
@@ -37,7 +38,7 @@ const DEBT_REDUCTION_RATE = 0.10;
  * Simulates financial progression over a specified number of years.
  */
 export const simulateFinancialLife = (input: SimulationInput): YearlyResult[] => {
-  let { income, expenses, assets, liabilities, years } = input;
+  let { income, expenses, assets, liabilities, years, investmentReturnRate } = input;
   
   // Step 3: Sanitize inputs
   income = Number(income) || 0;
@@ -45,6 +46,7 @@ export const simulateFinancialLife = (input: SimulationInput): YearlyResult[] =>
   assets = Number(assets) || 0;
   liabilities = Number(liabilities) || 0;
   years = Number(years) || 0;
+  const returnRate = Number(investmentReturnRate) || DEFAULT_INVESTMENT_RETURN_RATE;
 
   const timeline: YearlyResult[] = [];
   
@@ -78,7 +80,7 @@ export const simulateFinancialLife = (input: SimulationInput): YearlyResult[] =>
     investment += savings;
     
     // 5. Grow investment
-    investment *= (1 + INVESTMENT_RETURN_RATE);
+    investment *= (1 + returnRate);
     
     // 6. Reduce debt (simple model: 10% reduction per year)
     debt *= (1 - DEBT_REDUCTION_RATE);

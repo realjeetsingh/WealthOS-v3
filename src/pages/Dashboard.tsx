@@ -10,7 +10,7 @@ import {
   calculateNetWorth 
 } from '../lib/financialEngine';
 import { 
-  getDailyStatus, 
+  getMonthlyStatus, 
   getMonthlyTrend, 
   getProgressSignal 
 } from '../lib/retentionEngine';
@@ -116,7 +116,7 @@ const Dashboard: React.FC = () => {
   const netWorth = Number((usingSnapshot && snapshot) ? snapshot.netWorth : calculateNetWorth(assets, liabilities)) || 0;
 
   // Retention Engine Insights with Snapshot Fallback
-  const dailyStatus = (usingSnapshot && snapshot) ? snapshot.dailyStatus : getDailyStatus(transactions);
+  const monthlyStatus = (usingSnapshot && snapshot) ? snapshot.monthlyStatus : getMonthlyStatus(monthlyIncome, monthlyExpenses);
   const monthlyTrend = (usingSnapshot && snapshot) ? snapshot.monthlyTrend : getMonthlyTrend(transactions);
   const progressSignal = (usingSnapshot && snapshot) ? snapshot.progressSignal : getProgressSignal(monthlyIncome, monthlyExpenses);
 
@@ -190,9 +190,9 @@ const Dashboard: React.FC = () => {
             <div className="p-2.5 bg-indigo-50 rounded-lg">
               <Activity className="w-6 h-6 text-[#4F46E5]" />
             </div>
-            <h3 className="font-bold text-gray-900 text-lg">Daily Status</h3>
+            <h3 className="font-bold text-gray-900 text-lg">Monthly Status</h3>
           </div>
-          <p className="text-gray-600 leading-relaxed">{dailyStatus}</p>
+          <p className="text-gray-600 leading-relaxed">{monthlyStatus}</p>
         </div>
 
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">

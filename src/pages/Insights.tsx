@@ -10,6 +10,7 @@ import {
 } from '../lib/financialEngine';
 import { compareScenarios } from '../lib/scenarioEngine';
 import { generateFinancialAdvice, FinancialAdvice } from '../lib/decisionEngine';
+import { getSmartFinancialAnalysis, SmartFinancialAnalysis } from '../services/geminiService';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { handleUpgrade } from '../lib/paymentService';
 import { formatCurrency } from '../lib/formatCurrency';
@@ -23,7 +24,11 @@ import {
   BrainCircuit,
   Crown,
   Lock,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
+  ShieldAlert,
+  Target,
+  ArrowRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -35,6 +40,11 @@ const Insights: React.FC = () => {
   const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
   const [usingSnapshot, setUsingSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [smartAnalysis, setSmartAnalysis] = useState<SmartFinancialAnalysis | null>(null);
+  const [generatingSmart, setGeneratingSmart] = useState(false);
+  const [smartError, setSmartError] = useState<string | null>(null);
+  const [isLowConfidence, setIsLowConfidence] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const onUpgrade = React.useCallback(async () => {
     console.log("onUpgrade triggered for user:", user?.uid);
@@ -118,8 +128,8 @@ const Insights: React.FC = () => {
   const currentAssets = Number((usingSnapshot && snapshot) ? snapshot.assetsTotal : assets.reduce((sum, a) => sum + (Number(a.value) || 0), 0)) || 0;
   const currentLiabilities = Number((usingSnapshot && snapshot) ? snapshot.liabilitiesTotal : liabilities.reduce((sum, l) => sum + (Number(l.remainingBalance) || 0), 0)) || 0;
 
-  // FEATURE GATING: Limit simulation years
-  const simulationYears = isPremium ? 10 : 5;
+  // ALWAYS use 10-year projections for maximum impact
+  const simulationYears = 10;
 
   // Run Scenario Comparison
   let scenarios = compareScenarios({
@@ -161,6 +171,49 @@ const Insights: React.FC = () => {
     console.error("Advice generation error:", error);
   }
 
+  const handleGenerateSmartAnalysis = async () => {
+    if (!isPremium) {
+      setShowPaywall(true);
+      return;
+    }
+
+    setGeneratingSmart(true);
+    setSmartError(null);
+    setIsLowConfidence(false);
+
+    try {
+      const currentNetWorth = currentAssets - currentLiabilities;
+      const projectedNetWorthBase = scenarios.find(s => s.name === "Base")?.value || 0;
+
+      const analysis = await getSmartFinancialAnalysis({
+        income,
+        expenses,
+        assets: currentAssets,
+        liabilities: currentLiabilities,
+        transactions,
+        userProfile,
+        systemCalculations: {
+          currentNetWorth,
+          projectedNetWorthBase,
+          scenarios
+        }
+      });
+
+      // VALIDATION: IF AI projected net worth deviates more than 30% from simulation
+      const deviation = Math.abs(analysis.projectedNetWorth - projectedNetWorthBase) / projectedNetWorthBase;
+      if (deviation > 0.3) {
+        setIsLowConfidence(true);
+      }
+
+      setSmartAnalysis(analysis);
+    } catch (err) {
+      console.error("Smart analysis error:", err);
+      setSmartError("Failed to generate smart analysis. Please try again later.");
+    } finally {
+      setGeneratingSmart(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -179,20 +232,6 @@ const Insights: React.FC = () => {
             </div>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Financial Insights</h1>
           </div>
-          {isPremium ? (
-            <div className="flex items-center space-x-1 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-bold border border-amber-100">
-              <Crown className="w-3 h-3" />
-              <span>PREMIUM</span>
-            </div>
-          ) : (
-            <button 
-              onClick={onUpgrade}
-              className="flex items-center space-x-1 bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold border border-gray-200 hover:bg-gray-200 transition-colors"
-            >
-              <Lock className="w-3 h-3" />
-              <span>FREE PLAN</span>
-            </button>
-          )}
         </div>
         <p className="mt-2 text-gray-600">Smart analysis of your financial future based on current data.</p>
       </div>
@@ -205,7 +244,7 @@ const Insights: React.FC = () => {
               Upgrade to WealthOS Premium
             </h3>
             <p className="text-indigo-100 text-sm max-w-md mb-4">
-              Unlock 10-year projections, unlimited scenarios, and advanced financial recommendations to accelerate your wealth building.
+              Unlock deep AI-powered strategic insights, unlimited financial scenarios, and personalized wealth-building recommendations.
             </p>
             <button 
               onClick={onUpgrade}
@@ -221,7 +260,7 @@ const Insights: React.FC = () => {
 
       {advice ? (
         <div className="space-y-8">
-          {/* SECTION 1 — BEST DECISION */}
+          {/* SECTION 1 — BEST DECISION (SYSTEM PRIMARY) */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="bg-[#4F46E5] px-8 py-5">
               <h2 className="text-white font-bold flex items-center text-lg">
@@ -235,20 +274,283 @@ const Insights: React.FC = () => {
                   <p className="text-sm text-gray-500 uppercase tracking-wider font-bold mb-1">Best Scenario</p>
                   <p className="text-3xl font-bold text-gray-900">{advice.bestScenario}</p>
                 </div>
-                <div className="bg-green-50 px-6 py-4 rounded-xl border border-green-100">
-                  <p className="text-xs text-[#16A34A] uppercase tracking-wider font-bold mb-1">Potential Improvement</p>
-                  <p className="text-2xl font-bold text-[#16A34A]">
+                <div className="bg-green-50 px-8 py-6 rounded-2xl border-2 border-green-200 shadow-sm">
+                  <p className="text-sm text-[#16A34A] uppercase tracking-widest font-black mb-2">Total 10-Year Impact</p>
+                  <p className="text-5xl font-black text-[#16A34A] tracking-tighter">
                     +{formatCurrency(advice.improvement)}
                   </p>
-                  <p className="text-xs text-green-600/70 mt-1">over {simulationYears} years</p>
+                  <p className="text-sm font-bold text-green-600/80 mt-2 italic">improvement in 10 years</p>
                 </div>
               </div>
-              <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-100">
-                <p className="text-gray-700 leading-relaxed text-lg">
-                  Based on our simulation, switching to the <span className="font-bold text-[#4F46E5]">{advice.bestScenario}</span> strategy 
-                  could increase your projected net worth by <span className="font-bold text-[#16A34A]">{formatCurrency(advice.improvement)}</span> compared 
-                  to your current path.
+              <div className="mt-8 p-8 bg-indigo-50/30 rounded-2xl border border-indigo-100/50">
+                <p className="text-gray-800 leading-relaxed text-xl">
+                  By switching to the <span className="font-black text-[#4F46E5] underline decoration-indigo-200 underline-offset-4">{advice.bestScenario}</span> strategy, 
+                  you could see a massive <span className="font-black text-[#16A34A] text-2xl">{formatCurrency(advice.improvement)} improvement</span> in your 
+                  total wealth over the next decade.
                 </p>
+              </div>
+
+              {/* AI STRATEGIC HIGHLIGHT */}
+              {smartAnalysis && (
+                <div className="mt-6 p-6 bg-indigo-50/50 rounded-xl border border-indigo-100 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
+                  <div className="flex items-center mb-3">
+                    <Sparkles className="w-5 h-5 text-[#4F46E5] mr-2" />
+                    <span className="text-sm font-bold text-[#4F46E5] uppercase tracking-widest">AI Strategic Insight</span>
+                  </div>
+                  <p className="text-indigo-900 font-medium leading-relaxed">
+                    {smartAnalysis.keyInsights[0]}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SMART ANALYSIS SECTION (AI SECONDARY) */}
+          <div className="mb-10">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                      <Sparkles className="w-6 h-6 mr-3 text-indigo-600" />
+                      Smart Financial Analysis
+                    </h2>
+                    <p className="text-gray-500 mt-1">AI-powered deep dive into your financial future.</p>
+                  </div>
+                  {!smartAnalysis && (
+                    <button
+                      onClick={handleGenerateSmartAnalysis}
+                      disabled={generatingSmart}
+                      className={`flex items-center px-6 py-3 rounded-xl font-bold transition-all shadow-md ${
+                        generatingSmart 
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                          : 'bg-[#4F46E5] text-white hover:bg-indigo-700 active:scale-95'
+                      }`}
+                    >
+                      {generatingSmart ? (
+                        <>
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          Thinking...
+                        </>
+                      ) : (
+                        <>
+                          <BrainCircuit className="w-5 h-5 mr-2" />
+                          Generate Smart Analysis
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {smartError && (
+                  <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center text-red-700">
+                    <AlertTriangle className="w-5 h-5 mr-3" />
+                    {smartError}
+                  </div>
+                )}
+
+                {showPaywall && !isPremium && (
+                  <div className="mb-8 animate-in zoom-in-95 duration-300">
+                    <div className="bg-gradient-to-br from-indigo-50 to-white border-2 border-indigo-100 rounded-2xl p-8 shadow-xl relative overflow-hidden">
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="p-3 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
+                            <Sparkles className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black tracking-widest flex items-center">
+                            <Crown className="w-3 h-3 mr-1" />
+                            PREMIUM ONLY
+                          </div>
+                        </div>
+                        
+                        <h3 className="text-2xl font-black text-gray-900 mb-2">Unlock Your Financial Future</h3>
+                        <p className="text-gray-600 mb-8 max-w-md">
+                          Get a deep-dive analysis of your wealth trajectory using the world's most advanced financial AI.
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                          <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <TrendingUp className="w-5 h-5 text-indigo-600 mb-2" />
+                            <p className="text-xs font-bold text-gray-900">10-Year Projection</p>
+                            <p className="text-[10px] text-gray-500 mt-1">See exactly where you'll be in a decade.</p>
+                          </div>
+                          <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <BrainCircuit className="w-5 h-5 text-indigo-600 mb-2" />
+                            <p className="text-xs font-bold text-gray-900">AI Insights</p>
+                            <p className="text-[10px] text-gray-500 mt-1">Strategic advice tailored to your habits.</p>
+                          </div>
+                          <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <ShieldAlert className="w-5 h-5 text-indigo-600 mb-2" />
+                            <p className="text-xs font-bold text-gray-900">Risk Analysis</p>
+                            <p className="text-[10px] text-gray-500 mt-1">Identify and fix financial blindspots.</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-indigo-600 rounded-2xl p-6 text-white flex flex-col md:flex-row items-center justify-between gap-6">
+                          <div className="text-center md:text-left">
+                            <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Limited Time Offer</p>
+                            <p className="text-xl font-bold">Upgrade to Premium</p>
+                            <p className="text-indigo-200 text-xs mt-1">₹299/month • Cancel anytime</p>
+                          </div>
+                          <button 
+                            onClick={onUpgrade}
+                            className="w-full md:w-auto bg-white text-indigo-600 px-8 py-4 rounded-xl font-black text-sm hover:scale-105 transition-transform shadow-lg flex items-center justify-center"
+                          >
+                            Upgrade Now
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </button>
+                        </div>
+
+                        <div className="mt-6 flex items-center justify-center space-x-2 text-indigo-600/60">
+                          <Sparkles className="w-4 h-4" />
+                          <p className="text-xs font-bold italic">
+                            Most users improve their savings by 20% after using this
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Decorative Elements */}
+                      <div className="absolute -bottom-12 -right-12 w-64 h-64 bg-indigo-100 rounded-full blur-3xl opacity-50"></div>
+                      <div className="absolute -top-12 -left-12 w-48 h-48 bg-violet-100 rounded-full blur-3xl opacity-50"></div>
+                    </div>
+
+                    {/* BLURRED PREVIEW */}
+                    <div className="mt-8 relative opacity-40 select-none pointer-events-none grayscale blur-[2px]">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        <div className="bg-gray-100 h-32 rounded-xl"></div>
+                        <div className="bg-gray-100 h-32 rounded-xl"></div>
+                      </div>
+                      <div className="bg-gray-100 h-48 rounded-xl mb-8"></div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="bg-gray-100 h-40 rounded-xl"></div>
+                        <div className="bg-gray-100 h-40 rounded-xl"></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {smartAnalysis ? (
+                  <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    {/* 10-YEAR PROJECTION */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="bg-indigo-50/50 p-8 rounded-xl border border-indigo-100 relative">
+                        {isLowConfidence && (
+                          <div className="absolute top-4 right-4 flex items-center bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold border border-amber-200">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            LOW CONFIDENCE
+                          </div>
+                        )}
+                        <p className="text-sm text-indigo-600 uppercase tracking-wider font-bold mb-2">10-Year Projected Net Worth</p>
+                        <p className="text-4xl font-bold text-gray-900 font-display">
+                          {formatCurrency(smartAnalysis.projectedNetWorth)}
+                        </p>
+                        <div className="mt-4 flex items-center">
+                          <div className="w-full bg-gray-200 rounded-full h-2 mr-4">
+                            <div 
+                              className="bg-[#4F46E5] h-2 rounded-full" 
+                              style={{ width: `${smartAnalysis.confidenceScore}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">
+                            {smartAnalysis.confidenceScore}% Confidence
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-amber-50/50 p-8 rounded-xl border border-amber-100">
+                        <h3 className="text-sm text-amber-700 uppercase tracking-wider font-bold mb-4 flex items-center">
+                          <ShieldAlert className="w-4 h-4 mr-2" />
+                          Risk Assessment
+                        </h3>
+                        <p className="text-gray-700 leading-relaxed italic">
+                          "{smartAnalysis.riskAssessment}"
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* KEY INSIGHTS */}
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center">
+                        <Lightbulb className="w-5 h-5 mr-2 text-yellow-500" />
+                        Key Strategic Insights
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {smartAnalysis.keyInsights.map((insight, idx) => (
+                          <div key={idx} className="p-4 bg-white border border-gray-100 rounded-xl flex items-start shadow-sm">
+                            <div className="w-2 h-2 bg-[#4F46E5] rounded-full mt-2 mr-4 flex-shrink-0" />
+                            <p className="text-gray-700 text-sm leading-relaxed">{insight}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* STRATEGIC PLAN */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                          <Target className="w-5 h-5 mr-2 text-indigo-600" />
+                          Short-Term Plan (6-12m)
+                        </h3>
+                        <div className="space-y-3">
+                          {smartAnalysis.strategicPlan.shortTerm.map((step, idx) => (
+                            <div key={idx} className="flex items-center p-3 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-100">
+                              <ArrowRight className="w-4 h-4 mr-3 text-indigo-400" />
+                              {step}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                          <TrendingUp className="w-5 h-5 mr-2 text-[#16A34A]" />
+                          Long-Term Strategy (5-10y)
+                        </h3>
+                        <div className="space-y-3">
+                          {smartAnalysis.strategicPlan.longTerm.map((step, idx) => (
+                            <div key={idx} className="flex items-center p-3 bg-green-50/50 rounded-lg text-sm text-gray-700 border border-green-100">
+                              <ArrowRight className="w-4 h-4 mr-3 text-green-400" />
+                              {step}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* FUTURE SCENARIOS */}
+                    <div className="pt-6 border-t border-gray-100">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                          <h4 className="text-xs font-bold text-[#16A34A] uppercase tracking-widest mb-2">Optimistic Future</h4>
+                          <p className="text-sm text-gray-600 leading-relaxed italic">
+                            {smartAnalysis.futureScenarios.optimistic}
+                          </p>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Conservative Future</h4>
+                          <p className="text-sm text-gray-600 leading-relaxed italic">
+                            {smartAnalysis.futureScenarios.conservative}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* DISCLAIMER */}
+                    <div className="pt-6 border-t border-gray-100 text-center">
+                      <p className="text-xs text-gray-400 italic">
+                        AI insights are advisory and based on current assumptions. Always consult with a professional financial advisor.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                    <BrainCircuit className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 max-w-xs mx-auto">
+                      {isPremium 
+                        ? "Ready to see your financial future? Click the button above to generate your smart analysis." 
+                        : "Upgrade to Premium to unlock AI-powered smart analysis of your financial future."}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -260,15 +562,29 @@ const Insights: React.FC = () => {
               Actionable Recommendations
             </h2>
             <ul className="space-y-4">
+              {/* AI INSIGHTS (IF AVAILABLE) */}
+              {smartAnalysis && smartAnalysis.keyInsights.map((insight, index) => (
+                <li key={`ai-${index}`} className="flex items-start p-4 bg-indigo-50/50 rounded-xl text-indigo-900 text-base border border-indigo-100 shadow-sm">
+                  <div className="flex items-center justify-center w-6 h-6 bg-indigo-100 rounded-full mr-4 flex-shrink-0">
+                    <Sparkles className="w-3 h-3 text-[#4F46E5]" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest block mb-1">AI Insight</span>
+                    {insight}
+                  </div>
+                </li>
+              ))}
+
+              {/* DETERMINISTIC RECOMMENDATIONS */}
               {advice.recommendations.length > 0 ? (
                 advice.recommendations.map((rec, index) => (
-                  <li key={index} className="flex items-start p-4 bg-indigo-50/50 rounded-xl text-indigo-900 text-base border border-indigo-50">
-                    <div className="w-2 h-2 bg-[#4F46E5] rounded-full mt-2 mr-4 flex-shrink-0" />
+                  <li key={`det-${index}`} className="flex items-start p-4 bg-gray-50 rounded-xl text-gray-700 text-base border border-gray-100">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full mt-2 mr-4 flex-shrink-0" />
                     {rec}
                   </li>
                 ))
               ) : (
-                <li className="text-gray-500 italic">No specific recommendations at this time.</li>
+                !smartAnalysis && <li className="text-gray-500 italic">No specific recommendations at this time.</li>
               )}
               {!isPremium && (
                 <button 

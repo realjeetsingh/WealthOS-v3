@@ -9,26 +9,50 @@ import { Transaction, Asset, Liability } from '../types';
 
 /**
  * 1. calculateMonthlyIncome(transactions)
- * Sums all transactions of type "income".
+ * Sums all transactions of type "income" for the current month.
  */
 export const calculateMonthlyIncome = (transactions: Transaction[] | null | undefined): number => {
   if (!transactions || !Array.isArray(transactions)) return 0;
   
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
   const result = transactions
-    .filter(t => t.type === 'income')
+    .filter(t => {
+      // STEP 4: Safety log
+      console.log("Processing Transaction (Income):", t.type, t.amount);
+
+      // Handle pending server timestamps
+      const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
+      // STEP 3: Strict logic
+      return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'income';
+    })
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
   return isNaN(result) ? 0 : result;
 };
 
 /**
  * 2. calculateMonthlyExpenses(transactions)
- * Sums all transactions of type "expense".
+ * Sums all transactions of type "expense" for the current month.
  */
 export const calculateMonthlyExpenses = (transactions: Transaction[] | null | undefined): number => {
   if (!transactions || !Array.isArray(transactions)) return 0;
   
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
   const result = transactions
-    .filter(t => t.type === 'expense')
+    .filter(t => {
+      // STEP 4: Safety log
+      console.log("Processing Transaction (Expense):", t.type, t.amount);
+
+      // Handle pending server timestamps
+      const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
+      // STEP 3: Strict logic
+      return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'expense';
+    })
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
   return isNaN(result) ? 0 : result;
 };

@@ -31,7 +31,7 @@ export interface FinancialSnapshot {
   netWorth: number;
   cashflow: number;
   savingsRate: number;
-  dailyStatus: string;
+  monthlyStatus: string;
   monthlyTrend: string;
   progressSignal: string;
   updatedAt: Timestamp | any;
