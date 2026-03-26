@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   BrainCircuit, 
@@ -18,6 +18,7 @@ const Sidebar: React.FC = () => {
   const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { userProfile, isPremium } = useAuth();
 
   const isExpanded = isPinned || isHovered;
@@ -25,6 +26,7 @@ const Sidebar: React.FC = () => {
   const handleLogout = async () => {
     try {
       await auth.signOut();
+      navigate('/login');
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -103,6 +105,20 @@ const Sidebar: React.FC = () => {
             {isExpanded && <span className="ml-2 whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-200">PREMIUM PLAN</span>}
           </div>
         )}
+        
+        <button
+          onClick={handleLogout}
+          className={`w-full flex items-center rounded-xl text-sm font-bold transition-all group ${
+            isExpanded ? 'px-4 py-3' : 'p-3 justify-center'
+          } text-red-600 hover:bg-red-50`}
+        >
+          <LogOut className="w-5 h-5 shrink-0 text-red-500 group-hover:text-red-600" />
+          {isExpanded && (
+            <div className="ml-3 animate-in fade-in slide-in-from-left-2 duration-200">
+              <span className="whitespace-nowrap">Logout</span>
+            </div>
+          )}
+        </button>
       </div>
     </aside>
   );

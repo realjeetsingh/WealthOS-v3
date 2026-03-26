@@ -193,6 +193,12 @@ const Insights: React.FC = () => {
     setSmartError(null);
     setIsLowConfidence(false);
 
+    if (income <= 0 || transactions.length === 0) {
+      setSmartError("Add some financial data to generate analysis");
+      setGeneratingSmart(false);
+      return;
+    }
+
     try {
       const currentNetWorth = currentAssets - currentLiabilities;
       const projectedNetWorthBase = scenarios.find(s => s.name === "Base")?.value || 0;
@@ -212,7 +218,7 @@ const Insights: React.FC = () => {
       });
 
       // VALIDATION: IF AI projected net worth deviates more than 30% from simulation
-      const deviation = Math.abs(analysis.projectedNetWorth - projectedNetWorthBase) / projectedNetWorthBase;
+      const deviation = Math.abs(analysis.projectedNetWorth - projectedNetWorthBase) / (projectedNetWorthBase || 1);
       if (deviation > 0.3) {
         setIsLowConfidence(true);
       }
@@ -220,7 +226,30 @@ const Insights: React.FC = () => {
       setSmartAnalysis(analysis);
     } catch (err) {
       console.error("Smart analysis error:", err);
-      setSmartError("Failed to generate smart analysis. Please try again later.");
+      
+      // FALLBACK: Basic system insight if AI fails
+      const projectedNetWorthBase = scenarios.find(s => s.name === "Base")?.value || 0;
+      const fallbackAnalysis: SmartFinancialAnalysis = {
+        projectedNetWorth: projectedNetWorthBase,
+        confidenceScore: 70,
+        keyInsights: [
+          "Based on your current cashflow, your wealth is projected to grow steadily.",
+          "Maintaining a positive net worth is critical for long-term stability.",
+          "Consider reducing high-interest liabilities to accelerate growth."
+        ],
+        strategicPlan: {
+          shortTerm: ["Track all daily expenses", "Build an emergency fund", "Review loan interest rates"],
+          longTerm: ["Increase monthly investment amount", "Diversify asset portfolio", "Aim for debt-free status"]
+        },
+        riskAssessment: "Moderate risk due to current expense-to-income ratio. Inflation may impact long-term purchasing power.",
+        futureScenarios: {
+          optimistic: "With disciplined savings and 8% annual returns, you could significantly exceed your base projection.",
+          conservative: "Economic downturns or unexpected expenses could slow your progress by 15-20%."
+        }
+      };
+      
+      setSmartAnalysis(fallbackAnalysis);
+      setSmartError("AI analysis failed, showing system-generated insights instead.");
     } finally {
       setGeneratingSmart(false);
     }
