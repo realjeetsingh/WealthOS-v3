@@ -14,11 +14,11 @@ import Transactions from './pages/Transactions';
 import Dashboard from './pages/Dashboard';
 import Insights from './pages/Insights';
 import Loans from './pages/Loans';
+import Settings from './pages/Settings';
 import { auth } from './firebase';
-import { LogOut, User as UserIcon, ReceiptText, LayoutDashboard, BrainCircuit } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { User as UserIcon } from 'lucide-react';
 
-const Home: React.FC = () => {
+const Profile: React.FC = () => {
   const { user, userProfile } = useAuth();
 
   return (
@@ -49,22 +49,23 @@ export default function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route 
-            path="/" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Home />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route 
             path="/dashboard" 
             element={
               <ProtectedRoute>
                 <Layout>
                   <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Profile />
                 </Layout>
               </ProtectedRoute>
             } 
@@ -95,6 +96,16 @@ export default function App() {
               <ProtectedRoute>
                 <Layout>
                   <Loans />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/settings" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Settings />
                 </Layout>
               </ProtectedRoute>
             } 

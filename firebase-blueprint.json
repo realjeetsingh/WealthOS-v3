@@ -23,6 +23,10 @@
           "type": "boolean",
           "description": "Whether the user has a premium subscription."
         },
+        "emailAlerts": {
+          "type": "boolean",
+          "description": "Whether the user has enabled email alerts."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",

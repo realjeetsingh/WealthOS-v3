@@ -43,7 +43,7 @@ const Signup: React.FC = () => {
         handleFirestoreError(firestoreErr, OperationType.WRITE, `users/${user.uid}`);
       }
 
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: any) {
       console.error("Signup error:", err);
       if (err.code === 'auth/email-already-in-use') {
