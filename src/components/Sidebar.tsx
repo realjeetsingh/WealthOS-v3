@@ -42,7 +42,7 @@ const Sidebar: React.FC = () => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={`hidden md:flex flex-col bg-white border-r border-gray-100 transition-[width] duration-200 ease-in-out sticky top-0 h-screen z-40 ${
-        isExpanded ? 'w-64' : 'w-[70px]'
+        isExpanded ? 'w-[240px]' : 'w-[70px]'
       }`}
     >
       {/* Logo Section */}

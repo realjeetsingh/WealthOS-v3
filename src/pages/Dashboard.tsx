@@ -171,7 +171,7 @@ const Dashboard: React.FC = () => {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-6 md:gap-8">
         <StatCard 
           title="Monthly Income" 
           value={monthlyIncome} 
@@ -211,7 +211,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Retention Engine Section */}
-      <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="mt-16 grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6 md:gap-8">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center space-x-3 mb-6">
             <div className="p-2.5 bg-indigo-50 rounded-lg">
