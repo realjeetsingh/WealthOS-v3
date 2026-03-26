@@ -7,7 +7,8 @@ import {
   ReceiptText, 
   Crown,
   LogOut,
-  User as UserIcon
+  User as UserIcon,
+  Wallet
 } from 'lucide-react';
 import { auth } from '../firebase';
 
@@ -27,6 +28,7 @@ const AppHeader: React.FC = () => {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/insights', label: 'Insights', icon: BrainCircuit },
     { to: '/transactions', label: 'Transactions', icon: ReceiptText },
+    { to: '/loans', label: 'Loans', icon: Wallet },
   ];
 
   return (

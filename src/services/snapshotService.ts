@@ -3,7 +3,8 @@ import { db } from '../firebase';
 import { 
   getTransactions, 
   getAssets, 
-  getLiabilities 
+  getLiabilities,
+  getLoans
 } from './financeService';
 import { 
   calculateMonthlyIncome, 
@@ -27,14 +28,15 @@ export const updateFinancialSnapshot = async (userId: string) => {
   if (!userId) return;
 
   try {
-    const [transactions, assets, liabilities] = await Promise.all([
+    const [transactions, assets, liabilities, loans] = await Promise.all([
       getTransactions(userId),
       getAssets(userId),
-      getLiabilities(userId)
+      getLiabilities(userId),
+      getLoans(userId)
     ]);
 
     const income = calculateMonthlyIncome(transactions);
-    const expenses = calculateMonthlyExpenses(transactions);
+    const expenses = calculateMonthlyExpenses(transactions, loans);
     const netWorth = calculateNetWorth(assets, liabilities);
     const cashflow = calculateCashflow(income, expenses);
     const savingsRate = calculateSavingsRate(income, expenses);

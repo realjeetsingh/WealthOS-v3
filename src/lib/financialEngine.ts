@@ -5,7 +5,18 @@
  * It does not store data in Firestore or handle UI.
  */
 
-import { Transaction, Asset, Liability } from '../types';
+import { Transaction, Asset, Liability, Loan } from '../types';
+
+/**
+ * calculateTotalEMI(loans)
+ * Sums the EMI of all active loans.
+ */
+export const calculateTotalEMI = (loans: Loan[] | null | undefined): number => {
+  if (!loans || !Array.isArray(loans)) return 0;
+  return loans
+    .filter(l => l.status !== 'completed')
+    .reduce((sum, l) => sum + (Number(l.emi) || 0), 0);
+};
 
 /**
  * 1. calculateMonthlyIncome(transactions)
@@ -33,27 +44,34 @@ export const calculateMonthlyIncome = (transactions: Transaction[] | null | unde
 };
 
 /**
- * 2. calculateMonthlyExpenses(transactions)
- * Sums all transactions of type "expense" for the current month.
+ * 2. calculateMonthlyExpenses(transactions, loans)
+ * Sums all transactions of type "expense" for the current month + total EMI.
  */
-export const calculateMonthlyExpenses = (transactions: Transaction[] | null | undefined): number => {
-  if (!transactions || !Array.isArray(transactions)) return 0;
-  
+export const calculateMonthlyExpenses = (
+  transactions: Transaction[] | null | undefined,
+  loans: Loan[] | null | undefined
+): number => {
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  const result = transactions
-    .filter(t => {
-      // STEP 4: Safety log
-      console.log("Processing Transaction (Expense):", t.type, t.amount);
+  const transactionExpenses = (!transactions || !Array.isArray(transactions)) 
+    ? 0 
+    : transactions
+        .filter(t => {
+          // STEP 4: Safety log
+          console.log("Processing Transaction (Expense):", t.type, t.amount);
 
-      // Handle pending server timestamps
-      const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
-      // STEP 3: Strict logic
-      return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'expense';
-    })
-    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+          // Handle pending server timestamps
+          const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
+          // STEP 3: Strict logic
+          return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'expense';
+        })
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        
+  const totalEMI = calculateTotalEMI(loans);
+  
+  const result = transactionExpenses + totalEMI;
   return isNaN(result) ? 0 : result;
 };
 

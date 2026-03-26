@@ -25,6 +25,21 @@ export interface Liability {
   timestamp: Timestamp;
 }
 
+export interface Loan {
+  id?: string;
+  name: string;
+  principalAmount: number;
+  tenureMonths: number;
+  paidMonths: number;
+  totalAmount: number;
+  totalInterest: number;
+  emi: number;
+  remainingAmount: number;
+  endDate: string;
+  status: 'active' | 'completed';
+  timestamp: Timestamp;
+}
+
 export interface FinancialSnapshot {
   income: number;
   expenses: number;

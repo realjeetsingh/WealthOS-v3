@@ -84,6 +84,25 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "remainingBalance", "type", "timestamp"]
+    },
+    "Loan": {
+      "title": "Loan",
+      "description": "A loan managed by the user.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "principalAmount": { "type": "number" },
+        "tenureMonths": { "type": "number" },
+        "paidMonths": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "totalInterest": { "type": "number" },
+        "emi": { "type": "number" },
+        "remainingAmount": { "type": "number" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "completed"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "principalAmount", "tenureMonths", "paidMonths", "totalAmount", "totalInterest", "emi", "remainingAmount", "endDate", "status", "timestamp"]
     }
   },
   "firestore": {
@@ -102,6 +121,10 @@
     "/users/{uid}/liabilities/{liabilityId}": {
       "schema": "Liability",
       "description": "Subcollection of liabilities for a specific user."
+    },
+    "/users/{uid}/loans/{loanId}": {
+      "schema": "Loan",
+      "description": "Subcollection of loans for a specific user."
     }
   }
 }

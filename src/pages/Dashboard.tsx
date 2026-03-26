@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { Transaction, Asset, Liability, FinancialSnapshot } from '../types';
+import { Transaction, Asset, Liability, Loan, FinancialSnapshot } from '../types';
 import { 
   calculateMonthlyIncome, 
   calculateMonthlyExpenses, 
   calculateCashflow, 
-  calculateNetWorth 
+  calculateNetWorth,
+  calculateTotalEMI
 } from '../lib/financialEngine';
 import { 
   getMonthlyStatus, 
@@ -25,7 +26,9 @@ import {
   ArrowLeft,
   Activity,
   Calendar,
-  Zap
+  Zap,
+  AlertCircle,
+  ShieldAlert
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -34,6 +37,7 @@ const Dashboard: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
   const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
   const [usingSnapshot, setUsingSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -48,6 +52,7 @@ const Dashboard: React.FC = () => {
     const transactionsPath = `users/${user.uid}/transactions`;
     const assetsPath = `users/${user.uid}/assets`;
     const liabilitiesPath = `users/${user.uid}/liabilities`;
+    const loansPath = `users/${user.uid}/loans`;
 
     // 1. Optimization Layer: Listen to Financial Snapshot
     const unsubSnapshot = onSnapshot(
@@ -101,19 +106,30 @@ const Dashboard: React.FC = () => {
       }
     );
 
+    const unsubLoans = onSnapshot(
+      query(collection(db, loansPath)),
+      (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Loan[];
+        setLoans(docs);
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, loansPath)
+    );
+
     return () => {
       unsubSnapshot();
       unsubTransactions();
       unsubAssets();
       unsubLiabilities();
+      unsubLoans();
     };
   }, [user?.uid, usingSnapshot]);
 
   // Calculations with Snapshot Fallback
   const monthlyIncome = Number((usingSnapshot && snapshot) ? snapshot.income : calculateMonthlyIncome(transactions)) || 0;
-  const monthlyExpenses = Number((usingSnapshot && snapshot) ? snapshot.expenses : calculateMonthlyExpenses(transactions)) || 0;
+  const monthlyExpenses = Number((usingSnapshot && snapshot) ? snapshot.expenses : calculateMonthlyExpenses(transactions, loans)) || 0;
   const cashflow = Number((usingSnapshot && snapshot) ? snapshot.cashflow : calculateCashflow(monthlyIncome, monthlyExpenses)) || 0;
   const netWorth = Number((usingSnapshot && snapshot) ? snapshot.netWorth : calculateNetWorth(assets, liabilities)) || 0;
+  const totalEMI = calculateTotalEMI(loans);
 
   // Retention Engine Insights with Snapshot Fallback
   const monthlyStatus = (usingSnapshot && snapshot) ? snapshot.monthlyStatus : getMonthlyStatus(monthlyIncome, monthlyExpenses);
@@ -168,6 +184,17 @@ const Dashboard: React.FC = () => {
           icon={TrendingDown} 
           colorClass="bg-red-50 text-[#DC2626]" 
         />
+        {totalEMI > 0 && (
+          <div className="lg:col-span-1 bg-amber-50 border border-amber-100 p-8 rounded-xl flex items-center space-x-5">
+            <div className="p-4 rounded-xl bg-amber-100 text-amber-700">
+              <TrendingDown className="w-7 h-7" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-amber-900">{formatCurrency(totalEMI)}</p>
+              <p className="text-sm font-medium text-amber-700">Monthly EMI</p>
+            </div>
+          </div>
+        )}
         <StatCard 
           title="Cashflow" 
           value={cashflow} 
@@ -226,6 +253,65 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-indigo-800 rounded-full opacity-20 blur-3xl"></div>
       </div>
+
+      {totalEMI > 0 && (
+        <div className="mt-8">
+          {(() => {
+            const emiRatio = monthlyIncome > 0 ? (totalEMI / monthlyIncome) * 100 : 0;
+            let pressure = {
+              text: "Your EMI load is manageable, but can still be optimized",
+              color: 'text-indigo-600',
+              bgColor: 'bg-indigo-50',
+              borderColor: 'border-indigo-100',
+              icon: <Zap className="w-6 h-6 text-indigo-600" />
+            };
+
+            if (emiRatio > 40) {
+              pressure = {
+                text: `High EMI burden: ${formatCurrency(totalEMI)}/month is limiting your financial growth`,
+                color: 'text-red-600',
+                bgColor: 'bg-red-50',
+                borderColor: 'border-red-100',
+                icon: <ShieldAlert className="w-6 h-6 text-red-600" />
+              };
+            } else if (emiRatio >= 20) {
+              pressure = {
+                text: `${formatCurrency(totalEMI)}/month in EMIs is reducing your savings potential`,
+                color: 'text-amber-600',
+                bgColor: 'bg-amber-50',
+                borderColor: 'border-amber-100',
+                icon: <AlertCircle className="w-6 h-6 text-amber-600" />
+              };
+            }
+
+            return (
+              <div className={`${pressure.bgColor} ${pressure.borderColor} border-2 p-8 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm`}>
+                <div className="flex items-center space-x-5">
+                  <div className="p-4 rounded-xl bg-white shadow-sm">
+                    {pressure.icon}
+                  </div>
+                  <div>
+                    <p className={`text-xl font-bold ${pressure.color} leading-tight`}>
+                      {pressure.text}
+                    </p>
+                    {monthlyIncome > 0 && (
+                      <p className="text-sm font-medium text-gray-500 mt-2">
+                        EMIs consume <span className="text-gray-900 font-bold">{emiRatio.toFixed(1)}%</span> of your monthly income. Reducing this can increase your monthly savings by <span className="text-gray-900 font-bold">{formatCurrency(totalEMI)}</span>.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex-shrink-0 text-center md:text-right">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Debt Freedom Score</p>
+                  <p className={`text-4xl font-bold ${emiRatio > 40 ? 'text-red-600' : emiRatio > 20 ? 'text-amber-600' : 'text-green-600'}`}>
+                    {Math.max(0, 100 - Math.round(emiRatio))}%
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </>
   );
 };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { Transaction, Asset, Liability, FinancialSnapshot } from '../types';
+import { Transaction, Asset, Liability, Loan, FinancialSnapshot } from '../types';
 import { 
   calculateMonthlyIncome, 
   calculateMonthlyExpenses, 
@@ -37,6 +37,7 @@ const Insights: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
   const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
   const [usingSnapshot, setUsingSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -63,6 +64,7 @@ const Insights: React.FC = () => {
     const transactionsPath = `users/${user.uid}/transactions`;
     const assetsPath = `users/${user.uid}/assets`;
     const liabilitiesPath = `users/${user.uid}/liabilities`;
+    const loansPath = `users/${user.uid}/loans`;
 
     // 1. Optimization Layer: Listen to Financial Snapshot
     const unsubSnapshot = onSnapshot(
@@ -114,17 +116,27 @@ const Insights: React.FC = () => {
       }
     );
 
+    const unsubLoans = onSnapshot(
+      query(collection(db, loansPath)),
+      (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Loan[];
+        setLoans(docs);
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, loansPath)
+    );
+
     return () => {
       unsubSnapshot();
       unsubTransactions();
       unsubAssets();
       unsubLiabilities();
+      unsubLoans();
     };
   }, [user?.uid, usingSnapshot]);
 
   // Pipeline Execution with Snapshot Fallback
   const income = Number((usingSnapshot && snapshot) ? snapshot.income : calculateMonthlyIncome(transactions)) || 0;
-  const expenses = Number((usingSnapshot && snapshot) ? snapshot.expenses : calculateMonthlyExpenses(transactions)) || 0;
+  const expenses = Number((usingSnapshot && snapshot) ? snapshot.expenses : calculateMonthlyExpenses(transactions, loans)) || 0;
   const currentAssets = Number((usingSnapshot && snapshot) ? snapshot.assetsTotal : assets.reduce((sum, a) => sum + (Number(a.value) || 0), 0)) || 0;
   const currentLiabilities = Number((usingSnapshot && snapshot) ? snapshot.liabilitiesTotal : liabilities.reduce((sum, l) => sum + (Number(l.remainingBalance) || 0), 0)) || 0;
 
@@ -386,25 +398,39 @@ const Insights: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="bg-indigo-600 rounded-2xl p-6 text-white flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="bg-indigo-600 rounded-2xl p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8">
                           <div className="text-center md:text-left">
-                            <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Limited Time Offer</p>
-                            <p className="text-xl font-bold">Upgrade to Premium</p>
-                            <p className="text-indigo-200 text-xs mt-1">₹299/month • Cancel anytime</p>
+                            <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-2">Limited Time Offer</p>
+                            <p className="text-2xl font-black mb-4">Unlock Your Financial Plan</p>
+                            <ul className="space-y-2 mb-4">
+                              <li className="flex items-center text-sm font-bold text-indigo-100">
+                                <CheckCircle2 className="w-4 h-4 mr-2 text-white" />
+                                Close loans faster
+                              </li>
+                              <li className="flex items-center text-sm font-bold text-indigo-100">
+                                <CheckCircle2 className="w-4 h-4 mr-2 text-white" />
+                                Increase net worth
+                              </li>
+                              <li className="flex items-center text-sm font-bold text-indigo-100">
+                                <CheckCircle2 className="w-4 h-4 mr-2 text-white" />
+                                Reduce unnecessary expenses
+                              </li>
+                            </ul>
+                            <p className="text-indigo-200 text-xs font-bold">₹299/month • Start improving today</p>
                           </div>
                           <button 
                             onClick={onUpgrade}
-                            className="w-full md:w-auto bg-white text-indigo-600 px-8 py-4 rounded-xl font-black text-sm hover:scale-105 transition-transform shadow-lg flex items-center justify-center"
+                            className="w-full md:w-auto bg-white text-indigo-600 px-10 py-5 rounded-xl font-black text-base hover:scale-105 transition-transform shadow-2xl flex items-center justify-center"
                           >
-                            Upgrade Now
-                            <ArrowRight className="w-4 h-4 ml-2" />
+                            Get Started
+                            <ArrowRight className="w-5 h-5 ml-2" />
                           </button>
                         </div>
 
                         <div className="mt-6 flex items-center justify-center space-x-2 text-indigo-600/60">
                           <Sparkles className="w-4 h-4" />
                           <p className="text-xs font-bold italic">
-                            Most users improve their savings by 20% after using this
+                            Most users improve savings by 15–25%
                           </p>
                         </div>
                       </div>
@@ -547,7 +573,7 @@ const Insights: React.FC = () => {
                     <p className="text-gray-500 max-w-xs mx-auto">
                       {isPremium 
                         ? "Ready to see your financial future? Click the button above to generate your smart analysis." 
-                        : "Upgrade to Premium to unlock AI-powered smart analysis of your financial future."}
+                        : "Unlock Your Financial Plan to access AI-powered smart analysis of your financial future."}
                     </p>
                   </div>
                 )}
@@ -587,13 +613,13 @@ const Insights: React.FC = () => {
                 !smartAnalysis && <li className="text-gray-500 italic">No specific recommendations at this time.</li>
               )}
               {!isPremium && (
-                <button 
-                  onClick={onUpgrade}
-                  className="w-full flex items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm italic hover:bg-gray-50 transition-colors"
-                >
-                  <Lock className="w-4 h-4 mr-2" />
-                  Upgrade to unlock advanced recommendations
-                </button>
+                  <button 
+                    onClick={onUpgrade}
+                    className="w-full flex items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm italic hover:bg-gray-50 transition-colors"
+                  >
+                    <Lock className="w-4 h-4 mr-2" />
+                    Unlock Your Financial Plan for advanced recommendations
+                  </button>
               )}
             </ul>
           </div>

@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
-import { Transaction, Asset, Liability } from '../types';
+import { Transaction, Asset, Liability, Loan } from '../types';
 import { updateFinancialSnapshot } from './snapshotService';
 
 /**
@@ -180,5 +180,70 @@ export const getLiabilities = async (userId: string | undefined) => {
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, path);
     return [];
+  }
+};
+
+/**
+ * Loans
+ */
+export const addLoan = async (userId: string | undefined, data: Omit<Loan, 'id' | 'timestamp'>) => {
+  if (!userId) throw new Error('User ID is required for addLoan');
+  const path = `users/${userId}/loans`;
+  try {
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== undefined)
+    );
+
+    const docRef = await addDoc(collection(db, path), {
+      ...cleanData,
+      timestamp: serverTimestamp()
+    });
+    updateFinancialSnapshot(userId).catch(console.error);
+    return docRef;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+};
+
+export const getLoans = async (userId: string | undefined) => {
+  if (!userId) return [];
+  const path = `users/${userId}/loans`;
+  try {
+    const q = query(collection(db, path), orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Loan[];
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+};
+
+export const updateLoan = async (userId: string | undefined, loanId: string, data: Partial<Omit<Loan, 'id' | 'timestamp'>>) => {
+  if (!userId) throw new Error('User ID is required for updateLoan');
+  const path = `users/${userId}/loans`;
+  try {
+    const docRef = doc(db, path, loanId);
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== undefined)
+    );
+    await updateDoc(docRef, cleanData);
+    updateFinancialSnapshot(userId).catch(console.error);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${path}/${loanId}`);
+  }
+};
+
+export const deleteLoan = async (userId: string | undefined, loanId: string) => {
+  if (!userId) throw new Error('User ID is required for deleteLoan');
+  const path = `users/${userId}/loans`;
+  try {
+    const docRef = doc(db, path, loanId);
+    await deleteDoc(docRef);
+    updateFinancialSnapshot(userId).catch(console.error);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `${path}/${loanId}`);
   }
 };

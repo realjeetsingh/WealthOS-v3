@@ -61,6 +61,20 @@ service cloud.firestore {
              data.currentAmount is number && data.currentAmount >= 0;
     }
 
+    function isValidLoan(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.principalAmount is number && data.principalAmount >= 0 &&
+             data.tenureMonths is number && data.tenureMonths >= 0 &&
+             data.paidMonths is number && data.paidMonths >= 0 &&
+             data.totalAmount is number && data.totalAmount >= 0 &&
+             data.totalInterest is number &&
+             data.emi is number && data.emi >= 0 &&
+             data.remainingAmount is number && data.remainingAmount >= 0 &&
+             data.endDate is string &&
+             data.status in ['active', 'completed'] &&
+             data.timestamp is timestamp;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -122,6 +136,13 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && isValidGoal(request.resource.data);
         allow update: if isOwner(userId) && isValidGoal(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /loans/{loanId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidLoan(request.resource.data);
+        allow update: if isOwner(userId) && isValidLoan(request.resource.data);
         allow delete: if isOwner(userId) || isAdmin();
       }
     }

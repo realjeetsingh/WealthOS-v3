@@ -1,5 +1,5 @@
 {
-  "name": "Firebase Auth System",
+  "name": "WealthOS",
   "description": "A production-ready authentication system using React, Firebase Auth, and Firestore.",
   "requestFramePermissions": []
 }

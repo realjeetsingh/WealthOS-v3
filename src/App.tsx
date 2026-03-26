@@ -13,6 +13,7 @@ import Signup from './pages/auth/Signup';
 import Transactions from './pages/Transactions';
 import Dashboard from './pages/Dashboard';
 import Insights from './pages/Insights';
+import Loans from './pages/Loans';
 import { auth } from './firebase';
 import { LogOut, User as UserIcon, ReceiptText, LayoutDashboard, BrainCircuit } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -84,6 +85,16 @@ export default function App() {
               <ProtectedRoute>
                 <Layout>
                   <Transactions />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/loans" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Loans />
                 </Layout>
               </ProtectedRoute>
             } 
