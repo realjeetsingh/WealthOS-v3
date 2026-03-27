@@ -318,9 +318,9 @@ const Insights: React.FC = () => {
                 <div className="bg-green-50 px-8 py-6 rounded-2xl border-2 border-green-200 shadow-sm">
                   <p className="text-sm text-[#16A34A] uppercase tracking-widest font-black mb-2">Total 10-Year Impact</p>
                   <p className="text-5xl font-black text-[#16A34A] tracking-tighter">
-                    +{formatCurrency(advice.improvement)}
+                    {formatCurrency(advice.improvement)}
                   </p>
-                  <p className="text-sm font-bold text-green-600/80 mt-2 italic">improvement in 10 years</p>
+                  <p className="text-sm font-bold text-green-600/80 mt-2 italic">difference over 10 years</p>
                 </div>
               </div>
               <div className="mt-8 p-8 bg-indigo-50/30 rounded-2xl border border-indigo-100/50">

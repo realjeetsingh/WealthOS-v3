@@ -67,28 +67,31 @@ export const simulateFinancialLife = (input: SimulationInput): YearlyResult[] =>
   });
 
   for (let i = 1; i <= years; i++) {
-    // 1. Increase income
+    // 1. Increase income (yearly)
     currentIncome *= (1 + INCOME_GROWTH_RATE);
     
-    // 2. Increase expenses (inflation)
+    // 2. Increase expenses (inflation, yearly)
     currentExpenses *= (1 + INFLATION_RATE);
     
-    // 3. Calculate yearly savings
-    const savings = currentIncome - currentExpenses;
+    // 3. Calculate monthly savings for this year
+    const yearlySavings = currentIncome - currentExpenses;
+    const monthlySavings = yearlySavings / 12;
+    const monthlyReturnRate = returnRate / 12;
     
-    // 4. Add savings to investment
-    investment += savings;
+    // 4. Monthly compounding for this year
+    for (let m = 1; m <= 12; m++) {
+      // Add monthly savings and grow
+      investment += monthlySavings;
+      investment *= (1 + monthlyReturnRate);
+    }
     
-    // 5. Grow investment
-    investment *= (1 + returnRate);
-    
-    // 6. Reduce debt (simple model: 10% reduction per year)
+    // 5. Reduce debt (simple model: 10% reduction per year)
     debt *= (1 - DEBT_REDUCTION_RATE);
     
-    // 7. Calculate net worth
+    // 6. Calculate net worth
     const netWorth = isNaN(investment - debt) ? 0 : (investment - debt);
     
-    // 8. Store result in array
+    // 7. Store result in array
     timeline.push({
       year: i,
       income: isNaN(currentIncome) ? 0 : currentIncome,
@@ -96,7 +99,7 @@ export const simulateFinancialLife = (input: SimulationInput): YearlyResult[] =>
       investment: isNaN(investment) ? 0 : investment,
       debt: isNaN(debt) ? 0 : debt,
       netWorth: netWorth,
-      savings: isNaN(savings) ? 0 : savings
+      savings: isNaN(yearlySavings) ? 0 : yearlySavings
     });
   }
 

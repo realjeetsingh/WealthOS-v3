@@ -14,9 +14,14 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../firebase';
 
-const Sidebar: React.FC = () => {
-  const [isPinned, setIsPinned] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+interface SidebarProps {
+  isPinned: boolean;
+  setIsPinned: (pinned: boolean) => void;
+  isHovered: boolean;
+  setIsHovered: (hovered: boolean) => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned, isHovered, setIsHovered }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { userProfile, isPremium } = useAuth();
@@ -43,7 +48,7 @@ const Sidebar: React.FC = () => {
     <aside 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`hidden md:flex flex-col bg-white border-r border-gray-100 transition-[width] duration-200 ease-in-out sticky top-0 h-screen z-40 ${
+      className={`hidden md:flex flex-col bg-white border-r border-gray-100 transition-[width] duration-200 ease-in-out fixed top-0 left-0 h-[100dvh] overflow-hidden z-[1000] ${
         isExpanded ? 'w-[240px]' : 'w-[70px]'
       }`}
     >

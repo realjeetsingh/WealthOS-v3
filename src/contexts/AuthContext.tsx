@@ -7,6 +7,7 @@ import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 interface UserProfile {
   name: string;
   email: string;
+  phone?: string;
   role: string;
   isPremium: boolean;
   createdAt: any;
