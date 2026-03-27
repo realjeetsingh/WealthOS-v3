@@ -19,11 +19,17 @@ import {
   Trash2,
   MessageSquare,
   LifeBuoy,
+  TrendingUp,
+  TrendingDown,
   Wallet,
   Crown,
   Settings,
   Bell,
-  Shield
+  Shield,
+  Award,
+  Zap,
+  Target,
+  Star
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, updateDoc, collection, query, onSnapshot, deleteDoc } from 'firebase/firestore';
@@ -32,9 +38,12 @@ import { useNavigate } from 'react-router-dom';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
 import { formatCurrency } from '../lib/formatCurrency';
 import { 
-  calculateNetWorth 
+  calculateMonthlyIncome,
+  calculateMonthlyExpenses,
+  calculateNetWorth,
+  calculateSavingsRate
 } from '../lib/financialEngine';
-import { Asset, Liability } from '../types';
+import { Transaction, Asset, Liability, Loan } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 const Profile: React.FC = () => {
@@ -61,14 +70,27 @@ const Profile: React.FC = () => {
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
   // Financial Stats State
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
 
   useEffect(() => {
     if (!user?.uid) return;
 
+    const transactionsPath = `users/${user.uid}/transactions`;
     const assetsPath = `users/${user.uid}/assets`;
     const liabilitiesPath = `users/${user.uid}/liabilities`;
+    const loansPath = `users/${user.uid}/loans`;
+
+    const unsubTransactions = onSnapshot(
+      query(collection(db, transactionsPath)),
+      (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Transaction[];
+        setTransactions(docs);
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, transactionsPath)
+    );
 
     const unsubAssets = onSnapshot(
       query(collection(db, assetsPath)),
@@ -88,13 +110,94 @@ const Profile: React.FC = () => {
       (err) => handleFirestoreError(err, OperationType.LIST, liabilitiesPath)
     );
 
+    const unsubLoans = onSnapshot(
+      query(collection(db, loansPath)),
+      (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Loan[];
+        setLoans(docs);
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, loansPath)
+    );
+
     return () => {
+      unsubTransactions();
       unsubAssets();
       unsubLiabilities();
+      unsubLoans();
     };
   }, [user?.uid]);
 
+  const monthlyIncome = calculateMonthlyIncome(transactions);
+  const monthlyExpenses = calculateMonthlyExpenses(transactions, loans);
   const netWorth = calculateNetWorth(assets, liabilities);
+  const savingsRate = calculateSavingsRate(monthlyIncome, monthlyExpenses);
+
+  // Achievement Logic
+  const achievements = [
+    {
+      id: 'transactor',
+      title: 'Active Transactor',
+      description: `Logged ${transactions.length} transactions`,
+      icon: Zap,
+      color: 'text-amber-500',
+      bgColor: 'bg-amber-50',
+      unlocked: transactions.length >= 10
+    },
+    {
+      id: 'saver',
+      title: 'Savings Milestone',
+      description: 'Reached $5,000 in assets',
+      icon: Target,
+      color: 'text-green-500',
+      bgColor: 'bg-green-50',
+      unlocked: assets.reduce((sum, a) => sum + a.value, 0) >= 5000
+    },
+    {
+      id: 'debt_free',
+      title: 'Debt Crusher',
+      description: 'Completed a loan repayment',
+      icon: Award,
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-50',
+      unlocked: loans.some(l => l.status === 'completed')
+    },
+    {
+      id: 'cashflow',
+      title: 'Cashflow King',
+      description: 'Positive monthly cashflow',
+      icon: Star,
+      color: 'text-purple-500',
+      bgColor: 'bg-purple-50',
+      unlocked: monthlyIncome > monthlyExpenses
+    }
+  ];
+
+  const insights = [
+    {
+      text: monthlyIncome > monthlyExpenses 
+        ? "You're maintaining a strong positive cashflow this month." 
+        : "Your expenses are currently outpacing your income.",
+      premium: false
+    },
+    {
+      text: savingsRate > 0.2 
+        ? "Your savings rate is above average (20%+). Keep it up!" 
+        : "Aiming for a 20% savings rate is a great next goal.",
+      premium: false
+    },
+    {
+      text: netWorth > 10000 
+        ? "Your net worth is in the top 20% of users in your bracket." 
+        : "Building your emergency fund should be your next priority.",
+      premium: true
+    },
+    {
+      text: loans.length === 0 
+        ? "You are currently debt-free! Great job." 
+        : `You have ${loans.length} active loans to manage.`,
+      premium: true
+    }
+  ];
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,7 +291,7 @@ const Profile: React.FC = () => {
   const handleLogout = async () => {
     try {
       await auth.signOut();
-      navigate('/login');
+      navigate('/auth/login');
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -270,8 +373,10 @@ const Profile: React.FC = () => {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
+          { label: 'Monthly Income', value: monthlyIncome, icon: TrendingUp, color: 'text-green-600', bgColor: 'bg-green-50' },
+          { label: 'Monthly Expenses', value: monthlyExpenses, icon: TrendingDown, color: 'text-red-600', bgColor: 'bg-red-50' },
           { label: 'Current Net Worth', value: netWorth, icon: Wallet, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
         ].map((stat) => (
           <div key={stat.label} className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 flex items-center space-x-5 group hover:shadow-md transition-all">
@@ -284,6 +389,78 @@ const Profile: React.FC = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Achievements & Insights Section */}
+      <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Achievements & Progress</h2>
+            <p className="text-sm text-gray-500 mt-1">Your financial journey milestones</p>
+          </div>
+          <div className="flex items-center space-x-2 bg-indigo-50 px-4 py-2 rounded-2xl border border-indigo-100">
+            <Trophy className="w-5 h-5 text-indigo-600" />
+            <span className="text-sm font-bold text-indigo-900">
+              {achievements.filter(a => a.unlocked).length}/{achievements.length} Unlocked
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          {achievements.map((achievement) => (
+            <div 
+              key={achievement.id} 
+              className={`p-6 rounded-3xl border transition-all ${
+                achievement.unlocked 
+                  ? 'bg-white border-gray-100 shadow-sm hover:shadow-md' 
+                  : 'bg-gray-50 border-gray-100 opacity-60 grayscale'
+              }`}
+            >
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${achievement.bgColor} ${achievement.color}`}>
+                <achievement.icon className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-gray-900 mb-1">{achievement.title}</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">{achievement.description}</p>
+              {!achievement.unlocked && (
+                <div className="mt-3 flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  <Lock className="w-3 h-3 mr-1" />
+                  Locked
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-indigo-50/50 rounded-3xl p-8 border border-indigo-100/50">
+          <h3 className="text-lg font-bold text-indigo-900 mb-4 flex items-center">
+            <Zap className="w-5 h-5 mr-2 text-indigo-600" />
+            Smart Insights
+          </h3>
+          <div className="space-y-4">
+            {insights.map((insight, idx) => (
+              <div key={idx} className="flex items-start space-x-3">
+                <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                <div className="flex-1">
+                  {insight.premium && !isPremium ? (
+                    <div className="flex items-center space-x-2">
+                      <p className="text-sm text-gray-400 italic blur-[2px] select-none">
+                        This advanced insight is reserved for premium members.
+                      </p>
+                      <span className="flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wider">
+                        <Crown className="w-3 h-3 mr-1" />
+                        Pro
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-indigo-800 font-medium leading-relaxed">
+                      {insight.text}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
