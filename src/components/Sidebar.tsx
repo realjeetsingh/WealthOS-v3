@@ -5,6 +5,7 @@ import {
   BrainCircuit, 
   ReceiptText, 
   Wallet,
+  Briefcase,
   ChevronLeft,
   ChevronRight,
   User as UserIcon,
@@ -41,6 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned, isHovered, set
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/insights', label: 'Insights', icon: BrainCircuit },
     { to: '/transactions', label: 'Transactions', icon: ReceiptText },
+    { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
     { to: '/loans', label: 'Loans', icon: Wallet },
   ];
 

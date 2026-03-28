@@ -111,6 +111,21 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "principalAmount", "tenureMonths", "paidMonths", "totalAmount", "totalInterest", "emi", "remainingAmount", "endDate", "status", "timestamp"]
+    },
+    "PortfolioAsset": {
+      "title": "Portfolio Asset",
+      "description": "An asset in the user's investment portfolio.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "category": { "type": "string", "enum": ["Stocks", "Crypto", "Real Estate", "Bonds", "Gold"] },
+        "assetName": { "type": "string" },
+        "investedAmount": { "type": "number" },
+        "currentValue": { "type": "number" },
+        "metadata": { "type": "object" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "category", "assetName", "investedAmount", "currentValue", "timestamp"]
     }
   },
   "firestore": {
@@ -133,6 +148,10 @@
     "/users/{uid}/loans/{loanId}": {
       "schema": "Loan",
       "description": "Subcollection of loans for a specific user."
+    },
+    "/users/{uid}/portfolio/{assetId}": {
+      "schema": "PortfolioAsset",
+      "description": "Subcollection of portfolio assets for a specific user."
     }
   }
 }

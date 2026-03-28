@@ -13,6 +13,7 @@ import Signup from './pages/auth/Signup';
 import Transactions from './pages/Transactions';
 import Dashboard from './pages/Dashboard';
 import Insights from './pages/Insights';
+import Portfolio from './pages/Portfolio';
 import Loans from './pages/Loans';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
@@ -63,6 +64,16 @@ export default function App() {
               <ProtectedRoute>
                 <Layout>
                   <Transactions />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/portfolio" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Portfolio />
                 </Layout>
               </ProtectedRoute>
             } 

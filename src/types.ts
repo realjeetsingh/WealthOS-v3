@@ -51,3 +51,26 @@ export interface FinancialSnapshot {
   progressSignal: string;
   updatedAt: Timestamp | any;
 }
+
+export interface PortfolioAsset {
+  id?: string;
+  userId: string;
+  category: 'Stocks' | 'Crypto' | 'Real Estate' | 'Bonds' | 'Gold';
+  assetName: string;
+  investedAmount: number;
+  currentValue: number;
+  metadata: {
+    quantity?: number;
+    buyPrice?: number;
+    investmentDate?: string;
+    coinName?: string;
+    propertyName?: string;
+    rentalIncome?: number;
+    bondName?: string;
+    interestRate?: number;
+    maturityDate?: string;
+    assetType?: string;
+    weight?: number;
+  };
+  timestamp: Timestamp;
+}
