@@ -20,7 +20,10 @@ import {
   ShieldCheck,
   Info,
   BrainCircuit,
-  Zap
+  Zap,
+  MoreVertical,
+  Edit2,
+  Trash2
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -35,6 +38,9 @@ import {
   query, 
   onSnapshot, 
   addDoc, 
+  updateDoc,
+  deleteDoc,
+  doc,
   Timestamp, 
   orderBy 
 } from 'firebase/firestore';
@@ -56,11 +62,15 @@ const CATEGORIES = [
 type Category = typeof CATEGORIES[number]['id'];
 
 export default function Portfolio() {
-  const { user, userProfile } = useAuth();
+  const { user } = useAuth();
   const [assets, setAssets] = useState<PortfolioAsset[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<Category>('Stocks');
+  const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -130,7 +140,7 @@ export default function Portfolio() {
         metadata.weight = Number(formData.weight);
       }
 
-      const newAsset: Omit<PortfolioAsset, 'id'> = {
+      const assetData: Omit<PortfolioAsset, 'id'> = {
         userId: user.uid,
         category: selectedCategory,
         assetName: formData.assetName || formData.coinName || formData.propertyName || formData.bondName || formData.assetType,
@@ -140,13 +150,65 @@ export default function Portfolio() {
         timestamp: Timestamp.now()
       };
 
-      await addDoc(collection(db, `users/${user.uid}/portfolio`), newAsset);
-      toast.success('Asset added to portfolio');
+      if (editingAssetId) {
+        await updateDoc(doc(db, `users/${user.uid}/portfolio`, editingAssetId), assetData);
+        toast.success('Asset updated successfully');
+      } else {
+        await addDoc(collection(db, `users/${user.uid}/portfolio`), assetData);
+        toast.success('Asset added to portfolio');
+      }
+      
       setIsModalOpen(false);
       resetForm();
     } catch (error) {
-      console.error('Error adding asset:', error);
-      toast.error('Failed to add asset');
+      console.error('Error saving asset:', error);
+      toast.error(editingAssetId ? 'Failed to update asset' : 'Failed to add asset');
+    }
+  };
+
+  const handleEdit = (asset: PortfolioAsset) => {
+    setEditingAssetId(asset.id);
+    setSelectedCategory(asset.category);
+    setFormData({
+      assetName: asset.assetName,
+      investedAmount: asset.investedAmount.toString(),
+      currentValue: asset.currentValue.toString(),
+      quantity: asset.metadata.quantity?.toString() || '',
+      buyPrice: asset.metadata.buyPrice?.toString() || '',
+      investmentDate: asset.metadata.investmentDate || new Date().toISOString().split('T')[0],
+      coinName: asset.metadata.coinName || '',
+      propertyName: asset.metadata.propertyName || '',
+      rentalIncome: asset.metadata.rentalIncome?.toString() || '',
+      bondName: asset.metadata.bondName || '',
+      interestRate: asset.metadata.interestRate?.toString() || '',
+      maturityDate: asset.metadata.maturityDate || '',
+      assetType: asset.metadata.assetType || '',
+      weight: asset.metadata.weight?.toString() || ''
+    });
+    setIsModalOpen(true);
+    setActiveMenuId(null);
+  };
+
+  const handleDeleteClick = (asset: PortfolioAsset) => {
+    setAssetToDelete(asset);
+    setIsDeleteModalOpen(true);
+    setActiveMenuId(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!user || !assetToDelete) return;
+
+    try {
+      // Optimistic UI update
+      setAssets(prev => prev.filter(a => a.id !== assetToDelete.id));
+      
+      await deleteDoc(doc(db, `users/${user.uid}/portfolio`, assetToDelete.id));
+      toast.success('Asset deleted successfully');
+      setIsDeleteModalOpen(false);
+      setAssetToDelete(null);
+    } catch (error) {
+      console.error('Error deleting asset:', error);
+      toast.error('Failed to delete asset');
     }
   };
 
@@ -168,9 +230,8 @@ export default function Portfolio() {
       weight: ''
     });
     setSelectedCategory('Stocks');
+    setEditingAssetId(null);
   };
-
-  const userCurrency = userProfile?.currency || 'INR';
 
   const totalInvested = assets.reduce((sum, a) => sum + a.investedAmount, 0);
   const totalCurrentValue = assets.reduce((sum, a) => sum + a.currentValue, 0);
@@ -275,7 +336,7 @@ export default function Portfolio() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Invested</p>
-              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalInvested, userCurrency)}</h3>
+              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalInvested)}</h3>
             </div>
           </div>
         </div>
@@ -288,7 +349,7 @@ export default function Portfolio() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Current Value</p>
-              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalCurrentValue, userCurrency)}</h3>
+              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalCurrentValue)}</h3>
             </div>
           </div>
         </div>
@@ -302,7 +363,7 @@ export default function Portfolio() {
             <div>
               <p className="text-sm font-medium text-gray-500">Profit/Loss</p>
               <h3 className={`text-2xl font-bold ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {totalGainLoss >= 0 ? '+' : ''}{formatCurrency(totalGainLoss, userCurrency)}
+                {totalGainLoss >= 0 ? '+' : ''}{formatCurrency(totalGainLoss)}
               </h3>
             </div>
           </div>
@@ -353,7 +414,7 @@ export default function Portfolio() {
                     ))}
                   </Pie>
                   <RechartsTooltip 
-                    formatter={(value: number) => formatCurrency(value, userCurrency)}
+                    formatter={(value: number) => formatCurrency(value)}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                   />
                   <Legend 
@@ -473,16 +534,17 @@ export default function Portfolio() {
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Invested</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Current Value</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Profit / Loss</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400">Loading assets...</td>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">Loading assets...</td>
                 </tr>
               ) : assets.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <Briefcase className="w-12 h-12 text-gray-200" />
                       <p className="text-gray-500 font-medium">No assets in your portfolio yet.</p>
@@ -524,20 +586,51 @@ export default function Portfolio() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {formatCurrency(asset.investedAmount, userCurrency)}
+                        {formatCurrency(asset.investedAmount)}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {formatCurrency(asset.currentValue, userCurrency)}
+                        {formatCurrency(asset.currentValue)}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className={`flex flex-col items-end`}>
-                          <span className={`text-sm font-bold flex items-center gap-1 ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {profit >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                            {profit >= 0 ? '+' : ''}{formatCurrency(profit, userCurrency)}
-                          </span>
-                          <span className={`text-xs font-medium ${profit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {profitPercentage.toFixed(2)}%
-                          </span>
+                        <div className="relative">
+                          <button
+                            onClick={() => setActiveMenuId(activeMenuId === asset.id ? null : asset.id)}
+                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          
+                          <AnimatePresence>
+                            {activeMenuId === asset.id && (
+                              <>
+                                <div 
+                                  className="fixed inset-0 z-[100]" 
+                                  onClick={() => setActiveMenuId(null)}
+                                />
+                                <motion.div
+                                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                  className="absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-xl border border-gray-100 z-[110] overflow-hidden"
+                                >
+                                  <button
+                                    onClick={() => handleEdit(asset)}
+                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                  >
+                                    <Edit2 className="w-4 h-4 text-indigo-600" />
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteClick(asset)}
+                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete
+                                  </button>
+                                </motion.div>
+                              </>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </td>
                     </tr>
@@ -568,8 +661,8 @@ export default function Portfolio() {
             >
               <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Add New Asset</h2>
-                  <p className="text-sm text-gray-500">Enter the details of your investment.</p>
+                  <h2 className="text-xl font-bold text-gray-900">{editingAssetId ? 'Edit Asset' : 'Add New Asset'}</h2>
+                  <p className="text-sm text-gray-500">{editingAssetId ? 'Update your asset details.' : 'Enter the details of your investment.'}</p>
                 </div>
                 <button
                   onClick={() => setIsModalOpen(false)}
@@ -807,10 +900,53 @@ export default function Portfolio() {
                     type="submit"
                     className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-200"
                   >
-                    Save Asset
+                    {editingAssetId ? 'Update Asset' : 'Save Asset'}
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 text-center"
+            >
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 className="w-8 h-8 text-red-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Are you sure?</h2>
+              <p className="text-gray-500 mb-8">
+                This will permanently delete <span className="font-bold text-gray-900">{assetToDelete?.assetName}</span> from your portfolio. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="flex-1 px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-all border border-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-red-200"
+                >
+                  Delete Asset
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

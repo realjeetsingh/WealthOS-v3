@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../../firebase';
+import { handleFirestoreError, OperationType } from '../../lib/firestore-errors';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { AlertCircle, Lock, Mail, CheckCircle2, TrendingUp, BrainCircuit, ShieldCheck, Sparkles, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -47,13 +48,19 @@ const Login: React.FC = () => {
       const user = result.user;
       
       // Ensure user document exists
-      await setDoc(doc(db, 'users', user.uid), {
-        name: user.displayName || 'User',
-        email: user.email,
-        role: 'user',
-        isPremium: false,
-        lastLogin: serverTimestamp(),
-      }, { merge: true });
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          name: user.displayName || 'User',
+          email: user.email,
+          photoURL: user.photoURL,
+          currency: 'INR',
+          role: 'user',
+          isPremium: false,
+          lastLogin: serverTimestamp(),
+        }, { merge: true });
+      } catch (firestoreErr) {
+        handleFirestoreError(firestoreErr, OperationType.WRITE, `users/${user.uid}`, user);
+      }
 
       navigate(from, { replace: true });
     } catch (err: any) {

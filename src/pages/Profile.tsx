@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Eye,
@@ -29,11 +29,15 @@ import {
   Award,
   Zap,
   Target,
-  Star
+  Star,
+  Camera,
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, updateDoc, collection, query, onSnapshot, deleteDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, auth, storage } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
 import { formatCurrency } from '../lib/formatCurrency';
@@ -69,6 +73,8 @@ const Profile: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Password Visibility States
   const [showPasswordCurrent, setShowPasswordCurrent] = useState(false);
@@ -245,23 +251,66 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 500000) { // 500KB limit for base64
-        toast.error('Image size too large. Please use a smaller image (max 500KB).');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewPhotoURL(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file || !user?.uid) return;
+
+    // Basic validation
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image size should be less than 2MB");
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const storageRef = ref(storage, `users/${user.uid}/profile.jpg`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      // Update Firestore
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, { photoURL: downloadURL });
+      
+      setNewPhotoURL(downloadURL);
+      toast.success("Profile picture updated!");
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setUploading(false);
     }
   };
 
-  const handleRemoveImage = () => {
-    setNewPhotoURL('');
+  const handleRemovePhoto = async () => {
+    if (!user?.uid) return;
+    
+    setUploading(true);
+    try {
+      // Update Firestore first
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, { photoURL: '' });
+      
+      // Optionally delete from storage
+      try {
+        const storageRef = ref(storage, `users/${user.uid}/profile.jpg`);
+        await deleteObject(storageRef);
+      } catch (e) {
+        // Ignore if file doesn't exist
+      }
+      
+      setNewPhotoURL('');
+      toast.success("Profile picture removed");
+    } catch (error) {
+      console.error("Remove error:", error);
+      toast.error("Failed to remove image");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -376,8 +425,8 @@ const Profile: React.FC = () => {
         <div className="px-8 pb-8 pt-[60px] relative -mt-16">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="w-32 h-32 bg-white rounded-[2rem] p-1 shadow-sm border border-gray-100 relative shrink-0 z-[2]">
-                <div className="w-full h-full bg-indigo-50 rounded-[1.75rem] flex items-center justify-center border border-indigo-100 overflow-hidden">
+              <div className="w-32 h-32 bg-white rounded-[2rem] p-1 shadow-sm border border-gray-100 relative shrink-0 z-[2] group">
+                <div className="w-full h-full bg-indigo-50 rounded-[1.75rem] flex items-center justify-center border border-indigo-100 overflow-hidden relative">
                   {userProfile?.photoURL ? (
                     <img 
                       src={userProfile.photoURL} 
@@ -388,10 +437,35 @@ const Profile: React.FC = () => {
                   ) : (
                     <UserIcon className="w-16 h-16 text-indigo-600" />
                   )}
+                  
+                  {/* Overlay for Change Photo */}
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-[10px] font-bold"
+                  >
+                    {uploading ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    ) : (
+                      <>
+                        <Camera className="w-6 h-6 mb-1" />
+                        <span>Change Photo</span>
+                      </>
+                    )}
+                  </button>
                 </div>
                 <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-green-500 border-2 border-white rounded-full flex items-center justify-center shadow-sm">
                   <Check className="w-4 h-4 text-white" />
                 </div>
+                
+                {/* Hidden File Input */}
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept="image/*"
+                />
               </div>
               
               <div className="flex-1 z-[1]">
@@ -428,134 +502,6 @@ const Profile: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Edit Profile Modal */}
-      {isEditing && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="p-8 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Edit Profile</h2>
-              <button 
-                onClick={() => setIsEditing(false)}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-              >
-                <X className="w-6 h-6 text-gray-400" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleUpdateProfile} className="p-8 space-y-6">
-              {/* Profile Image Control */}
-              <div className="flex flex-col items-center space-y-4 mb-4">
-                <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center border border-indigo-100 overflow-hidden relative group">
-                  {newPhotoURL ? (
-                    <img 
-                      src={newPhotoURL} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <UserIcon className="w-10 h-10 text-indigo-600" />
-                  )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <label className="cursor-pointer p-2 bg-white/20 backdrop-blur-md rounded-full hover:bg-white/40 transition-colors">
-                      <Settings className="w-5 h-5 text-white" />
-                      <input 
-                        type="file" 
-                        className="hidden" 
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                      />
-                    </label>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <label className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
-                    Change Image
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                    />
-                  </label>
-                  {newPhotoURL && (
-                    <button 
-                      type="button"
-                      onClick={handleRemoveImage}
-                      className="text-xs font-bold text-red-500 hover:underline"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
-                <input 
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all font-medium"
-                  placeholder="Your Name"
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Phone Number</label>
-                <div className="relative">
-                  <Phone className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input 
-                    type="tel"
-                    value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
-                    className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all font-medium"
-                    placeholder="+1 (555) 000-0000"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Preferred Currency</label>
-                <select
-                  value={newCurrency}
-                  onChange={(e) => setNewCurrency(e.target.value)}
-                  className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all font-medium appearance-none"
-                >
-                  {CURRENCIES.map(c => (
-                    <option key={c.code} value={c.code}>
-                      {c.symbol} - {c.name} ({c.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="flex space-x-4 pt-4">
-                <button 
-                  type="button"
-                  onClick={() => setIsEditing(false)}
-                  className="flex-1 py-4 bg-gray-50 text-gray-600 rounded-2xl font-bold hover:bg-gray-100 transition-all"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  disabled={isSaving}
-                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 flex items-center justify-center"
-                >
-                  {isSaving ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : (
-                    'Save Changes'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-4 max-w-full overflow-hidden">
@@ -834,6 +780,52 @@ const Profile: React.FC = () => {
             </div>
             
             <form onSubmit={handleUpdateProfile} className="space-y-8">
+              {/* Profile Image Control */}
+              <div className="flex flex-col items-center space-y-4 mb-4">
+                <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center border border-indigo-100 overflow-hidden relative group">
+                  {newPhotoURL ? (
+                    <img 
+                      src={newPhotoURL} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <UserIcon className="w-10 h-10 text-indigo-600" />
+                  )}
+                  
+                  {uploading && (
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center"
+                  >
+                    <ImageIcon className="w-3 h-3 mr-2" />
+                    Change Photo
+                  </button>
+                  
+                  {newPhotoURL && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      disabled={uploading}
+                      className="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center"
+                    >
+                      <Trash2 className="w-3 h-3 mr-2" />
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="space-y-6">
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Full Name</label>
@@ -861,6 +853,25 @@ const Profile: React.FC = () => {
                       className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
                       placeholder="+91 00000 00000"
                     />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Preferred Currency</label>
+                  <div className="relative">
+                    <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <select
+                      value={newCurrency}
+                      onChange={(e) => setNewCurrency(e.target.value)}
+                      className="w-full pl-12 pr-10 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900 appearance-none cursor-pointer"
+                    >
+                      {CURRENCIES.map(c => (
+                        <option key={c.code} value={c.code}>
+                          {c.symbol} - {c.name} ({c.code})
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90 pointer-events-none" />
                   </div>
                 </div>
 

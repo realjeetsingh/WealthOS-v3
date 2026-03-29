@@ -48,13 +48,19 @@ const Signup: React.FC = () => {
       const user = result.user;
       
       // Ensure user document exists
-      await setDoc(doc(db, 'users', user.uid), {
-        name: user.displayName || 'User',
-        email: user.email,
-        role: 'user',
-        isPremium: false,
-        lastLogin: serverTimestamp(),
-      }, { merge: true });
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          name: user.displayName || 'User',
+          email: user.email,
+          photoURL: user.photoURL,
+          currency: 'INR',
+          role: 'user',
+          isPremium: false,
+          lastLogin: serverTimestamp(),
+        }, { merge: true });
+      } catch (firestoreErr) {
+        handleFirestoreError(firestoreErr, OperationType.WRITE, `users/${user.uid}`, user);
+      }
 
       navigate('/dashboard');
     } catch (err: any) {
@@ -85,6 +91,7 @@ const Signup: React.FC = () => {
         await setDoc(doc(db, 'users', user.uid), {
           name,
           email,
+          currency: 'INR',
           role: 'user',
           isPremium: false,
           createdAt: serverTimestamp(),
