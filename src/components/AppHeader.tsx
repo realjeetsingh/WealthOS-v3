@@ -76,8 +76,17 @@ const AppHeader: React.FC = () => {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-gray-50 transition-colors group"
               >
-                <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
-                  <UserIcon className="w-4 h-4 text-indigo-600" />
+                <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-100 transition-colors overflow-hidden">
+                  {userProfile?.photoURL ? (
+                    <img 
+                      src={userProfile.photoURL} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <UserIcon className="w-4 h-4 text-indigo-600" />
+                  )}
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-xs font-bold text-gray-900 truncate max-w-[100px]">

@@ -4,7 +4,8 @@ import {
   getTransactions, 
   getAssets, 
   getLiabilities,
-  getLoans
+  getLoans,
+  getPortfolioAssets
 } from './financeService';
 import { 
   calculateMonthlyIncome, 
@@ -37,7 +38,15 @@ export const updateFinancialSnapshot = async (userId: string) => {
 
     const income = calculateMonthlyIncome(transactions);
     const expenses = calculateMonthlyExpenses(transactions, loans);
-    const netWorth = calculateNetWorth(assets, liabilities);
+    
+    // New Net Worth Engine logic
+    const { calculateCashBalance, calculatePortfolioValue, calculateTotalLoanRemaining } = await import('../lib/financialEngine');
+    const cashBalance = calculateCashBalance(transactions);
+    const portfolioAssets = await getPortfolioAssets(userId);
+    const portfolioValue = calculatePortfolioValue(portfolioAssets);
+    const loanBalance = calculateTotalLoanRemaining(loans);
+    
+    const netWorth = calculateNetWorth(cashBalance, portfolioValue, loanBalance);
     const cashflow = calculateCashflow(income, expenses);
     const savingsRate = calculateSavingsRate(income, expenses);
     

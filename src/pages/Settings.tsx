@@ -1,12 +1,32 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Settings as SettingsIcon, Shield, Bell, CreditCard } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Bell, CreditCard, Globe } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { CURRENCIES } from '../lib/currency';
+import { toast } from 'sonner';
 
 const Settings: React.FC = () => {
   const { user, userProfile, isPremium } = useAuth();
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const updateCurrency = async (currency: string) => {
+    if (!user) return;
+    
+    setIsUpdating(true);
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        currency: currency
+      });
+      toast.success(`Currency updated to ${currency}`);
+    } catch (error) {
+      console.error("Error updating currency:", error);
+      toast.error("Failed to update currency");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const toggleEmailAlerts = async () => {
     if (!user) return;
@@ -82,6 +102,32 @@ const Settings: React.FC = () => {
                   userProfile?.emailAlerts ? 'translate-x-7' : 'translate-x-1'
                 }`}></div>
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Preferences Section */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center space-x-3 mb-6">
+            <Globe className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-lg font-bold text-gray-900">Preferences</h2>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Display Currency</label>
+              <select
+                value={userProfile?.currency || 'INR'}
+                onChange={(e) => updateCurrency(e.target.value)}
+                disabled={isUpdating}
+                className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium disabled:opacity-50"
+              >
+                {CURRENCIES.map(c => (
+                  <option key={c.code} value={c.code}>
+                    {c.symbol} - {c.name} ({c.code})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-gray-500 mt-2">All financial values will be converted and displayed in this currency.</p>
             </div>
           </div>
         </div>

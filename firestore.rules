@@ -27,6 +27,8 @@ service cloud.firestore {
              data.email is string &&
              data.role in ['user', 'admin'] &&
              data.isPremium is bool &&
+             (!('photoURL' in data) || data.photoURL is string) &&
+             (!('currency' in data) || data.currency is string) &&
              (!('paymentId' in data) || data.paymentId is string) &&
              (!('premiumSince' in data) || data.premiumSince is timestamp);
     }
@@ -81,6 +83,15 @@ service cloud.firestore {
              data.investedAmount is number && data.investedAmount >= 0 &&
              data.currentValue is number && data.currentValue >= 0 &&
              data.metadata is map &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidNetWorthSnapshot(data) {
+      return data.userId is string &&
+             data.netWorth is number &&
+             data.cashBalance is number &&
+             data.portfolioValue is number &&
+             data.loanBalance is number &&
              data.timestamp is timestamp;
     }
 
@@ -159,6 +170,13 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && isValidPortfolioAsset(request.resource.data);
         allow update: if isOwner(userId) && isValidPortfolioAsset(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /netWorthSnapshots/{snapshotId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidNetWorthSnapshot(request.resource.data);
+        allow update: if isOwner(userId) && isValidNetWorthSnapshot(request.resource.data);
         allow delete: if isOwner(userId) || isAdmin();
       }
     }

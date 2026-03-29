@@ -1,5 +1,16 @@
 import { Timestamp } from 'firebase/firestore';
 
+export interface UserProfile {
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  isPremium: boolean;
+  photoURL?: string;
+  currency?: string;
+  createdAt: Timestamp;
+}
+
 export interface Transaction {
   id?: string;
   type: 'income' | 'expense';
@@ -72,5 +83,15 @@ export interface PortfolioAsset {
     assetType?: string;
     weight?: number;
   };
+  timestamp: Timestamp;
+}
+
+export interface NetWorthSnapshot {
+  id?: string;
+  userId: string;
+  netWorth: number;
+  cashBalance: number;
+  portfolioValue: number;
+  loanBalance: number;
   timestamp: Timestamp;
 }

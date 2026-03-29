@@ -3,15 +3,8 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
-
-interface UserProfile {
-  name: string;
-  email: string;
-  phone?: string;
-  role: string;
-  isPremium: boolean;
-  createdAt: any;
-}
+import { UserProfile } from '../types';
+import { setGlobalUserProfile } from '../lib/formatCurrency';
 
 interface AuthContextType {
   user: User | null;
@@ -30,6 +23,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isPremium = userProfile?.isPremium ?? false;
 
   useEffect(() => {
+    setGlobalUserProfile(userProfile);
     if (userProfile) {
       console.log("Premium status:", userProfile.isPremium);
     }

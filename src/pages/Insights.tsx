@@ -445,7 +445,7 @@ const Insights: React.FC = () => {
                                 Reduce unnecessary expenses
                               </li>
                             </ul>
-                            <p className="text-indigo-200 text-xs font-bold">₹299/month • Start improving today</p>
+                            <p className="text-indigo-200 text-xs font-bold">{formatCurrency(299)}/month • Start improving today</p>
                           </div>
                           <button 
                             onClick={onUpgrade}

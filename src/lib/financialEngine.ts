@@ -100,18 +100,54 @@ export const calculateSavingsRate = (income: number, expenses: number): number =
 };
 
 /**
- * 5. calculateNetWorth(assets, liabilities)
- * Returns total assets minus total liabilities.
+ * 5. calculateNetWorth(cashBalance, portfolioValue, loanBalance)
+ * Returns cash balance + portfolio value minus loan balance.
  */
-export const calculateNetWorth = (assets: Asset[] | null | undefined, liabilities: Liability[] | null | undefined): number => {
-  const totalAssets = (assets || [])
-    .reduce((sum, a) => sum + (Number(a.value) || 0), 0);
-    
-  const totalLiabilities = (liabilities || [])
-    .reduce((sum, l) => sum + (Number(l.remainingBalance) || 0), 0);
-    
-  const result = totalAssets - totalLiabilities;
+export const calculateNetWorth = (
+  cashBalance: number, 
+  portfolioValue: number, 
+  loanBalance: number
+): number => {
+  const result = (Number(cashBalance) || 0) + (Number(portfolioValue) || 0) - (Number(loanBalance) || 0);
   return isNaN(result) ? 0 : result;
+};
+
+/**
+ * 6. calculateCashBalance(transactions)
+ * Sums all income minus all expenses (all time).
+ */
+export const calculateCashBalance = (transactions: Transaction[] | null | undefined): number => {
+  if (!transactions || !Array.isArray(transactions)) return 0;
+  
+  const income = transactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    
+  const expenses = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    
+  return income - expenses;
+};
+
+/**
+ * 7. calculatePortfolioValue(portfolioAssets)
+ * Sums the current value of all portfolio assets.
+ */
+export const calculatePortfolioValue = (assets: any[] | null | undefined): number => {
+  if (!assets || !Array.isArray(assets)) return 0;
+  return assets.reduce((sum, a) => sum + (Number(a.currentValue) || 0), 0);
+};
+
+/**
+ * 8. calculateTotalLoanRemaining(loans)
+ * Sums the remaining amount of all active loans.
+ */
+export const calculateTotalLoanRemaining = (loans: Loan[] | null | undefined): number => {
+  if (!loans || !Array.isArray(loans)) return 0;
+  return loans
+    .filter(l => l.status !== 'completed')
+    .reduce((sum, l) => sum + (Number(l.remainingAmount) || 0), 0);
 };
 
 /**

@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, addDoc, serverTimestamp, orderBy, limit, getDocs, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { Transaction, Asset, Liability, Loan, FinancialSnapshot } from '../types';
+import { Transaction, Asset, Liability, Loan, FinancialSnapshot, PortfolioAsset, NetWorthSnapshot } from '../types';
 import { 
   calculateMonthlyIncome, 
   calculateMonthlyExpenses, 
   calculateCashflow, 
   calculateNetWorth,
-  calculateTotalEMI
+  calculateTotalEMI,
+  calculateCashBalance,
+  calculatePortfolioValue,
+  calculateTotalLoanRemaining
 } from '../lib/financialEngine';
 import { 
   getMonthlyStatus, 
@@ -28,17 +31,32 @@ import {
   Calendar,
   Zap,
   AlertCircle,
-  ShieldAlert
+  ShieldAlert,
+  ArrowUpRight,
+  ArrowDownRight,
+  PieChart as PieChartIcon,
+  History
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  ResponsiveContainer,
+  AreaChart,
+  Area
+} from 'recharts';
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [liabilities, setLiabilities] = useState<Liability[]>([]);
+  const [portfolioAssets, setPortfolioAssets] = useState<PortfolioAsset[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
-  const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
+  const [snapshots, setSnapshots] = useState<NetWorthSnapshot[]>([]);
+  const [financialSnapshot, setFinancialSnapshot] = useState<FinancialSnapshot | null>(null);
   const [usingSnapshot, setUsingSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -50,18 +68,17 @@ const Dashboard: React.FC = () => {
 
     const snapshotPath = `users/${user.uid}/meta/financialSnapshot`;
     const transactionsPath = `users/${user.uid}/transactions`;
-    const assetsPath = `users/${user.uid}/assets`;
-    const liabilitiesPath = `users/${user.uid}/liabilities`;
+    const portfolioPath = `users/${user.uid}/portfolio`;
     const loansPath = `users/${user.uid}/loans`;
+    const snapshotsPath = `users/${user.uid}/netWorthSnapshots`;
 
     // 1. Optimization Layer: Listen to Financial Snapshot
     const unsubSnapshot = onSnapshot(
       doc(db, snapshotPath),
       (docSnap) => {
         if (docSnap.exists()) {
-          setSnapshot(docSnap.data() as FinancialSnapshot);
+          setFinancialSnapshot(docSnap.data() as FinancialSnapshot);
           setUsingSnapshot(true);
-          setLoading(false);
         } else {
           setUsingSnapshot(false);
         }
@@ -73,8 +90,6 @@ const Dashboard: React.FC = () => {
     );
 
     // 2. Fallback/Detail Layer: Listen to raw collections
-    // We keep these for real-time updates when snapshot is not yet updated
-    // and for the retention engine which needs raw transaction data.
     const unsubTransactions = onSnapshot(
       query(collection(db, transactionsPath)),
       (snapshot) => {
@@ -84,26 +99,13 @@ const Dashboard: React.FC = () => {
       (err) => handleFirestoreError(err, OperationType.LIST, transactionsPath)
     );
 
-    const unsubAssets = onSnapshot(
-      query(collection(db, assetsPath)),
+    const unsubPortfolio = onSnapshot(
+      query(collection(db, portfolioPath)),
       (snapshot) => {
-        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Asset[];
-        setAssets(docs);
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as PortfolioAsset[];
+        setPortfolioAssets(docs);
       },
-      (err) => handleFirestoreError(err, OperationType.LIST, assetsPath)
-    );
-
-    const unsubLiabilities = onSnapshot(
-      query(collection(db, liabilitiesPath)),
-      (snapshot) => {
-        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Liability[];
-        setLiabilities(docs);
-        if (!usingSnapshot) setLoading(false);
-      },
-      (err) => {
-        handleFirestoreError(err, OperationType.LIST, liabilitiesPath);
-        if (!usingSnapshot) setLoading(false);
-      }
+      (err) => handleFirestoreError(err, OperationType.LIST, portfolioPath)
     );
 
     const unsubLoans = onSnapshot(
@@ -115,26 +117,82 @@ const Dashboard: React.FC = () => {
       (err) => handleFirestoreError(err, OperationType.LIST, loansPath)
     );
 
+    const unsubSnapshots = onSnapshot(
+      query(collection(db, snapshotsPath), orderBy('timestamp', 'asc'), limit(30)),
+      (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as NetWorthSnapshot[];
+        setSnapshots(docs);
+        setLoading(false);
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, snapshotsPath);
+        setLoading(false);
+      }
+    );
+
     return () => {
       unsubSnapshot();
       unsubTransactions();
-      unsubAssets();
-      unsubLiabilities();
+      unsubPortfolio();
       unsubLoans();
+      unsubSnapshots();
     };
-  }, [user?.uid, usingSnapshot]);
+  }, [user?.uid]);
 
-  // Calculations with Snapshot Fallback
-  const monthlyIncome = Number((usingSnapshot && snapshot) ? snapshot.income : calculateMonthlyIncome(transactions)) || 0;
-  const monthlyExpenses = Number((usingSnapshot && snapshot) ? snapshot.expenses : calculateMonthlyExpenses(transactions, loans)) || 0;
-  const cashflow = Number((usingSnapshot && snapshot) ? snapshot.cashflow : calculateCashflow(monthlyIncome, monthlyExpenses)) || 0;
-  const netWorth = Number((usingSnapshot && snapshot) ? snapshot.netWorth : calculateNetWorth(assets, liabilities)) || 0;
+  // Real-time Calculations
+  const cashBalance = calculateCashBalance(transactions);
+  const portfolioValue = calculatePortfolioValue(portfolioAssets);
+  const loanBalance = calculateTotalLoanRemaining(loans);
+  const netWorth = calculateNetWorth(cashBalance, portfolioValue, loanBalance);
+  
+  const monthlyIncome = calculateMonthlyIncome(transactions);
+  const monthlyExpenses = calculateMonthlyExpenses(transactions, loans);
+  const cashflow = calculateCashflow(monthlyIncome, monthlyExpenses);
   const totalEMI = calculateTotalEMI(loans);
 
-  // Retention Engine Insights with Snapshot Fallback
-  const monthlyStatus = (usingSnapshot && snapshot) ? snapshot.monthlyStatus : getMonthlyStatus(monthlyIncome, monthlyExpenses);
-  const monthlyTrend = (usingSnapshot && snapshot) ? snapshot.monthlyTrend : getMonthlyTrend(transactions);
-  const progressSignal = (usingSnapshot && snapshot) ? snapshot.progressSignal : getProgressSignal(monthlyIncome, monthlyExpenses);
+  const userCurrency = userProfile?.currency || 'INR';
+
+  // Retention Engine Insights
+  const monthlyStatus = getMonthlyStatus(monthlyIncome, monthlyExpenses);
+  const monthlyTrend = getMonthlyTrend(transactions);
+  const progressSignal = getProgressSignal(monthlyIncome, monthlyExpenses);
+
+  // Snapshot Saving Logic (Daily)
+  useEffect(() => {
+    if (!user?.uid || loading || netWorth === 0) return;
+
+    const checkAndSaveSnapshot = async () => {
+      const snapshotsPath = `users/${user.uid}/netWorthSnapshots`;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Check if we already have a snapshot for today
+      const q = query(
+        collection(db, snapshotsPath),
+        where('timestamp', '>=', today),
+        limit(1)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        await addDoc(collection(db, snapshotsPath), {
+          userId: user.uid,
+          netWorth,
+          cashBalance,
+          portfolioValue,
+          loanBalance,
+          timestamp: serverTimestamp()
+        });
+      }
+    };
+
+    checkAndSaveSnapshot();
+  }, [user?.uid, netWorth, loading]);
+
+  // Trend Calculation
+  const lastSnapshot = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
+  const netWorthTrend = lastSnapshot ? netWorth - lastSnapshot.netWorth : 0;
+  const isIncreasing = netWorthTrend >= 0;
 
   if (loading) {
     return (
@@ -144,74 +202,153 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const StatCard = ({ title, value, icon: Icon, colorClass, isHighlighted = false }: { title: string, value: number, icon: any, colorClass: string, isHighlighted?: boolean }) => (
-    <div className={`p-8 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-5 transition-all hover:shadow-md ${isHighlighted ? 'bg-indigo-600 border-indigo-600' : 'bg-white'}`}>
-      <div className={`p-4 rounded-xl ${isHighlighted ? 'bg-white/20 text-white' : colorClass}`}>
-        <Icon className="w-7 h-7" />
-      </div>
-      <div>
-        <p className={`text-3xl font-bold tracking-tight ${isHighlighted ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(value)}</p>
-        <p className={`text-sm font-medium ${isHighlighted ? 'text-indigo-100' : 'text-gray-500'}`}>{title}</p>
-      </div>
-    </div>
-  );
+  const chartData = snapshots.map(s => ({
+    date: s.timestamp?.toDate ? s.timestamp.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '',
+    value: s.netWorth
+  }));
 
   return (
     <>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Financial Dashboard</h1>
-          <p className="mt-2 text-gray-600">Real-time overview of your financial health.</p>
+          <p className="mt-2 text-gray-600">Focusing on your long-term wealth and progress.</p>
         </div>
-        <Link 
-          to="/transactions" 
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
-        >
-          Manage Data
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link 
+            to="/portfolio" 
+            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <PieChartIcon className="w-4 h-4" />
+            Portfolio
+          </Link>
+          <Link 
+            to="/transactions" 
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors shadow-md"
+          >
+            <TrendingUp className="w-4 h-4" />
+            Manage Data
+          </Link>
+        </div>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-6 md:gap-8">
-        <StatCard 
-          title="Monthly Income" 
-          value={monthlyIncome} 
-          icon={TrendingUp} 
-          colorClass="bg-green-50 text-[#16A34A]" 
-        />
-        <StatCard 
-          title="Monthly Expenses" 
-          value={monthlyExpenses} 
-          icon={TrendingDown} 
-          colorClass="bg-red-50 text-[#DC2626]" 
-        />
-        {totalEMI > 0 && (
-          <div className="lg:col-span-1 bg-amber-50 border border-amber-100 p-8 rounded-xl flex items-center space-x-5">
-            <div className="p-4 rounded-xl bg-amber-100 text-amber-700">
-              <TrendingDown className="w-7 h-7" />
+      {/* Primary Net Worth Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div className="lg:col-span-2 bg-indigo-600 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <p className="text-indigo-100 font-medium mb-1">Total Net Worth</p>
+                <h2 className="text-5xl font-black tracking-tighter">{formatCurrency(netWorth, userCurrency)}</h2>
+              </div>
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${isIncreasing ? 'bg-green-400/20 text-green-300' : 'bg-red-400/20 text-red-300'}`}>
+                {isIncreasing ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                {isIncreasing ? 'Increasing' : 'Decreasing'}
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-amber-900">{formatCurrency(totalEMI)}</p>
-              <p className="text-sm font-medium text-amber-700">Monthly EMI</p>
+
+            <div className="grid grid-cols-3 gap-4 pt-8 border-t border-indigo-500/50">
+              <div>
+                <p className="text-indigo-200 text-xs uppercase tracking-wider font-bold mb-1">Cash</p>
+                <p className="text-xl font-bold">{formatCurrency(cashBalance, userCurrency)}</p>
+              </div>
+              <div>
+                <p className="text-indigo-200 text-xs uppercase tracking-wider font-bold mb-1">Portfolio</p>
+                <p className="text-xl font-bold">{formatCurrency(portfolioValue, userCurrency)}</p>
+              </div>
+              <div>
+                <p className="text-indigo-200 text-xs uppercase tracking-wider font-bold mb-1">Loans</p>
+                <p className="text-xl font-bold text-red-300">-{formatCurrency(loanBalance, userCurrency)}</p>
+              </div>
             </div>
           </div>
-        )}
-        <StatCard 
-          title="Cashflow" 
-          value={cashflow} 
-          icon={BarChart3} 
-          colorClass={cashflow >= 0 ? "bg-indigo-50 text-[#4F46E5]" : "bg-orange-50 text-orange-600"} 
-        />
-        <StatCard 
-          title="Net Worth" 
-          value={netWorth} 
-          icon={Wallet} 
-          colorClass="bg-indigo-50 text-[#4F46E5]" 
-          isHighlighted={true}
-        />
+          
+          {/* Decorative Elements */}
+          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-indigo-500 rounded-full opacity-20 blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-60 h-60 bg-indigo-400 rounded-full opacity-10 blur-3xl"></div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <History className="w-5 h-5 text-indigo-600" />
+                Net Worth Trend
+              </h3>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Last 30 Days</span>
+            </div>
+            <div className="h-40 w-full">
+              {snapshots.length > 1 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <Area type="monotone" dataKey="value" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                    <RechartsTooltip 
+                      formatter={(value: number) => [formatCurrency(value, userCurrency), 'Net Worth']}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-gray-400 text-sm text-center">
+                  <Activity className="w-8 h-8 mb-2 opacity-20" />
+                  <p>Keep using the app to<br/>see your wealth trend.</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mt-6 pt-6 border-t border-gray-50">
+            <p className="text-sm text-gray-600">
+              {netWorthTrend !== 0 ? (
+                <>Your net worth {isIncreasing ? 'increased' : 'decreased'} by <span className={`font-bold ${isIncreasing ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(Math.abs(netWorthTrend), userCurrency)}</span> since your last visit.</>
+              ) : (
+                "Start tracking your assets and liabilities to see your wealth grow."
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Secondary Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-gray-500">Monthly Income</p>
+            <div className="p-2 bg-green-50 rounded-lg text-green-600">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{formatCurrency(monthlyIncome, userCurrency)}</p>
+        </div>
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-gray-500">Monthly Expenses</p>
+            <div className="p-2 bg-red-50 rounded-lg text-red-600">
+              <TrendingDown className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{formatCurrency(monthlyExpenses, userCurrency)}</p>
+        </div>
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-gray-500">Monthly Cashflow</p>
+            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+              <BarChart3 className="w-4 h-4" />
+            </div>
+          </div>
+          <p className={`text-2xl font-bold ${cashflow >= 0 ? 'text-indigo-600' : 'text-orange-600'}`}>
+            {formatCurrency(cashflow, userCurrency)}
+          </p>
+        </div>
       </div>
 
       {/* Retention Engine Section */}
-      <div className="mt-16 grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6 md:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center space-x-3 mb-6">
             <div className="p-2.5 bg-indigo-50 rounded-lg">
@@ -243,19 +380,8 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-16 p-10 bg-[#4F46E5] rounded-xl text-white relative overflow-hidden shadow-lg">
-        <div className="relative z-10">
-          <h2 className="text-2xl font-bold mb-4">Financial Summary</h2>
-          <p className="text-indigo-100 max-w-2xl">
-            Your current savings rate is <span className="font-bold text-white">{(monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome * 100).toFixed(1) : 0)}%</span>. 
-            Keep tracking your transactions to maintain an accurate financial state.
-          </p>
-        </div>
-        <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-indigo-800 rounded-full opacity-20 blur-3xl"></div>
-      </div>
-
       {totalEMI > 0 && (
-        <div className="mt-8">
+        <div className="mb-12">
           {(() => {
             const emiRatio = monthlyIncome > 0 ? (totalEMI / monthlyIncome) * 100 : 0;
             let pressure = {
@@ -268,7 +394,7 @@ const Dashboard: React.FC = () => {
 
             if (emiRatio > 40) {
               pressure = {
-                text: `High EMI burden: ${formatCurrency(totalEMI)}/month is limiting your financial growth`,
+                text: `High EMI burden: ${formatCurrency(totalEMI, userCurrency)}/month is limiting your financial growth`,
                 color: 'text-red-600',
                 bgColor: 'bg-red-50',
                 borderColor: 'border-red-100',
@@ -276,7 +402,7 @@ const Dashboard: React.FC = () => {
               };
             } else if (emiRatio >= 20) {
               pressure = {
-                text: `${formatCurrency(totalEMI)}/month in EMIs is reducing your savings potential`,
+                text: `${formatCurrency(totalEMI, userCurrency)}/month in EMIs is reducing your savings potential`,
                 color: 'text-amber-600',
                 bgColor: 'bg-amber-50',
                 borderColor: 'border-amber-100',
@@ -296,7 +422,7 @@ const Dashboard: React.FC = () => {
                     </p>
                     {monthlyIncome > 0 && (
                       <p className="text-sm font-medium text-gray-500 mt-2">
-                        EMIs consume <span className="text-gray-900 font-bold">{emiRatio.toFixed(1)}%</span> of your monthly income. Reducing this can increase your monthly savings by <span className="text-gray-900 font-bold">{formatCurrency(totalEMI)}</span>.
+                        EMIs consume <span className="text-gray-900 font-bold">{emiRatio.toFixed(1)}%</span> of your monthly income. Reducing this can increase your monthly savings by <span className="text-gray-900 font-bold">{formatCurrency(totalEMI, userCurrency)}</span>.
                       </p>
                     )}
                   </div>

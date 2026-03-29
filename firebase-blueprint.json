@@ -27,6 +27,14 @@
           "type": "boolean",
           "description": "Whether the user has a premium subscription."
         },
+        "photoURL": {
+          "type": "string",
+          "description": "The user's profile image URL (base64 or hosted)."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The user's preferred currency code (e.g., USD, INR)."
+        },
         "emailAlerts": {
           "type": "boolean",
           "description": "Whether the user has enabled email alerts."
@@ -126,6 +134,20 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "category", "assetName", "investedAmount", "currentValue", "timestamp"]
+    },
+    "NetWorthSnapshot": {
+      "title": "Net Worth Snapshot",
+      "description": "A snapshot of the user's net worth at a specific point in time.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "netWorth": { "type": "number" },
+        "cashBalance": { "type": "number" },
+        "portfolioValue": { "type": "number" },
+        "loanBalance": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "netWorth", "cashBalance", "portfolioValue", "loanBalance", "timestamp"]
     }
   },
   "firestore": {
@@ -152,6 +174,10 @@
     "/users/{uid}/portfolio/{assetId}": {
       "schema": "PortfolioAsset",
       "description": "Subcollection of portfolio assets for a specific user."
+    },
+    "/users/{uid}/netWorthSnapshots/{snapshotId}": {
+      "schema": "NetWorthSnapshot",
+      "description": "Subcollection of net worth snapshots for a specific user."
     }
   }
 }

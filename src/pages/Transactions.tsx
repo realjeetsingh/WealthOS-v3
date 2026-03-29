@@ -6,6 +6,7 @@ import { addTransaction, updateTransaction, deleteTransaction } from '../service
 import { Transaction } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { formatCurrency } from '../lib/formatCurrency';
+import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
 import { 
   PlusCircle, 
   ArrowUpCircle, 
@@ -23,7 +24,7 @@ import {
 import { Link } from 'react-router-dom';
 
 const Transactions: React.FC = () => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -131,6 +132,9 @@ const Transactions: React.FC = () => {
     }
   };
 
+  const currencyConfig = CURRENCIES.find(c => c.code === (userProfile?.currency || DEFAULT_CURRENCY)) || CURRENCIES[0];
+  const currencySymbol = currencyConfig.symbol;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -211,7 +215,7 @@ const Transactions: React.FC = () => {
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Amount</label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400 font-bold">₹</span>
+                  <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400 font-bold">{currencySymbol}</span>
                   <input
                     type="number"
                     step="0.01"

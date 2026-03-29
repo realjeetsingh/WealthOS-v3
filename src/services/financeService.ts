@@ -247,3 +247,22 @@ export const deleteLoan = async (userId: string | undefined, loanId: string) => 
     handleFirestoreError(error, OperationType.DELETE, `${path}/${loanId}`);
   }
 };
+
+/**
+ * Portfolio Assets
+ */
+export const getPortfolioAssets = async (userId: string | undefined) => {
+  if (!userId) return [];
+  const path = `users/${userId}/portfolio`;
+  try {
+    const q = query(collection(db, path), orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as any[]; // Using any[] to avoid circular dependency if PortfolioAsset is not imported
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+};

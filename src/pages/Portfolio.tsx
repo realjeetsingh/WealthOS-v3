@@ -56,7 +56,7 @@ const CATEGORIES = [
 type Category = typeof CATEGORIES[number]['id'];
 
 export default function Portfolio() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [assets, setAssets] = useState<PortfolioAsset[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -170,6 +170,8 @@ export default function Portfolio() {
     setSelectedCategory('Stocks');
   };
 
+  const userCurrency = userProfile?.currency || 'INR';
+
   const totalInvested = assets.reduce((sum, a) => sum + a.investedAmount, 0);
   const totalCurrentValue = assets.reduce((sum, a) => sum + a.currentValue, 0);
   const totalGainLoss = totalCurrentValue - totalInvested;
@@ -273,7 +275,7 @@ export default function Portfolio() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Invested</p>
-              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalInvested)}</h3>
+              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalInvested, userCurrency)}</h3>
             </div>
           </div>
         </div>
@@ -286,7 +288,7 @@ export default function Portfolio() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Current Value</p>
-              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalCurrentValue)}</h3>
+              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalCurrentValue, userCurrency)}</h3>
             </div>
           </div>
         </div>
@@ -300,7 +302,7 @@ export default function Portfolio() {
             <div>
               <p className="text-sm font-medium text-gray-500">Profit/Loss</p>
               <h3 className={`text-2xl font-bold ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {totalGainLoss >= 0 ? '+' : ''}{formatCurrency(totalGainLoss)}
+                {totalGainLoss >= 0 ? '+' : ''}{formatCurrency(totalGainLoss, userCurrency)}
               </h3>
             </div>
           </div>
@@ -351,7 +353,7 @@ export default function Portfolio() {
                     ))}
                   </Pie>
                   <RechartsTooltip 
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value: number) => formatCurrency(value, userCurrency)}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                   />
                   <Legend 
@@ -522,16 +524,16 @@ export default function Portfolio() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {formatCurrency(asset.investedAmount)}
+                        {formatCurrency(asset.investedAmount, userCurrency)}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {formatCurrency(asset.currentValue)}
+                        {formatCurrency(asset.currentValue, userCurrency)}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className={`flex flex-col items-end`}>
                           <span className={`text-sm font-bold flex items-center gap-1 ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                             {profit >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                            {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
+                            {profit >= 0 ? '+' : ''}{formatCurrency(profit, userCurrency)}
                           </span>
                           <span className={`text-xs font-medium ${profit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {profitPercentage.toFixed(2)}%

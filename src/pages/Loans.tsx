@@ -6,6 +6,7 @@ import { addLoan, updateLoan, deleteLoan } from '../services/financeService';
 import { Loan, FinancialSnapshot } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { formatCurrency } from '../lib/formatCurrency';
+import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
 import { calculateTotalEMI } from '../lib/financialEngine';
 import { 
   PlusCircle, 
@@ -26,7 +27,7 @@ import {
 } from 'lucide-react';
 
 const Loans: React.FC = () => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -250,6 +251,9 @@ const Loans: React.FC = () => {
       : `${months}m ${remainingDays}d left`;
   };
 
+  const currencyConfig = CURRENCIES.find(c => c.code === (userProfile?.currency || DEFAULT_CURRENCY)) || CURRENCIES[0];
+  const currencySymbol = currencyConfig.symbol;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -388,7 +392,7 @@ const Loans: React.FC = () => {
             <div>
               <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Principal Amount</label>
               <div className="relative">
-                <span className="absolute left-4 top-3.5 text-gray-400 font-black">₹</span>
+                <span className="absolute left-4 top-3.5 text-gray-400 font-black">{currencySymbol}</span>
                 <input
                   type="number"
                   required
@@ -435,7 +439,7 @@ const Loans: React.FC = () => {
             <div>
               <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Monthly EMI (Optional)</label>
               <div className="relative">
-                <span className="absolute left-4 top-3.5 text-gray-400 font-black">₹</span>
+                <span className="absolute left-4 top-3.5 text-gray-400 font-black">{currencySymbol}</span>
                 <input
                   type="number"
                   placeholder="0"
@@ -452,7 +456,7 @@ const Loans: React.FC = () => {
             <div>
               <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Total Payable (Optional)</label>
               <div className="relative">
-                <span className="absolute left-4 top-3.5 text-gray-400 font-black">₹</span>
+                <span className="absolute left-4 top-3.5 text-gray-400 font-black">{currencySymbol}</span>
                 <input
                   type="number"
                   placeholder="0"
