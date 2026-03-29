@@ -151,8 +151,11 @@ export default function Portfolio() {
       };
 
       if (editingAssetId) {
+        // Optimistic update for edit
+        setAssets(prev => prev.map(a => a.id === editingAssetId ? { ...a, ...assetData } : a));
+        
         await updateDoc(doc(db, `users/${user.uid}/portfolio`, editingAssetId), assetData);
-        toast.success('Asset updated successfully');
+        toast.success('Asset Successfully Updated');
       } else {
         await addDoc(collection(db, `users/${user.uid}/portfolio`), assetData);
         toast.success('Asset added to portfolio');
@@ -203,7 +206,7 @@ export default function Portfolio() {
       setAssets(prev => prev.filter(a => a.id !== assetToDelete.id));
       
       await deleteDoc(doc(db, `users/${user.uid}/portfolio`, assetToDelete.id));
-      toast.success('Asset deleted successfully');
+      toast.success('Asset Successfully Deleted');
       setIsDeleteModalOpen(false);
       setAssetToDelete(null);
     } catch (error) {
@@ -318,7 +321,10 @@ export default function Portfolio() {
           <p className="text-gray-500 mt-1">Track and manage your diverse investments in one place.</p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            resetForm();
+            setIsModalOpen(true);
+          }}
           className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-200"
         >
           <Plus className="w-5 h-5" />
@@ -525,7 +531,7 @@ export default function Portfolio() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50/50">
@@ -549,7 +555,10 @@ export default function Portfolio() {
                       <Briefcase className="w-12 h-12 text-gray-200" />
                       <p className="text-gray-500 font-medium">No assets in your portfolio yet.</p>
                       <button 
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={() => {
+                          resetForm();
+                          setIsModalOpen(true);
+                        }}
                         className="text-indigo-600 font-bold hover:underline mt-2"
                       >
                         Add your first asset
@@ -592,7 +601,13 @@ export default function Portfolio() {
                         {formatCurrency(asset.currentValue)}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="relative">
+                        <div className={`text-sm font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
+                          <p className="text-[10px] opacity-70">{profitPercentage.toFixed(2)}%</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="relative inline-block text-left">
                           <button
                             onClick={() => setActiveMenuId(activeMenuId === asset.id ? null : asset.id)}
                             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -639,6 +654,112 @@ export default function Portfolio() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-50">
+          {isLoading ? (
+            <div className="p-12 text-center text-gray-400">Loading assets...</div>
+          ) : assets.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <Briefcase className="w-12 h-12 text-gray-200" />
+                <p className="text-gray-500 font-medium">No assets in your portfolio yet.</p>
+                <button 
+                  onClick={() => {
+                    resetForm();
+                    setIsModalOpen(true);
+                  }}
+                  className="text-indigo-600 font-bold hover:underline mt-2"
+                >
+                  Add your first asset
+                </button>
+              </div>
+            </div>
+          ) : (
+            assets.map((asset) => {
+              const profit = asset.currentValue - asset.investedAmount;
+              const profitPercentage = asset.investedAmount > 0 ? (profit / asset.investedAmount) * 100 : 0;
+              const CategoryIcon = CATEGORIES.find(c => c.id === asset.category)?.icon || Activity;
+
+              return (
+                <div key={asset.id} className="p-4 space-y-4 relative">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
+                        <CategoryIcon className="w-5 h-5 text-gray-400" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{asset.assetName}</p>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 uppercase tracking-wider">
+                          {asset.category}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="relative">
+                      <button
+                        onClick={() => setActiveMenuId(activeMenuId === asset.id ? null : asset.id)}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {activeMenuId === asset.id && (
+                          <>
+                            <div 
+                              className="fixed inset-0 z-[100]" 
+                              onClick={() => setActiveMenuId(null)}
+                            />
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                              className="absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-xl border border-gray-100 z-[110] overflow-hidden"
+                            >
+                              <button
+                                onClick={() => handleEdit(asset)}
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              >
+                                <Edit2 className="w-4 h-4 text-indigo-600" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClick(asset)}
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Invested</p>
+                      <p className="text-sm font-bold text-gray-900">{formatCurrency(asset.investedAmount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Current Value</p>
+                      <p className="text-sm font-bold text-gray-900">{formatCurrency(asset.currentValue)}</p>
+                    </div>
+                    <div className="col-span-2 pt-2 border-t border-gray-50 flex justify-between items-center">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Profit / Loss</p>
+                      <div className={`text-sm font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
+                        <span className="ml-2 text-[10px] opacity-70">({profitPercentage.toFixed(2)}%)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

@@ -30,7 +30,9 @@ service cloud.firestore {
              (!('photoURL' in data) || data.photoURL is string) &&
              (!('currency' in data) || data.currency is string) &&
              (!('paymentId' in data) || data.paymentId is string) &&
-             (!('premiumSince' in data) || data.premiumSince is timestamp);
+             (!('premiumSince' in data) || data.premiumSince is timestamp) &&
+             (!('lastLogin' in data) || data.lastLogin is timestamp) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
     }
 
     function isValidTransaction(data) {

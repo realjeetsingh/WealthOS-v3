@@ -454,9 +454,20 @@ const Profile: React.FC = () => {
                     )}
                   </button>
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-green-500 border-2 border-white rounded-full flex items-center justify-center shadow-sm">
-                  <Check className="w-4 h-4 text-white" />
-                </div>
+                {userProfile?.photoURL ? (
+                  <button 
+                    onClick={handleRemovePhoto}
+                    disabled={uploading}
+                    className="absolute -bottom-1 -right-1 w-8 h-8 bg-red-500 border-2 border-white rounded-full flex items-center justify-center shadow-sm hover:bg-red-600 transition-colors disabled:opacity-50 z-[3]"
+                    title="Remove Photo"
+                  >
+                    <Trash2 className="w-4 h-4 text-white" />
+                  </button>
+                ) : (
+                  <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-green-500 border-2 border-white rounded-full flex items-center justify-center shadow-sm z-[3]">
+                    <Check className="w-4 h-4 text-white" />
+                  </div>
+                )}
                 
                 {/* Hidden File Input */}
                 <input 
@@ -761,6 +772,15 @@ const Profile: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Hidden File Input for Profile Picture - Always Available */}
+      <input 
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        className="hidden"
+      />
 
       {/* Edit Profile Modal */}
       {isEditing && (
