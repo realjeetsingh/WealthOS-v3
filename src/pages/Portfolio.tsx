@@ -3,7 +3,7 @@ import {
   Plus, 
   TrendingUp, 
   TrendingDown, 
-  PieChart, 
+  PieChart as PieChartIcon, 
   DollarSign, 
   Briefcase,
   X,
@@ -15,8 +15,21 @@ import {
   Coins,
   Home,
   FileText,
-  Gem
+  Gem,
+  AlertCircle,
+  ShieldCheck,
+  Info,
+  BrainCircuit,
+  Zap
 } from 'lucide-react';
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer, 
+  Tooltip as RechartsTooltip,
+  Legend
+} from 'recharts';
 import { 
   collection, 
   query, 
@@ -162,6 +175,77 @@ export default function Portfolio() {
   const totalGainLoss = totalCurrentValue - totalInvested;
   const totalGainLossPercentage = totalInvested > 0 ? (totalGainLoss / totalInvested) * 100 : 0;
 
+  // Asset Allocation Logic
+  const categoryTotals = assets.reduce((acc, asset) => {
+    acc[asset.category] = (acc[asset.category] || 0) + asset.currentValue;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const allocationData = CATEGORIES.map(cat => ({
+    name: cat.label,
+    value: categoryTotals[cat.id] || 0,
+    color: cat.id === 'Stocks' ? '#4F46E5' : 
+           cat.id === 'Crypto' ? '#F59E0B' : 
+           cat.id === 'Real Estate' ? '#10B981' : 
+           cat.id === 'Bonds' ? '#6366F1' : '#EC4899'
+  })).filter(d => d.value > 0);
+
+  // Smart Insights Logic
+  const insights = [];
+  const totalPortfolio = totalCurrentValue;
+  const categoriesCount = Object.keys(categoryTotals).length;
+
+  if (totalPortfolio > 0) {
+    // Concentration Warning
+    Object.entries(categoryTotals).forEach(([category, total]) => {
+      const percent = ((total as number) / totalPortfolio) * 100;
+      if (percent > 60) {
+        insights.push({
+          type: 'warning',
+          title: 'High Concentration',
+          message: `Your ${category} holdings represent ${percent.toFixed(1)}% of your portfolio. Consider diversifying to reduce risk.`,
+          icon: AlertCircle,
+          color: 'text-amber-600 bg-amber-50 border-amber-100'
+        });
+      }
+    });
+
+    // Crypto Risk Flag
+    const cryptoTotal = categoryTotals['Crypto'] || 0;
+    const cryptoPercent = (cryptoTotal / totalPortfolio) * 100;
+    if (cryptoPercent > 30) {
+      insights.push({
+        type: 'risk',
+        title: 'High Crypto Exposure',
+        message: `Crypto makes up ${cryptoPercent.toFixed(1)}% of your portfolio. High volatility may impact your overall stability.`,
+        icon: Activity,
+        color: 'text-rose-600 bg-rose-50 border-rose-100'
+      });
+    }
+
+    // Low Diversification
+    if (categoriesCount < 2 && assets.length > 0) {
+      insights.push({
+        type: 'info',
+        title: 'Low Diversification',
+        message: 'You are currently invested in only one asset class. Exploring other categories could improve your risk-adjusted returns.',
+        icon: Info,
+        color: 'text-indigo-600 bg-indigo-50 border-indigo-100'
+      });
+    }
+
+    // Healthy Portfolio
+    if (insights.length === 0 && assets.length > 0) {
+      insights.push({
+        type: 'success',
+        title: 'Well Balanced',
+        message: 'Your portfolio shows healthy diversification across asset classes. Great job managing your risk!',
+        icon: ShieldCheck,
+        color: 'text-emerald-600 bg-emerald-50 border-emerald-100'
+      });
+    }
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -180,47 +264,186 @@ export default function Portfolio() {
       </div>
 
       {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center">
-              <PieChart className="w-6 h-6 text-indigo-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Total Portfolio Value</p>
-              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalCurrentValue)}</h3>
-            </div>
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Invested */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
               <DollarSign className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Total Invested</p>
+              <p className="text-sm font-medium text-gray-500">Invested</p>
               <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalInvested)}</h3>
             </div>
           </div>
         </div>
 
+        {/* Current Value */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center">
+              <PieChartIcon className="w-6 h-6 text-indigo-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Current Value</p>
+              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalCurrentValue)}</h3>
+            </div>
+          </div>
+        </div>
+
+        {/* Profit/Loss */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
           <div className="flex items-center gap-4">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
               {totalGainLoss >= 0 ? <TrendingUp className="w-6 h-6 text-emerald-600" /> : <TrendingDown className="w-6 h-6 text-rose-600" />}
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Total Gain / Loss</p>
-              <div className="flex items-baseline gap-2">
-                <h3 className={`text-2xl font-bold ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {totalGainLoss >= 0 ? '+' : ''}{formatCurrency(totalGainLoss)}
-                </h3>
-                <span className={`text-sm font-bold ${totalGainLoss >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  ({totalGainLossPercentage.toFixed(2)}%)
-                </span>
-              </div>
+              <p className="text-sm font-medium text-gray-500">Profit/Loss</p>
+              <h3 className={`text-2xl font-bold ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {totalGainLoss >= 0 ? '+' : ''}{formatCurrency(totalGainLoss)}
+              </h3>
             </div>
+          </div>
+        </div>
+
+        {/* Return % */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+              <Activity className={`w-6 h-6 ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Return %</p>
+              <h3 className={`text-2xl font-bold ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {totalGainLoss >= 0 ? '+' : ''}{totalGainLossPercentage.toFixed(2)}%
+              </h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Allocation & Insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Asset Allocation Visualization */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold text-gray-900">Asset Allocation</h2>
+            <div className="p-2 bg-gray-50 rounded-lg">
+              <PieChartIcon className="w-5 h-5 text-gray-400" />
+            </div>
+          </div>
+          
+          <div className="h-[300px] w-full">
+            {allocationData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={allocationData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {allocationData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip 
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36}
+                    iconType="circle"
+                    formatter={(value) => <span className="text-xs font-medium text-gray-600">{value}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2">
+                <PieChartIcon className="w-12 h-12 opacity-20" />
+                <p className="text-sm">No data to visualize</p>
+              </div>
+            )}
+          </div>
+
+          {/* Progress Bars Fallback/Detail */}
+          <div className="mt-6 space-y-4">
+            {allocationData.map((data) => {
+              const percent = (data.value / totalPortfolio) * 100;
+              return (
+                <div key={data.name} className="space-y-1">
+                  <div className="flex justify-between text-xs font-bold">
+                    <span className="text-gray-600">{data.name}</span>
+                    <span className="text-gray-900">{percent.toFixed(1)}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${percent}%` }}
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: data.color }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Portfolio Smart Insights */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold text-gray-900">Portfolio Insights</h2>
+            <div className="p-2 bg-indigo-50 rounded-lg">
+              <BrainCircuit className="w-5 h-5 text-indigo-600" />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {assets.length === 0 ? (
+              <div className="p-8 text-center border-2 border-dashed border-gray-100 rounded-2xl">
+                <Info className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                <p className="text-sm text-gray-500">Add assets to your portfolio to generate smart insights.</p>
+              </div>
+            ) : (
+              insights.map((insight, idx) => {
+                const Icon = insight.icon;
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    className={`p-4 rounded-2xl border ${insight.color} flex gap-4`}
+                  >
+                    <div className="shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-white/50 flex items-center justify-center">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm mb-1">{insight.title}</h4>
+                      <p className="text-xs opacity-80 leading-relaxed">{insight.message}</p>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Future Ready Tip */}
+          <div className="mt-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">Pro Tip</span>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Diversifying across at least 3 asset classes is generally recommended to balance risk and return.
+            </p>
           </div>
         </div>
       </div>
