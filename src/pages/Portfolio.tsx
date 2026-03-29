@@ -518,7 +518,7 @@ export default function Portfolio() {
       </div>
 
       {/* Asset List */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-visible">
         <div className="p-6 border-b border-gray-50 flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900">Asset List</h2>
           <div className="flex items-center gap-2">
@@ -531,7 +531,7 @@ export default function Portfolio() {
           </div>
         </div>
 
-        <div className="overflow-x-auto hidden md:block">
+        <div className="overflow-visible hidden md:block">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50/50">
@@ -623,10 +623,10 @@ export default function Portfolio() {
                                   onClick={() => setActiveMenuId(null)}
                                 />
                                 <motion.div
-                                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
                                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                  className="absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-xl border border-gray-100 z-[110] overflow-hidden"
+                                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                  className="absolute right-0 bottom-full mb-2 w-36 bg-white rounded-xl shadow-xl border border-gray-100 z-[110] overflow-hidden"
                                 >
                                   <button
                                     onClick={() => handleEdit(asset)}
@@ -713,10 +713,10 @@ export default function Portfolio() {
                               onClick={() => setActiveMenuId(null)}
                             />
                             <motion.div
-                              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                              initial={{ opacity: 0, scale: 0.95, y: 10 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                              className="absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-xl border border-gray-100 z-[110] overflow-hidden"
+                              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                              className="absolute right-0 bottom-full mb-2 w-36 bg-white rounded-xl shadow-xl border border-gray-100 z-[110] overflow-hidden"
                             >
                               <button
                                 onClick={() => handleEdit(asset)}

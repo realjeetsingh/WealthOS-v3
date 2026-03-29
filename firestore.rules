@@ -27,7 +27,7 @@ service cloud.firestore {
              data.email is string &&
              data.role in ['user', 'admin'] &&
              data.isPremium is bool &&
-             (!('photoURL' in data) || data.photoURL is string) &&
+             (!('profileImage' in data) || data.profileImage is string) &&
              (!('currency' in data) || data.currency is string) &&
              (!('paymentId' in data) || data.paymentId is string) &&
              (!('premiumSince' in data) || data.premiumSince is timestamp) &&

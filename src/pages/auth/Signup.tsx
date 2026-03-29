@@ -52,7 +52,7 @@ const Signup: React.FC = () => {
         await setDoc(doc(db, 'users', user.uid), {
           name: user.displayName || 'User',
           email: user.email,
-          photoURL: user.photoURL,
+          profileImage: user.photoURL,
           currency: 'INR',
           role: 'user',
           isPremium: false,

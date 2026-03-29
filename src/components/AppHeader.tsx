@@ -77,9 +77,9 @@ const AppHeader: React.FC = () => {
                 className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-gray-50 transition-colors group"
               >
                 <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-100 transition-colors overflow-hidden">
-                  {userProfile?.photoURL ? (
+                  {userProfile?.profileImage ? (
                     <img 
-                      src={userProfile.photoURL} 
+                      src={userProfile.profileImage} 
                       alt="Profile" 
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"

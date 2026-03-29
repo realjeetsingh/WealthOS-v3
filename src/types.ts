@@ -6,7 +6,7 @@ export interface UserProfile {
   phone?: string;
   role: string;
   isPremium: boolean;
-  photoURL?: string;
+  profileImage?: string;
   currency?: string;
   createdAt: Timestamp;
 }

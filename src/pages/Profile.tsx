@@ -64,7 +64,7 @@ const Profile: React.FC = () => {
   const [newName, setNewName] = useState(userProfile?.name || '');
   const [newPhone, setNewPhone] = useState(userProfile?.phone || '');
   const [newCurrency, setNewCurrency] = useState(userProfile?.currency || DEFAULT_CURRENCY);
-  const [newPhotoURL, setNewPhotoURL] = useState(userProfile?.photoURL || '');
+  const [newProfileImage, setNewProfileImage] = useState(userProfile?.profileImage || '');
   
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -239,7 +239,7 @@ const Profile: React.FC = () => {
         name: newName.trim(),
         phone: newPhone.trim(),
         currency: newCurrency,
-        photoURL: newPhotoURL
+        profileImage: newProfileImage
       });
       setIsEditing(false);
       toast.success('Profile updated successfully');
@@ -274,9 +274,9 @@ const Profile: React.FC = () => {
       
       // Update Firestore
       const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, { photoURL: downloadURL });
+      await updateDoc(userDocRef, { profileImage: downloadURL });
       
-      setNewPhotoURL(downloadURL);
+      setNewProfileImage(downloadURL);
       toast.success("Profile picture updated!");
     } catch (error) {
       console.error("Upload error:", error);
@@ -293,8 +293,9 @@ const Profile: React.FC = () => {
     try {
       // Update Firestore first
       const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, { photoURL: '' });
+      await updateDoc(userDocRef, { profileImage: '' });
       
+      setNewProfileImage('');
       // Optionally delete from storage
       try {
         const storageRef = ref(storage, `users/${user.uid}/profile.jpg`);
@@ -303,7 +304,6 @@ const Profile: React.FC = () => {
         // Ignore if file doesn't exist
       }
       
-      setNewPhotoURL('');
       toast.success("Profile picture removed");
     } catch (error) {
       console.error("Remove error:", error);
@@ -427,9 +427,9 @@ const Profile: React.FC = () => {
             <div className="flex items-center gap-4">
               <div className="w-32 h-32 bg-white rounded-[2rem] p-1 shadow-sm border border-gray-100 relative shrink-0 z-[2] group">
                 <div className="w-full h-full bg-indigo-50 rounded-[1.75rem] flex items-center justify-center border border-indigo-100 overflow-hidden relative">
-                  {userProfile?.photoURL ? (
+                  {userProfile?.profileImage ? (
                     <img 
-                      src={userProfile.photoURL} 
+                      src={userProfile.profileImage} 
                       alt="Profile" 
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
@@ -454,7 +454,7 @@ const Profile: React.FC = () => {
                     )}
                   </button>
                 </div>
-                {userProfile?.photoURL ? (
+                {userProfile?.profileImage ? (
                   <button 
                     onClick={handleRemovePhoto}
                     disabled={uploading}
@@ -501,7 +501,7 @@ const Profile: React.FC = () => {
                   setNewName(userProfile?.name || '');
                   setNewPhone(userProfile?.phone || '');
                   setNewCurrency(userProfile?.currency || DEFAULT_CURRENCY);
-                  setNewPhotoURL(userProfile?.photoURL || '');
+                  setNewProfileImage(userProfile?.profileImage || '');
                   setIsEditing(true);
                 }}
                 className="px-6 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center"
@@ -803,9 +803,9 @@ const Profile: React.FC = () => {
               {/* Profile Image Control */}
               <div className="flex flex-col items-center space-y-4 mb-4">
                 <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center border border-indigo-100 overflow-hidden relative group">
-                  {newPhotoURL ? (
+                  {newProfileImage ? (
                     <img 
-                      src={newPhotoURL} 
+                      src={newProfileImage} 
                       alt="Preview" 
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
@@ -832,7 +832,7 @@ const Profile: React.FC = () => {
                     Change Photo
                   </button>
                   
-                  {newPhotoURL && (
+                  {newProfileImage && (
                     <button
                       type="button"
                       onClick={handleRemovePhoto}

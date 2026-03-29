@@ -27,7 +27,7 @@
           "type": "boolean",
           "description": "Whether the user has a premium subscription."
         },
-        "photoURL": {
+        "profileImage": {
           "type": "string",
           "description": "The user's profile image URL (base64 or hosted)."
         },
