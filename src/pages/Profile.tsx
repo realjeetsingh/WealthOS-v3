@@ -65,21 +65,13 @@ const Profile: React.FC = () => {
   const [newPhone, setNewPhone] = useState(userProfile?.phone || '');
   const [newCurrency, setNewCurrency] = useState(userProfile?.currency || DEFAULT_CURRENCY);
   const [newProfileImage, setNewProfileImage] = useState(userProfile?.profileImage || '');
-  
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newCoverImage, setNewCoverImage] = useState(userProfile?.coverImage || '');
   
   const [isSaving, setIsSaving] = useState(false);
-  const [isPasswordSaving, setIsPasswordSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Password Visibility States
-  const [showPasswordCurrent, setShowPasswordCurrent] = useState(false);
-  const [showPasswordNew, setShowPasswordNew] = useState(false);
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+  const coverFileInputRef = useRef<HTMLInputElement>(null);
 
   // Financial Stats State
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -160,6 +152,9 @@ const Profile: React.FC = () => {
   const netWorth = calculateNetWorth(cashBalance, portfolioValue, loanBalance);
   
   const savingsRate = calculateSavingsRate(monthlyIncome, monthlyExpenses);
+  
+  const investedTotal = portfolioAssets.reduce((sum, a) => sum + (Number(a.investedAmount) || 0), 0);
+  const portfolioGrowth = investedTotal > 0 ? ((portfolioValue - investedTotal) / investedTotal) * 100 : 0;
 
   // Achievement Logic
   const achievements = [
@@ -203,9 +198,9 @@ const Profile: React.FC = () => {
 
   const insights = [
     {
-      text: monthlyIncome > monthlyExpenses 
-        ? "You're maintaining a strong positive cashflow this month." 
-        : "Your expenses are currently outpacing your income.",
+      text: portfolioGrowth > 0 
+        ? `Your portfolio has grown by ${portfolioGrowth.toFixed(1)}% since investment.` 
+        : "Your portfolio is currently consolidating. Focus on long-term value.",
       premium: false
     },
     {
@@ -230,7 +225,16 @@ const Profile: React.FC = () => {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newName.trim()) return;
+    if (!user || !newName.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+
+    // Basic phone validation if provided
+    if (newPhone.trim() && !/^\+?[\d\s-]{10,}$/.test(newPhone.trim())) {
+      toast.error('Please enter a valid phone number');
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -239,7 +243,8 @@ const Profile: React.FC = () => {
         name: newName.trim(),
         phone: newPhone.trim(),
         currency: newCurrency,
-        profileImage: newProfileImage
+        profileImage: newProfileImage,
+        coverImage: newCoverImage
       });
       setIsEditing(false);
       toast.success('Profile updated successfully');
@@ -251,13 +256,13 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover') => {
     const file = e.target.files?.[0];
     if (!file || !user?.uid) return;
 
     // Basic validation
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Image size should be less than 2MB");
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size should be less than 5MB");
       return;
     }
 
@@ -266,134 +271,69 @@ const Profile: React.FC = () => {
       return;
     }
 
-    setUploading(true);
+    if (type === 'profile') setUploading(true);
+    else setUploadingCover(true);
+
     try {
-      const storageRef = ref(storage, `users/${user.uid}/profile.jpg`);
+      const fileName = type === 'profile' ? 'profile.jpg' : 'cover.jpg';
+      const storageRef = ref(storage, `users/${user.uid}/${fileName}`);
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
       
       // Update Firestore
       const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, { profileImage: downloadURL });
+      await updateDoc(userDocRef, { [type === 'profile' ? 'profileImage' : 'coverImage']: downloadURL });
       
-      setNewProfileImage(downloadURL);
-      toast.success("Profile picture updated!");
+      if (type === 'profile') setNewProfileImage(downloadURL);
+      else setNewCoverImage(downloadURL);
+      
+      toast.success(`${type === 'profile' ? 'Profile' : 'Cover'} picture updated!`);
     } catch (error) {
       console.error("Upload error:", error);
-      toast.error("Failed to upload image");
+      toast.error(`Failed to upload ${type} image`);
     } finally {
-      setUploading(false);
+      if (type === 'profile') setUploading(false);
+      else setUploadingCover(false);
     }
   };
 
-  const handleRemovePhoto = async () => {
+  const handleRemovePhoto = async (type: 'profile' | 'cover') => {
     if (!user?.uid) return;
     
-    setUploading(true);
+    if (type === 'profile') setUploading(true);
+    else setUploadingCover(true);
+
     try {
       // Update Firestore first
       const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, { profileImage: '' });
+      await updateDoc(userDocRef, { [type === 'profile' ? 'profileImage' : 'coverImage']: '' });
       
-      setNewProfileImage('');
+      if (type === 'profile') setNewProfileImage('');
+      else setNewCoverImage('');
+
       // Optionally delete from storage
       try {
-        const storageRef = ref(storage, `users/${user.uid}/profile.jpg`);
+        const fileName = type === 'profile' ? 'profile.jpg' : 'cover.jpg';
+        const storageRef = ref(storage, `users/${user.uid}/${fileName}`);
         await deleteObject(storageRef);
       } catch (e) {
         // Ignore if file doesn't exist
       }
       
-      toast.success("Profile picture removed");
+      toast.success(`${type === 'profile' ? 'Profile' : 'Cover'} picture removed`);
     } catch (error) {
       console.error("Remove error:", error);
-      toast.error("Failed to remove image");
+      toast.error(`Failed to remove ${type} image`);
     } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !newPassword || !currentPassword) return;
-    
-    if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-
-    setIsPasswordSaving(true);
-    try {
-      // Re-authenticate user first
-      const credential = EmailAuthProvider.credential(user.email!, currentPassword);
-      await reauthenticateWithCredential(user, credential);
-      
-      // Update password
-      await updatePassword(user, newPassword);
-      
-      toast.success('Password updated successfully');
-      setIsChangingPassword(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error: any) {
-      console.error("Error changing password:", error);
-      if (error.code === 'auth/wrong-password') {
-        toast.error('Current password is incorrect');
-      } else if (error.code === 'auth/requires-recent-login') {
-        toast.error('Please sign out and sign in again to change your password');
-      } else {
-        toast.error('Failed to update password');
-      }
-    } finally {
-      setIsPasswordSaving(false);
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!user) return;
-    
-    setIsDeleting(true);
-    try {
-      // In a real app, we'd delete all user data first
-      // For this demo, we'll just delete the user document and auth account
-      const userRef = doc(db, 'users', user.uid);
-      await deleteDoc(userRef);
-      await deleteUser(user);
-      
-      toast.success('Account deleted successfully');
-      navigate('/auth/signup');
-    } catch (error: any) {
-      console.error("Error deleting account:", error);
-      if (error.code === 'auth/requires-recent-login') {
-        toast.error('Please sign out and sign in again to delete your account');
-      } else {
-        toast.error('Failed to delete account. Please try again later.');
-      }
-    } finally {
-      setIsDeleting(false);
-      setIsDeletingAccount(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await auth.signOut();
-      navigate('/auth/login');
-    } catch (error) {
-      console.error("Logout error:", error);
+      if (type === 'profile') setUploading(false);
+      else setUploadingCover(false);
     }
   };
 
   const accountActions = [
-    { label: 'Security Settings', icon: Shield, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-    { label: 'Notification Preferences', icon: Bell, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-    { label: 'Privacy Policy', icon: Lock, color: 'text-gray-600', bgColor: 'bg-gray-50' },
+    { label: 'Security Settings', icon: Shield, color: 'text-blue-600', bgColor: 'bg-blue-50', path: '/settings' },
+    { label: 'Notification Preferences', icon: Bell, color: 'text-purple-600', bgColor: 'bg-purple-50', path: '/settings' },
+    { label: 'Privacy Policy', icon: Lock, color: 'text-gray-600', bgColor: 'bg-gray-50', path: '/settings' },
   ];
 
   const supportLinks = [
@@ -407,7 +347,16 @@ const Profile: React.FC = () => {
       {/* Cover & Profile Header Section */}
       <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
         <div className="h-56 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 relative">
-          <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+          {userProfile?.coverImage ? (
+            <img 
+              src={userProfile.coverImage} 
+              alt="Cover" 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+          )}
           <div className="absolute top-6 right-6">
             {isPremium ? (
               <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-2 rounded-full text-white font-bold text-xs">
@@ -456,7 +405,7 @@ const Profile: React.FC = () => {
                 </div>
                 {userProfile?.profileImage ? (
                   <button 
-                    onClick={handleRemovePhoto}
+                    onClick={() => handleRemovePhoto('profile')}
                     disabled={uploading}
                     className="absolute -bottom-1 -right-1 w-8 h-8 bg-red-500 border-2 border-white rounded-full flex items-center justify-center shadow-sm hover:bg-red-600 transition-colors disabled:opacity-50 z-[3]"
                     title="Remove Photo"
@@ -468,15 +417,6 @@ const Profile: React.FC = () => {
                     <Check className="w-4 h-4 text-white" />
                   </div>
                 )}
-                
-                {/* Hidden File Input */}
-                <input 
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  className="hidden"
-                  accept="image/*"
-                />
               </div>
               
               <div className="flex-1 z-[1]">
@@ -502,6 +442,7 @@ const Profile: React.FC = () => {
                   setNewPhone(userProfile?.phone || '');
                   setNewCurrency(userProfile?.currency || DEFAULT_CURRENCY);
                   setNewProfileImage(userProfile?.profileImage || '');
+                  setNewCoverImage(userProfile?.coverImage || '');
                   setIsEditing(true);
                 }}
                 className="px-6 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center"
@@ -517,9 +458,34 @@ const Profile: React.FC = () => {
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-4 max-w-full overflow-hidden">
         {[
-          { label: 'Monthly Income', value: monthlyIncome, icon: TrendingUp, color: 'text-green-600', bgColor: 'bg-green-50' },
-          { label: 'Monthly Expenses', value: monthlyExpenses, icon: TrendingDown, color: 'text-red-600', bgColor: 'bg-red-50' },
-          { label: 'Current Net Worth', value: netWorth, icon: Wallet, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+          { 
+            label: 'Achievements', 
+            value: `${achievements.filter(a => a.unlocked).length}/${achievements.length}`, 
+            icon: Trophy, 
+            color: 'text-amber-600', 
+            bgColor: 'bg-amber-50' 
+          },
+          { 
+            label: 'Progress Metrics', 
+            value: `${(savingsRate * 100).toFixed(1)}% Savings`, 
+            icon: Target, 
+            color: 'text-emerald-600', 
+            bgColor: 'bg-emerald-50' 
+          },
+          { 
+            label: 'Wealth Milestone', 
+            value: formatCurrency(netWorth), 
+            icon: Crown, 
+            color: 'text-indigo-600', 
+            bgColor: 'bg-indigo-50' 
+          },
+          { 
+            label: 'Portfolio Growth', 
+            value: portfolioGrowth >= 0 ? `+${portfolioGrowth.toFixed(1)}%` : `${portfolioGrowth.toFixed(1)}%`, 
+            icon: TrendingUp, 
+            color: portfolioGrowth >= 0 ? 'text-green-600' : 'text-red-600', 
+            bgColor: portfolioGrowth >= 0 ? 'bg-green-50' : 'bg-red-50' 
+          },
         ].map((stat) => (
           <div key={stat.label} className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 flex items-center space-x-5 group hover:shadow-md transition-all">
             <div className={`p-4 rounded-2xl ${stat.bgColor} ${stat.color} transition-transform group-hover:scale-110`}>
@@ -527,7 +493,7 @@ const Profile: React.FC = () => {
             </div>
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
-              <p className="text-2xl font-bold text-gray-900 tracking-tight">{formatCurrency(stat.value)}</p>
+              <p className="text-2xl font-bold text-gray-900 tracking-tight">{stat.value}</p>
             </div>
           </div>
         ))}
@@ -608,99 +574,14 @@ const Profile: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Details & Actions */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Personal Details Card */}
-          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-10 max-w-full overflow-hidden">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Personal Details</h2>
-              <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
-                <UserIcon className="w-5 h-5 text-gray-400" />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Full Name</p>
-                <p className="text-lg font-bold text-gray-900">{userProfile?.name || 'Not set'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Email Address</p>
-                <p className="text-lg font-bold text-gray-900">{user?.email}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Phone Number</p>
-                <p className="text-lg font-bold text-gray-900">{userProfile?.phone || 'Not provided'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Member Since</p>
-                <p className="text-lg font-bold text-gray-900 flex items-center">
-                  <Calendar className="w-4 h-4 mr-2 text-indigo-500" />
-                  {userProfile?.createdAt?.toDate().toLocaleDateString('en-US', { 
-                    month: 'long', 
-                    year: 'numeric',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Account Actions Card */}
           <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-10 max-w-full overflow-hidden">
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-8">Account Actions</h2>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-4">
-              <button 
-                onClick={() => setIsChangingPassword(true)}
-                className="flex items-center justify-between p-6 rounded-3xl border border-gray-100 hover:bg-indigo-50 hover:border-indigo-100 transition-all group"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center group-hover:bg-white transition-colors">
-                    <Lock className="w-6 h-6 text-indigo-500" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-bold text-gray-900">Change Password</p>
-                    <p className="text-xs text-gray-500">Update your security</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-indigo-400" />
-              </button>
-
-              <button 
-                onClick={handleLogout}
-                className="flex items-center justify-between p-6 rounded-3xl border border-gray-100 hover:bg-gray-50 hover:border-gray-200 transition-all group"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-white transition-colors">
-                    <LogOut className="w-6 h-6 text-gray-500" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-bold text-gray-900">Sign Out</p>
-                    <p className="text-xs text-gray-500">End your current session</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-400" />
-              </button>
-
-              <button 
-                onClick={() => setIsDeletingAccount(true)}
-                className="flex items-center justify-between p-6 rounded-3xl border border-gray-100 hover:bg-red-50 hover:border-red-100 transition-all group"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center group-hover:bg-white transition-colors">
-                    <Trash2 className="w-6 h-6 text-red-500" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-bold text-gray-900">Delete Account</p>
-                    <p className="text-xs text-gray-500">Permanently remove data</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-red-400" />
-              </button>
-            </div>
-
-            <div className="mt-8 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-8">System Settings</h2>
+            <div className="space-y-3">
               {accountActions.map((action) => (
                 <button 
                   key={action.label}
+                  onClick={() => navigate(action.path)}
                   className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-all group border border-transparent hover:border-gray-100"
                 >
                   <div className="flex items-center space-x-4">
@@ -773,23 +654,30 @@ const Profile: React.FC = () => {
         </div>
       </div>
 
-      {/* Hidden File Input for Profile Picture - Always Available */}
+      {/* Hidden File Inputs */}
       <input 
         type="file"
         ref={fileInputRef}
-        onChange={handleFileChange}
+        onChange={(e) => handleFileChange(e, 'profile')}
+        accept="image/*"
+        className="hidden"
+      />
+      <input 
+        type="file"
+        ref={coverFileInputRef}
+        onChange={(e) => handleFileChange(e, 'cover')}
         accept="image/*"
         className="hidden"
       />
 
       {/* Edit Profile Modal */}
       {isEditing && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl animate-in fade-in zoom-in duration-300">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-2xl p-10 shadow-2xl animate-in fade-in zoom-in duration-300 my-8">
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Edit Profile</h3>
-                <p className="text-sm text-gray-500 mt-1">Update your personal information</p>
+                <p className="text-sm text-gray-500 mt-1">Update your personal information and appearance</p>
               </div>
               <button 
                 onClick={() => setIsEditing(false)}
@@ -800,54 +688,80 @@ const Profile: React.FC = () => {
             </div>
             
             <form onSubmit={handleUpdateProfile} className="space-y-8">
-              {/* Profile Image Control */}
-              <div className="flex flex-col items-center space-y-4 mb-4">
-                <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center border border-indigo-100 overflow-hidden relative group">
-                  {newProfileImage ? (
-                    <img 
-                      src={newProfileImage} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <UserIcon className="w-10 h-10 text-indigo-600" />
-                  )}
-                  
-                  {uploading && (
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                      <Loader2 className="w-6 h-6 text-white animate-spin" />
-                    </div>
-                  )}
-                </div>
+              {/* Cover & Profile Image Control */}
+              <div className="space-y-6">
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] ml-1">Profile Appearance</label>
                 
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center"
-                  >
-                    <ImageIcon className="w-3 h-3 mr-2" />
-                    Change Photo
-                  </button>
-                  
-                  {newProfileImage && (
-                    <button
-                      type="button"
-                      onClick={handleRemovePhoto}
-                      disabled={uploading}
-                      className="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center"
-                    >
-                      <Trash2 className="w-3 h-3 mr-2" />
-                      Remove
-                    </button>
-                  )}
+                <div className="relative">
+                  {/* Cover Image Preview */}
+                  <div className="h-40 w-full bg-gray-100 rounded-3xl overflow-hidden relative group">
+                    {newCoverImage ? (
+                      <img src={newCoverImage} alt="Cover Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-indigo-50">
+                        <ImageIcon className="w-8 h-8 text-indigo-200" />
+                      </div>
+                    )}
+                    
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => coverFileInputRef.current?.click()}
+                          className="px-4 py-2 bg-white text-gray-900 rounded-xl text-xs font-bold hover:bg-gray-100 transition-colors flex items-center"
+                        >
+                          <Camera className="w-3 h-3 mr-2" />
+                          Change Cover
+                        </button>
+                        {newCoverImage && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePhoto('cover')}
+                            className="p-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {uploadingCover && (
+                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                        <Loader2 className="w-6 h-6 text-white animate-spin" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Profile Image Preview */}
+                  <div className="absolute -bottom-6 left-8">
+                    <div className="w-24 h-24 bg-white rounded-[2rem] p-1 shadow-lg relative group">
+                      <div className="w-full h-full bg-indigo-50 rounded-[1.75rem] flex items-center justify-center border border-indigo-100 overflow-hidden relative">
+                        {newProfileImage ? (
+                          <img src={newProfileImage} alt="Profile Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <UserIcon className="w-10 h-10 text-indigo-600" />
+                        )}
+                        
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Camera className="w-5 h-5 text-white" />
+                        </button>
+                      </div>
+                      {uploading && (
+                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center rounded-[1.75rem]">
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
+                <div className="h-6" /> {/* Spacer for profile image overlap */}
               </div>
 
-              <div className="space-y-6">
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Full Name</label>
                   <div className="relative">
                     <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -857,7 +771,20 @@ const Profile: React.FC = () => {
                       onChange={(e) => setNewName(e.target.value)}
                       className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
                       placeholder="Enter your name"
-                      autoFocus
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Email Address (Read-only)</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+                    <input 
+                      type="email"
+                      value={user?.email || ''}
+                      readOnly
+                      className="w-full pl-12 pr-4 py-4 bg-gray-100 border border-gray-100 rounded-2xl text-gray-400 font-bold cursor-not-allowed outline-none"
                     />
                   </div>
                 </div>
@@ -876,7 +803,7 @@ const Profile: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Preferred Currency</label>
                   <div className="relative">
                     <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -893,13 +820,6 @@ const Profile: React.FC = () => {
                     </select>
                     <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90 pointer-events-none" />
                   </div>
-                </div>
-
-                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start space-x-3">
-                  <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-800 leading-relaxed font-medium">
-                    Email address cannot be changed directly. Please contact support if you need to update your login email.
-                  </p>
                 </div>
               </div>
               
@@ -927,164 +847,6 @@ const Profile: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Change Password Modal */}
-      {isChangingPassword && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Change Password</h3>
-                <p className="text-sm text-gray-500 mt-1">Enhance your account security</p>
-              </div>
-              <button 
-                onClick={() => setIsChangingPassword(false)}
-                className="p-3 hover:bg-gray-100 rounded-2xl transition-all"
-              >
-                <X className="w-6 h-6 text-gray-400" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleChangePassword} className="space-y-6">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Current Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input 
-                    type={showPasswordCurrent ? "text" : "password"}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordCurrent(!showPasswordCurrent)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-lg transition-colors"
-                  >
-                    {showPasswordCurrent ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">New Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input 
-                    type={showPasswordNew ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordNew(!showPasswordNew)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-lg transition-colors"
-                  >
-                    {showPasswordNew ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Confirm New Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input 
-                    type={showPasswordConfirm ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-lg transition-colors"
-                  >
-                    {showPasswordConfirm ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex space-x-4 pt-4">
-                <button 
-                  type="button"
-                  onClick={() => setIsChangingPassword(false)}
-                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl text-sm font-bold hover:bg-gray-200 transition-all"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  disabled={isPasswordSaving || !newPassword || !currentPassword}
-                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 disabled:opacity-50 flex items-center justify-center"
-                >
-                  {isPasswordSaving ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4 mr-2" />
-                      Update Password
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Account Modal */}
-      {isDeletingAccount && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="flex justify-between items-center mb-8">
-              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center">
-                <Trash2 className="w-8 h-8 text-red-500" />
-              </div>
-              <button 
-                onClick={() => setIsDeletingAccount(false)}
-                className="p-3 hover:bg-gray-100 rounded-2xl transition-all"
-              >
-                <X className="w-6 h-6 text-gray-400" />
-              </button>
-            </div>
-            
-            <div className="space-y-4 mb-10">
-              <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Delete Account?</h3>
-              <p className="text-gray-500 leading-relaxed">
-                This action is <span className="font-bold text-red-600 uppercase">permanent</span>. All your financial data, transactions, and settings will be deleted forever. This cannot be undone.
-              </p>
-            </div>
-            
-            <div className="flex space-x-4">
-              <button 
-                onClick={() => setIsDeletingAccount(false)}
-                className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl text-sm font-bold hover:bg-gray-200 transition-all"
-              >
-                No, Keep it
-              </button>
-              <button 
-                onClick={handleDeleteAccount}
-                disabled={isDeleting}
-                className="flex-1 py-4 bg-red-600 text-white rounded-2xl text-sm font-bold hover:bg-red-700 transition-all shadow-xl shadow-red-200 disabled:opacity-50 flex items-center justify-center"
-              >
-                {isDeleting ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                ) : (
-                  'Yes, Delete'
-                )}
-              </button>
-            </div>
           </div>
         </div>
       )}

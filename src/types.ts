@@ -7,6 +7,7 @@ export interface UserProfile {
   role: string;
   isPremium: boolean;
   profileImage?: string;
+  coverImage?: string;
   currency?: string;
   createdAt: Timestamp;
 }
