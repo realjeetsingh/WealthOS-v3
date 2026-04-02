@@ -9,6 +9,10 @@ export interface UserProfile {
   profileImage?: string;
   coverImage?: string;
   currency?: string;
+  bio?: string;
+  location?: string;
+  occupation?: string;
+  financialGoals?: string[];
   createdAt: Timestamp;
 }
 

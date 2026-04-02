@@ -21,58 +21,100 @@ export const calculateTotalEMI = (loans: Loan[] | null | undefined): number => {
 /**
  * 1. calculateMonthlyIncome(transactions)
  * Sums all transactions of type "income" for the current month.
+ * Fallback: If current month is empty, uses the most recent month with income.
  */
 export const calculateMonthlyIncome = (transactions: Transaction[] | null | undefined): number => {
-  if (!transactions || !Array.isArray(transactions)) return 0;
+  if (!transactions || !Array.isArray(transactions) || transactions.length === 0) return 0;
   
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  const result = transactions
+  // Try current month first
+  const currentMonthIncome = transactions
     .filter(t => {
-      // STEP 4: Safety log
-      console.log("Processing Transaction (Income):", t.type, t.amount);
-
-      // Handle pending server timestamps
       const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
-      // STEP 3: Strict logic
       return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'income';
     })
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-  return isNaN(result) ? 0 : result;
+
+  if (currentMonthIncome > 0) return currentMonthIncome;
+
+  // Fallback: Find the most recent month with income
+  const incomeTransactions = transactions.filter(t => t.type === 'income');
+  if (incomeTransactions.length === 0) return 0;
+
+  // Sort by date descending
+  const sorted = [...incomeTransactions].sort((a, b) => {
+    const da = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
+    const db = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
+    return db - da;
+  });
+
+  const latest = sorted[0];
+  const latestDate = latest.timestamp?.toDate ? latest.timestamp.toDate() : new Date();
+  const lMonth = latestDate.getMonth();
+  const lYear = latestDate.getFullYear();
+
+  return sorted
+    .filter(t => {
+      const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
+      return d && d.getMonth() === lMonth && d.getFullYear() === lYear;
+    })
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 };
 
 /**
  * 2. calculateMonthlyExpenses(transactions, loans)
  * Sums all transactions of type "expense" for the current month + total EMI.
+ * Fallback: If current month is empty, uses the most recent month with expenses.
  */
 export const calculateMonthlyExpenses = (
   transactions: Transaction[] | null | undefined,
   loans: Loan[] | null | undefined
 ): number => {
+  const totalEMI = calculateTotalEMI(loans);
+  
+  if (!transactions || !Array.isArray(transactions) || transactions.length === 0) return totalEMI;
+
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  const transactionExpenses = (!transactions || !Array.isArray(transactions)) 
-    ? 0 
-    : transactions
-        .filter(t => {
-          // STEP 4: Safety log
-          console.log("Processing Transaction (Expense):", t.type, t.amount);
+  // Try current month first
+  const currentMonthExpenses = transactions
+    .filter(t => {
+      const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
+      return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'expense';
+    })
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-          // Handle pending server timestamps
-          const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
-          // STEP 3: Strict logic
-          return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'expense';
-        })
-        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-        
-  const totalEMI = calculateTotalEMI(loans);
-  
-  const result = transactionExpenses + totalEMI;
-  return isNaN(result) ? 0 : result;
+  if (currentMonthExpenses > 0) return currentMonthExpenses + totalEMI;
+
+  // Fallback: Find the most recent month with expenses
+  const expenseTransactions = transactions.filter(t => t.type === 'expense');
+  if (expenseTransactions.length === 0) return totalEMI;
+
+  // Sort by date descending
+  const sorted = [...expenseTransactions].sort((a, b) => {
+    const da = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
+    const db = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
+    return db - da;
+  });
+
+  const latest = sorted[0];
+  const latestDate = latest.timestamp?.toDate ? latest.timestamp.toDate() : new Date();
+  const lMonth = latestDate.getMonth();
+  const lYear = latestDate.getFullYear();
+
+  const latestMonthExpenses = sorted
+    .filter(t => {
+      const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
+      return d && d.getMonth() === lMonth && d.getFullYear() === lYear;
+    })
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+  return latestMonthExpenses + totalEMI;
 };
 
 /**
@@ -148,6 +190,56 @@ export const calculateTotalLoanRemaining = (loans: Loan[] | null | undefined): n
   return loans
     .filter(l => l.status !== 'completed')
     .reduce((sum, l) => sum + (Number(l.remainingAmount) || 0), 0);
+};
+
+/**
+ * 9. calculate10YearProjection(currentNetWorth, monthlyCashflow, annualGrowthRate)
+ * Deterministic projection formula:
+ * futureValue = currentNetWorth + (monthlyCashflow * 12 * ((1 + r)^n - 1) / r)
+ * where r is annualGrowthRate / 12 and n is 120 months.
+ * Simplified if r=0: futureValue = currentNetWorth + (monthlyCashflow * 12 * 10)
+ */
+export const calculate10YearProjection = (
+  currentNetWorth: number,
+  monthlyCashflow: number,
+  annualGrowthRate: number = 0.08 // Default 8% growth
+): number => {
+  const n = 10; // 10 years
+  const monthlyRate = annualGrowthRate / 12;
+  const months = n * 12;
+
+  let projectedValue = 0;
+
+  if (monthlyRate === 0) {
+    projectedValue = currentNetWorth + (monthlyCashflow * months);
+  } else {
+    // Future value of a series (annuity) + initial principal growth
+    // FV = P(1+r)^n + PMT * (((1+r)^n - 1) / r)
+    const principalGrowth = currentNetWorth * Math.pow(1 + monthlyRate, months);
+    const contributionsGrowth = monthlyCashflow * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+    projectedValue = principalGrowth + contributionsGrowth;
+  }
+  
+  // PART 6 — SANITY CHECK SYSTEM
+  // IF projected < (cashflow * 12 * years * 0.5) → Mark as INVALID → Recalculate
+  const baseline = monthlyCashflow * 12 * n * 0.5;
+  if (projectedValue < baseline && monthlyCashflow > 0) {
+    // Recalculate using a more conservative but safe linear model if compounding fails or produces absurd results
+    return currentNetWorth + (monthlyCashflow * 12 * n);
+  }
+
+  return Math.max(0, projectedValue);
+};
+
+/**
+ * 10. calculateFinancialImpact(projectedBase, projectedWithStrategy)
+ * impact = (Projected Wealth with Strategy) - (Current Path Projection)
+ */
+export const calculateFinancialImpact = (
+  projectedBase: number,
+  projectedWithStrategy: number
+): number => {
+  return Math.max(0, projectedWithStrategy - projectedBase);
 };
 
 /**

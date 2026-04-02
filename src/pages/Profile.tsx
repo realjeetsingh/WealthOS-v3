@@ -19,6 +19,8 @@ import {
   Trash2,
   MessageSquare,
   LifeBuoy,
+  Briefcase,
+  Plus,
   TrendingUp,
   TrendingDown,
   Wallet,
@@ -40,7 +42,8 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { db, auth, storage } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
-import { formatCurrency } from '../lib/formatCurrency';
+import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { 
   calculateMonthlyIncome,
   calculateMonthlyExpenses,
@@ -64,6 +67,10 @@ const Profile: React.FC = () => {
   const [newName, setNewName] = useState(userProfile?.name || '');
   const [newPhone, setNewPhone] = useState(userProfile?.phone || '');
   const [newCurrency, setNewCurrency] = useState(userProfile?.currency || DEFAULT_CURRENCY);
+  const [newBio, setNewBio] = useState(userProfile?.bio || '');
+  const [newLocation, setNewLocation] = useState(userProfile?.location || '');
+  const [newOccupation, setNewOccupation] = useState(userProfile?.occupation || '');
+  const [newFinancialGoals, setNewFinancialGoals] = useState<string[]>(userProfile?.financialGoals || []);
   const [newProfileImage, setNewProfileImage] = useState(userProfile?.profileImage || '');
   const [newCoverImage, setNewCoverImage] = useState(userProfile?.coverImage || '');
   
@@ -170,7 +177,7 @@ const Profile: React.FC = () => {
     {
       id: 'saver',
       title: 'Savings Milestone',
-      description: `Reached ${formatCurrency(5000)} in assets`,
+      description: <span className="flex items-center gap-1">Reached <CurrencyDisplay value={5000} /> in assets</span>,
       icon: Target,
       color: 'text-green-500',
       bgColor: 'bg-green-50',
@@ -243,6 +250,10 @@ const Profile: React.FC = () => {
         name: newName.trim(),
         phone: newPhone.trim(),
         currency: newCurrency,
+        bio: newBio.trim(),
+        location: newLocation.trim(),
+        occupation: newOccupation.trim(),
+        financialGoals: newFinancialGoals,
         profileImage: newProfileImage,
         coverImage: newCoverImage
       });
@@ -428,10 +439,29 @@ const Profile: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <p className="text-gray-500 font-medium flex items-center">
-                  <Mail className="w-4 h-4 mr-2 text-gray-400" />
-                  {user?.email}
-                </p>
+                <div className="flex flex-wrap gap-y-2 gap-x-4 text-gray-500 font-medium text-sm">
+                  <p className="flex items-center">
+                    <Mail className="w-4 h-4 mr-2 text-gray-400" />
+                    {user?.email}
+                  </p>
+                  {userProfile?.location && (
+                    <p className="flex items-center">
+                      <Target className="w-4 h-4 mr-2 text-gray-400" />
+                      {userProfile.location}
+                    </p>
+                  )}
+                  {userProfile?.occupation && (
+                    <p className="flex items-center">
+                      <Briefcase className="w-4 h-4 mr-2 text-gray-400" />
+                      {userProfile.occupation}
+                    </p>
+                  )}
+                </div>
+                {userProfile?.bio && (
+                  <p className="mt-4 text-gray-600 text-sm leading-relaxed max-w-2xl">
+                    {userProfile.bio}
+                  </p>
+                )}
               </div>
             </div>
             
@@ -441,6 +471,10 @@ const Profile: React.FC = () => {
                   setNewName(userProfile?.name || '');
                   setNewPhone(userProfile?.phone || '');
                   setNewCurrency(userProfile?.currency || DEFAULT_CURRENCY);
+                  setNewBio(userProfile?.bio || '');
+                  setNewLocation(userProfile?.location || '');
+                  setNewOccupation(userProfile?.occupation || '');
+                  setNewFinancialGoals(userProfile?.financialGoals || []);
                   setNewProfileImage(userProfile?.profileImage || '');
                   setNewCoverImage(userProfile?.coverImage || '');
                   setIsEditing(true);
@@ -474,7 +508,7 @@ const Profile: React.FC = () => {
           },
           { 
             label: 'Wealth Milestone', 
-            value: formatCurrency(netWorth), 
+            value: <CurrencyDisplay value={netWorth} />, 
             icon: Crown, 
             color: 'text-indigo-600', 
             bgColor: 'bg-indigo-50' 
@@ -569,6 +603,62 @@ const Profile: React.FC = () => {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Financial Goals Section */}
+      <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-10 mb-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Financial Goals</h2>
+            <p className="text-sm text-gray-500 mt-1">What you're working towards</p>
+          </div>
+          <div className="p-4 rounded-2xl bg-indigo-50 text-indigo-600">
+            <Target className="w-7 h-7" />
+          </div>
+        </div>
+
+        {userProfile?.financialGoals && userProfile.financialGoals.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {userProfile.financialGoals.map((goal, index) => (
+              <div 
+                key={index}
+                className="p-6 rounded-3xl bg-gray-50 border border-gray-100 flex items-center space-x-4 group hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                  <Check className="w-6 h-6" />
+                </div>
+                <span className="font-bold text-gray-900 tracking-tight">{goal}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+              <Target className="w-8 h-8 text-gray-300" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">No goals set yet</h3>
+            <p className="text-sm text-gray-500 max-w-xs mx-auto mb-6">
+              Define your financial targets to stay motivated and track your progress.
+            </p>
+            <button 
+              onClick={() => {
+                setNewName(userProfile?.name || '');
+                setNewPhone(userProfile?.phone || '');
+                setNewCurrency(userProfile?.currency || DEFAULT_CURRENCY);
+                setNewBio(userProfile?.bio || '');
+                setNewLocation(userProfile?.location || '');
+                setNewOccupation(userProfile?.occupation || '');
+                setNewFinancialGoals(userProfile?.financialGoals || []);
+                setNewProfileImage(userProfile?.profileImage || '');
+                setNewCoverImage(userProfile?.coverImage || '');
+                setIsEditing(true);
+              }}
+              className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-xl border border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm"
+            >
+              Set Your First Goal
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -789,6 +879,47 @@ const Profile: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Bio</label>
+                  <div className="relative">
+                    <MessageSquare className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
+                    <textarea 
+                      value={newBio}
+                      onChange={(e) => setNewBio(e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900 min-h-[100px] resize-none"
+                      placeholder="Tell us a bit about yourself..."
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Location</label>
+                  <div className="relative">
+                    <Target className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input 
+                      type="text"
+                      value={newLocation}
+                      onChange={(e) => setNewLocation(e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
+                      placeholder="e.g. Mumbai, India"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Occupation</label>
+                  <div className="relative">
+                    <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input 
+                      type="text"
+                      value={newOccupation}
+                      onChange={(e) => setNewOccupation(e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
+                      placeholder="e.g. Software Engineer"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Phone Number</label>
                   <div className="relative">
@@ -800,6 +931,61 @@ const Profile: React.FC = () => {
                       className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
                       placeholder="+91 00000 00000"
                     />
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Financial Goals</label>
+                  <div className="flex space-x-2 mb-4">
+                    <div className="relative flex-1">
+                      <Target className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input 
+                        type="text"
+                        id="goalInput"
+                        className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
+                        placeholder="Add a new goal (e.g. Buy a house)"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const input = e.currentTarget;
+                            if (input.value.trim()) {
+                              setNewFinancialGoals([...newFinancialGoals, input.value.trim()]);
+                              input.value = '';
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.getElementById('goalInput') as HTMLInputElement;
+                        if (input.value.trim()) {
+                          setNewFinancialGoals([...newFinancialGoals, input.value.trim()]);
+                          input.value = '';
+                        }
+                      }}
+                      className="p-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+                    >
+                      <Plus className="w-6 h-6" />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {newFinancialGoals.map((goal, index) => (
+                      <div 
+                        key={index}
+                        className="flex items-center bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl border border-indigo-100 group"
+                      >
+                        <span className="font-bold text-sm">{goal}</span>
+                        <button
+                          type="button"
+                          onClick={() => setNewFinancialGoals(newFinancialGoals.filter((_, i) => i !== index))}
+                          className="ml-2 text-indigo-400 hover:text-indigo-600 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

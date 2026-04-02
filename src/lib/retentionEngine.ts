@@ -6,7 +6,7 @@
  */
 
 import { Transaction } from '../types';
-import { formatCurrency } from './formatCurrency';
+import { formatCurrencyShort } from './formatCurrency';
 
 /**
  * 1. getMonthlyStatus(income, expenses)
@@ -16,9 +16,9 @@ export const getMonthlyStatus = (income: number, expenses: number): string => {
   const cashflow = (Number(income) || 0) - (Number(expenses) || 0);
 
   if (cashflow > 0) {
-    return `You are saving ${formatCurrency(cashflow)} this month`;
+    return `You are saving ${formatCurrencyShort(cashflow)} this month`;
   } else if (cashflow < 0) {
-    return `You are overspending by ${formatCurrency(Math.abs(cashflow))} this month`;
+    return `You are overspending by ${formatCurrencyShort(Math.abs(cashflow))} this month`;
   } else {
     return "Your income and expenses are balanced this month";
   }
@@ -66,9 +66,9 @@ export const getMonthlyTrend = (transactions: Transaction[] | null | undefined):
   const diff = currentMonthExpenses - prevMonthExpenses;
 
   if (diff > 0) {
-    return `Spending increased by ${formatCurrency(diff)}`;
+    return `Spending increased by ${formatCurrencyShort(diff)}`;
   } else if (diff < 0) {
-    return `Spending decreased by ${formatCurrency(Math.abs(diff))}`;
+    return `Spending decreased by ${formatCurrencyShort(Math.abs(diff))}`;
   } else {
     return "Spending unchanged";
   }

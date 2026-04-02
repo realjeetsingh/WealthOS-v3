@@ -5,9 +5,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { addLoan, updateLoan, deleteLoan } from '../services/financeService';
 import { Loan, FinancialSnapshot } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
-import { formatCurrency } from '../lib/formatCurrency';
+import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
 import { calculateTotalEMI } from '../lib/financialEngine';
+import Modal from '../components/Modal';
 import { 
   PlusCircle, 
   Wallet, 
@@ -23,7 +25,8 @@ import {
   Clock,
   TrendingDown,
   Zap,
-  ShieldAlert
+  ShieldAlert,
+  Save
 } from 'lucide-react';
 
 const Loans: React.FC = () => {
@@ -42,8 +45,20 @@ const Loans: React.FC = () => {
   const [totalAmount, setTotalAmount] = useState('');
   const [emi, setEmi] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPrincipalAmount, setEditPrincipalAmount] = useState('');
+  const [editTenureMonths, setEditTenureMonths] = useState('');
+  const [editPaidMonths, setEditPaidMonths] = useState('0');
+  const [editTotalAmount, setEditTotalAmount] = useState('');
+  const [editEmi, setEditEmi] = useState('');
+  const [editEndDate, setEditEndDate] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Auto-calculations for UI feedback
   useEffect(() => {
@@ -61,11 +76,27 @@ const Loans: React.FC = () => {
     }
   }, [principalAmount, tenureMonths, emi, totalAmount]);
 
-  const calculatedInterest = () => {
-    const p = parseFloat(principalAmount) || 0;
-    const tot = parseFloat(totalAmount) || 0;
-    const e = parseFloat(emi) || 0;
-    const t = parseFloat(tenureMonths) || 0;
+  // Auto-calculations for Edit Modal
+  useEffect(() => {
+    const p = parseFloat(editPrincipalAmount) || 0;
+    const t = parseFloat(editTenureMonths) || 0;
+    const e = parseFloat(editEmi) || 0;
+    const tot = parseFloat(editTotalAmount) || 0;
+
+    if (p > 0 && t > 0) {
+      if (e > 0 && !editTotalAmount) {
+        setEditTotalAmount((e * t).toFixed(2));
+      } else if (tot > 0 && !editEmi) {
+        setEditEmi((tot / t).toFixed(2));
+      }
+    }
+  }, [editPrincipalAmount, editTenureMonths, editEmi, editTotalAmount]);
+
+  const calculatedInterest = (pAmount: string, tAmount: string, emiVal: string, totAmount: string) => {
+    const p = parseFloat(pAmount) || 0;
+    const tot = parseFloat(totAmount) || 0;
+    const e = parseFloat(emiVal) || 0;
+    const t = parseFloat(tAmount) || 0;
     
     let finalTotal = tot;
     if (e > 0 && t > 0 && !tot) finalTotal = e * t;
@@ -153,12 +184,7 @@ const Loans: React.FC = () => {
         status: (numPaid >= numTenure) ? 'completed' : 'active'
       };
 
-      if (editingId) {
-        await updateLoan(user.uid, editingId, loanData);
-        setEditingId(null);
-      } else {
-        await addLoan(user.uid, loanData);
-      }
+      await addLoan(user.uid, loanData);
 
       // Reset form
       setName('');
@@ -176,26 +202,68 @@ const Loans: React.FC = () => {
   };
 
   const handleEdit = (l: Loan) => {
-    setEditingId(l.id || null);
-    setName(l.name);
-    setPrincipalAmount(l.principalAmount?.toString() || '');
-    setTenureMonths(l.tenureMonths?.toString() || '');
-    setPaidMonths(l.paidMonths?.toString() || '0');
-    setTotalAmount(l.totalAmount.toString());
-    setEmi(l.emi.toString());
-    setEndDate(l.endDate);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setSelectedLoan(l);
+    setEditName(l.name);
+    setEditPrincipalAmount(l.principalAmount?.toString() || '');
+    setEditTenureMonths(l.tenureMonths?.toString() || '');
+    setEditPaidMonths(l.paidMonths?.toString() || '0');
+    setEditTotalAmount(l.totalAmount.toString());
+    setEditEmi(l.emi.toString());
+    setEditEndDate(l.endDate);
+    setEditError(null);
+    setIsEditModalOpen(true);
   };
 
-  const cancelEdit = () => {
-    setEditingId(null);
-    setName('');
-    setPrincipalAmount('');
-    setTenureMonths('');
-    setPaidMonths('0');
-    setTotalAmount('');
-    setEmi('');
-    setEndDate('');
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.uid || !selectedLoan) return;
+
+    setEditError(null);
+    setEditSubmitting(true);
+
+    try {
+      const numPrincipal = parseFloat(editPrincipalAmount) || 0;
+      const numTenure = parseFloat(editTenureMonths) || 0;
+      const numPaid = parseFloat(editPaidMonths) || 0;
+      let numEmi = parseFloat(editEmi) || 0;
+      let numTotal = parseFloat(editTotalAmount) || 0;
+
+      if (!editName) throw new Error("Loan name is required");
+      if (numPrincipal <= 0) throw new Error("Principal amount must be greater than 0");
+      if (numTenure <= 0) throw new Error("Tenure must be greater than 0");
+      if (numEmi <= 0 && numTotal <= 0) throw new Error("Please enter either Monthly EMI or Total Payable amount");
+
+      // Auto-calculation logic
+      if (numEmi > 0) {
+        numTotal = numEmi * numTenure;
+      } else if (numTotal > 0) {
+        numEmi = numTotal / numTenure;
+      }
+
+      const numInterest = numTotal - numPrincipal;
+      const numRemaining = numTotal - (numEmi * numPaid);
+
+      const loanData: Partial<Loan> = {
+        name: editName,
+        principalAmount: numPrincipal,
+        tenureMonths: numTenure,
+        paidMonths: numPaid,
+        totalAmount: numTotal,
+        totalInterest: numInterest,
+        emi: numEmi,
+        remainingAmount: Math.max(0, numRemaining),
+        endDate: editEndDate,
+        status: (numPaid >= numTenure) ? 'completed' : 'active'
+      };
+
+      await updateLoan(user.uid, selectedLoan.id!, loanData);
+      setIsEditModalOpen(false);
+      setSelectedLoan(null);
+    } catch (err: any) {
+      setEditError(err.message || "Failed to update loan");
+    } finally {
+      setEditSubmitting(false);
+    }
   };
 
   const handleMarkPaid = async (l: Loan) => {
@@ -269,7 +337,7 @@ const Loans: React.FC = () => {
   const getPressureMessage = () => {
     if (emiRatio > 40) {
       return {
-        text: `High EMI burden: ${formatCurrency(totalEMI)}/month is limiting your financial growth`,
+        text: `High EMI burden: ${formatCurrencyShort(totalEMI)}/month is limiting your financial growth`,
         color: 'text-red-600',
         bgColor: 'bg-red-50',
         borderColor: 'border-red-100',
@@ -277,7 +345,7 @@ const Loans: React.FC = () => {
       };
     } else if (emiRatio >= 20) {
       return {
-        text: `${formatCurrency(totalEMI)}/month in EMIs is reducing your savings potential`,
+        text: `${formatCurrencyShort(totalEMI)}/month in EMIs is reducing your savings potential`,
         color: 'text-amber-600',
         bgColor: 'bg-amber-50',
         borderColor: 'border-amber-100',
@@ -310,7 +378,7 @@ const Loans: React.FC = () => {
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Total Monthly EMI</p>
               <p className="text-xl font-black">
-                {formatCurrency(totalEMI)}
+                <CurrencyDisplay value={totalEMI} />
               </p>
             </div>
           </div>
@@ -328,7 +396,7 @@ const Loans: React.FC = () => {
               </p>
               {monthlyIncome > 0 && (
                 <p className="text-xs font-bold text-gray-500 mt-1">
-                  EMIs consume <span className="text-gray-900">{emiRatio.toFixed(1)}%</span> of your monthly income. Reducing this can increase your monthly savings by <span className="text-gray-900">{formatCurrency(totalEMI)}</span>.
+                  EMIs consume <span className="text-gray-900">{emiRatio.toFixed(1)}%</span> of your monthly income. Reducing this can increase your monthly savings by <span className="text-gray-900"><CurrencyDisplay value={totalEMI} /></span>.
                 </p>
               )}
             </div>
@@ -343,27 +411,13 @@ const Loans: React.FC = () => {
           </div>
         </div>
 
-        {/* Add/Edit Loan Form */}
+        {/* Add Loan Form */}
         <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 opacity-50" />
           
-          {editingId && (
-            <button 
-              onClick={cancelEdit}
-              className="absolute top-4 right-4 p-2.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all z-10"
-              title="Cancel Edit"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-          
           <h2 className="text-2xl font-black text-gray-900 mb-8 flex items-center relative z-10">
-            {editingId ? (
-              <Edit2 className="w-7 h-7 mr-3 text-indigo-600" />
-            ) : (
-              <PlusCircle className="w-7 h-7 mr-3 text-indigo-600" />
-            )}
-            {editingId ? 'Edit Loan Details' : 'Add New Loan'}
+            <PlusCircle className="w-7 h-7 mr-3 text-indigo-600" />
+            Add New Loan
           </h2>
 
           {error && (
@@ -418,23 +472,6 @@ const Loans: React.FC = () => {
                 />
               </div>
             </div>
-
-            {editingId && (
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Months Paid</label>
-                <div className="relative">
-                  <CheckCircle className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                  <input
-                    type="number"
-                    required
-                    placeholder="0"
-                    value={paidMonths}
-                    onChange={(e) => setPaidMonths(e.target.value)}
-                    className="block w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
-                  />
-                </div>
-              </div>
-            )}
 
             <div>
               <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Monthly EMI (Optional)</label>
@@ -492,11 +529,11 @@ const Loans: React.FC = () => {
             <div className="md:col-span-3 grid grid-cols-2 gap-4 p-4 bg-indigo-50 rounded-2xl">
               <div>
                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Interest</p>
-                <p className="text-xl font-black text-indigo-900">{formatCurrency(calculatedInterest())}</p>
+                <p className="text-xl font-black text-indigo-900"><CurrencyDisplay value={calculatedInterest(principalAmount, tenureMonths, emi, totalAmount)} /></p>
               </div>
               <div>
                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Payable</p>
-                <p className="text-xl font-black text-indigo-900">{formatCurrency(parseFloat(totalAmount) || 0)}</p>
+                <p className="text-xl font-black text-indigo-900"><CurrencyDisplay value={parseFloat(totalAmount) || 0} /></p>
               </div>
             </div>
 
@@ -504,18 +541,14 @@ const Loans: React.FC = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className={`w-full text-white py-4 px-4 rounded-2xl font-black text-lg transition-all disabled:opacity-50 flex items-center justify-center shadow-xl ${
-                  editingId ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'
-                }`}
+                className="w-full text-white py-4 px-4 rounded-2xl font-black text-lg transition-all disabled:opacity-50 flex items-center justify-center shadow-xl bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100"
               >
                 {submitting ? (
                   <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                ) : editingId ? (
-                  <CheckCircle className="w-6 h-6 mr-2" />
                 ) : (
                   <PlusCircle className="w-6 h-6 mr-2" />
                 )}
-                {editingId ? 'Update Loan' : 'Add Loan'}
+                Add Loan
               </button>
             </div>
           </form>
@@ -583,7 +616,7 @@ const Loans: React.FC = () => {
                         <h3 className="text-2xl font-black text-gray-900 mb-1">{l.name}</h3>
                         <div className="flex items-center space-x-2 text-gray-400">
                           <TrendingDown className="w-4 h-4" />
-                          <span className="text-sm font-bold">Total Payable: {formatCurrency(l.totalAmount)}</span>
+                          <span className="text-sm font-bold">Total Payable: <CurrencyDisplay value={l.totalAmount} /></span>
                         </div>
                       </div>
                       <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -607,7 +640,7 @@ const Loans: React.FC = () => {
                     <div className="grid grid-cols-2 gap-8 mb-8">
                       <div>
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Monthly EMI</p>
-                        <p className="text-2xl font-black text-indigo-600">{formatCurrency(l.emi)}</p>
+                        <p className="text-2xl font-black text-indigo-600"><CurrencyDisplay value={l.emi} /></p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Remaining</p>
@@ -624,7 +657,7 @@ const Loans: React.FC = () => {
                       <div className="mb-8 p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex items-start space-x-3">
                         <TrendingDown className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
                         <p className="text-xs font-bold text-indigo-900 leading-relaxed">
-                          You can close this loan <span className="text-indigo-600 underline decoration-2 underline-offset-2">{monthsSaved} months earlier</span> by paying {formatCurrency(extraPayment)} extra monthly.
+                          You can close this loan <span className="text-indigo-600 underline decoration-2 underline-offset-2">{monthsSaved} months earlier</span> by paying <CurrencyDisplay value={extraPayment} /> extra monthly.
                         </p>
                       </div>
                     )}
@@ -633,7 +666,7 @@ const Loans: React.FC = () => {
                       <div className="flex justify-between items-end">
                         <div>
                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Remaining Balance</p>
-                          <p className="text-xl font-black text-gray-900">{formatCurrency(l.remainingAmount)}</p>
+                          <p className="text-xl font-black text-gray-900"><CurrencyDisplay value={l.remainingAmount} /></p>
                         </div>
                         <p className="text-sm font-black text-indigo-600">{Math.round(progress)}% Paid</p>
                       </div>
@@ -661,6 +694,163 @@ const Loans: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Edit Loan Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Loan Details"
+        maxWidth="max-w-4xl"
+      >
+        {editError && (
+          <div className="mb-8 bg-red-50 border-l-4 border-red-500 p-4 rounded-xl flex items-start space-x-3">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+            <p className="text-sm text-red-700 font-bold">{editError}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleUpdate} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Loan Name</label>
+            <div className="relative">
+              <Wallet className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                required
+                placeholder="e.g. Home Loan, Car Loan"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="block w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Principal Amount</label>
+            <div className="relative">
+              <span className="absolute left-4 top-3.5 text-gray-400 font-black">{currencySymbol}</span>
+              <input
+                type="number"
+                required
+                placeholder="0"
+                value={editPrincipalAmount}
+                onChange={(e) => setEditPrincipalAmount(e.target.value)}
+                className="block w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Tenure (Months)</label>
+            <div className="relative">
+              <Clock className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+              <input
+                type="number"
+                required
+                placeholder="12"
+                value={editTenureMonths}
+                onChange={(e) => setEditTenureMonths(e.target.value)}
+                className="block w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Months Paid</label>
+            <div className="relative">
+              <CheckCircle className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+              <input
+                type="number"
+                required
+                placeholder="0"
+                value={editPaidMonths}
+                onChange={(e) => setEditPaidMonths(e.target.value)}
+                className="block w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Monthly EMI (Optional)</label>
+            <div className="relative">
+              <span className="absolute left-4 top-3.5 text-gray-400 font-black">{currencySymbol}</span>
+              <input
+                type="number"
+                placeholder="0"
+                value={editEmi}
+                onChange={(e) => {
+                  setEditEmi(e.target.value);
+                  if (e.target.value) setEditTotalAmount('');
+                }}
+                className="block w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Total Payable (Optional)</label>
+            <div className="relative">
+              <span className="absolute left-4 top-3.5 text-gray-400 font-black">{currencySymbol}</span>
+              <input
+                type="number"
+                placeholder="0"
+                value={editTotalAmount}
+                onChange={(e) => {
+                  setEditTotalAmount(e.target.value);
+                  if (e.target.value) setEditEmi('');
+                }}
+                className="block w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">End Date (Optional)</label>
+            <div className="relative">
+              <Calendar className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+              <input
+                type="date"
+                value={editEndDate}
+                onChange={(e) => setEditEndDate(e.target.value)}
+                className="block w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="md:col-span-3 grid grid-cols-2 gap-4 p-4 bg-indigo-50 rounded-2xl">
+            <div>
+              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Interest</p>
+              <p className="text-xl font-black text-indigo-900"><CurrencyDisplay value={calculatedInterest(editPrincipalAmount, editTenureMonths, editEmi, editTotalAmount)} /></p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Payable</p>
+              <p className="text-xl font-black text-indigo-900"><CurrencyDisplay value={parseFloat(editTotalAmount) || 0} /></p>
+            </div>
+          </div>
+
+          <div className="md:col-span-3 flex space-x-4">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="flex-1 py-4 px-4 rounded-2xl border-2 border-gray-100 font-black text-gray-400 hover:bg-gray-50 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={editSubmitting}
+              className="flex-1 py-4 px-4 rounded-2xl bg-indigo-600 text-white font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center disabled:opacity-50"
+            >
+              {editSubmitting ? (
+                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+              ) : (
+                <Save className="w-6 h-6 mr-2" />
+              )}
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (

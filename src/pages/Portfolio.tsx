@@ -47,7 +47,9 @@ import {
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { PortfolioAsset } from '../types';
-import { formatCurrency } from '../lib/formatCurrency';
+import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { Tooltip } from '../components/Tooltip';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -333,61 +335,61 @@ export default function Portfolio() {
       </div>
 
       {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {/* Invested */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Invested</p>
-              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalInvested)}</h3>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Invested</p>
+            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+              <DollarSign className="w-4 h-4 text-blue-600" />
             </div>
           </div>
+          <h3 className="text-3xl font-black text-gray-900 tracking-tighter">
+            <CurrencyDisplay value={totalInvested} />
+          </h3>
         </div>
 
         {/* Current Value */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center">
-              <PieChartIcon className="w-6 h-6 text-indigo-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Current Value</p>
-              <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(totalCurrentValue)}</h3>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Current Value</p>
+            <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
+              <PieChartIcon className="w-4 h-4 text-indigo-600" />
             </div>
           </div>
+          <h3 className="text-3xl font-black text-gray-900 tracking-tighter">
+            <CurrencyDisplay value={totalCurrentValue} />
+          </h3>
         </div>
 
         {/* Profit/Loss */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
-              {totalGainLoss >= 0 ? <TrendingUp className="w-6 h-6 text-emerald-600" /> : <TrendingDown className="w-6 h-6 text-rose-600" />}
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Profit/Loss</p>
-              <h3 className={`text-2xl font-bold ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {totalGainLoss >= 0 ? '+' : ''}{formatCurrency(totalGainLoss)}
-              </h3>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Profit/Loss</p>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+              {totalGainLoss >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-600" /> : <TrendingDown className="w-4 h-4 text-rose-600" />}
             </div>
           </div>
+          <h3 className={`text-3xl font-black tracking-tighter ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {totalGainLoss >= 0 ? '+' : ''}<CurrencyDisplay value={totalGainLoss} />
+          </h3>
         </div>
 
         {/* Return % */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
-              <Activity className={`w-6 h-6 ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Return %</p>
-              <h3 className={`text-2xl font-bold ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {totalGainLoss >= 0 ? '+' : ''}{totalGainLossPercentage.toFixed(2)}%
-              </h3>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Return %</p>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+              <Activity className={`w-4 h-4 ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} />
             </div>
           </div>
+          <h3 className={`text-3xl font-black tracking-tighter ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+            <Tooltip content={`${totalGainLoss >= 0 ? '+' : ''}${totalGainLossPercentage.toFixed(4)}%`}>
+              <span className="border-b-2 border-dotted border-gray-200">
+                {totalGainLoss >= 0 ? '+' : ''}{totalGainLossPercentage.toFixed(2)}%
+              </span>
+            </Tooltip>
+          </h3>
         </div>
       </div>
 
@@ -420,7 +422,7 @@ export default function Portfolio() {
                     ))}
                   </Pie>
                   <RechartsTooltip 
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value: number) => formatCurrencyShort(value)}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                   />
                   <Legend 
@@ -580,8 +582,8 @@ export default function Portfolio() {
                             <CategoryIcon className="w-5 h-5 text-gray-400" />
                           </div>
                           <div>
-                            <p className="font-bold text-gray-900">{asset.assetName}</p>
-                            <p className="text-xs text-gray-500">
+                            <p className="font-bold text-gray-900 truncate max-w-[150px] lg:max-w-[200px]">{asset.assetName}</p>
+                            <p className="text-xs text-gray-500 truncate">
                               {asset.category === 'Stocks' && `${asset.metadata.quantity} shares`}
                               {asset.category === 'Crypto' && `${asset.metadata.quantity} units`}
                               {asset.category === 'Gold' && `${asset.metadata.weight}g`}
@@ -595,15 +597,19 @@ export default function Portfolio() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {formatCurrency(asset.investedAmount)}
+                        <CurrencyDisplay value={asset.investedAmount} />
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {formatCurrency(asset.currentValue)}
+                        <CurrencyDisplay value={asset.currentValue} />
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className={`text-sm font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
-                          <p className="text-[10px] opacity-70">{profitPercentage.toFixed(2)}%</p>
+                          {profit >= 0 ? '+' : ''}<CurrencyDisplay value={profit} />
+                          <Tooltip content={`${profit >= 0 ? '+' : ''}${profitPercentage.toFixed(4)}%`}>
+                            <span className="text-[10px] opacity-70 border-b border-dotted border-gray-300 inline-block">
+                              {profitPercentage.toFixed(2)}%
+                            </span>
+                          </Tooltip>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -689,8 +695,8 @@ export default function Portfolio() {
                       <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
                         <CategoryIcon className="w-5 h-5 text-gray-400" />
                       </div>
-                      <div>
-                        <p className="font-bold text-gray-900">{asset.assetName}</p>
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900 truncate">{asset.assetName}</p>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 uppercase tracking-wider">
                           {asset.category}
                         </span>
@@ -739,20 +745,28 @@ export default function Portfolio() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Invested</p>
-                      <p className="text-sm font-bold text-gray-900">{formatCurrency(asset.investedAmount)}</p>
+                  <div className="grid grid-cols-1 gap-3 pt-2">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0">Invested</p>
+                      <p className="text-sm font-bold text-gray-900 truncate">
+                        <CurrencyDisplay value={asset.investedAmount} />
+                      </p>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Current Value</p>
-                      <p className="text-sm font-bold text-gray-900">{formatCurrency(asset.currentValue)}</p>
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0">Current Value</p>
+                      <p className="text-sm font-bold text-gray-900 truncate">
+                        <CurrencyDisplay value={asset.currentValue} />
+                      </p>
                     </div>
-                    <div className="col-span-2 pt-2 border-t border-gray-50 flex justify-between items-center">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Profit / Loss</p>
-                      <div className={`text-sm font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
-                        <span className="ml-2 text-[10px] opacity-70">({profitPercentage.toFixed(2)}%)</span>
+                    <div className="pt-2 border-t border-gray-50 flex justify-between items-center gap-4">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0">Profit / Loss</p>
+                      <div className={`text-sm font-bold truncate text-right ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {profit >= 0 ? '+' : ''}<CurrencyDisplay value={profit} />
+                        <Tooltip content={`${profit >= 0 ? '+' : ''}${profitPercentage.toFixed(4)}%`}>
+                          <span className="ml-2 text-[10px] opacity-70 border-b border-dotted border-gray-300">
+                            ({profitPercentage.toFixed(2)}%)
+                          </span>
+                        </Tooltip>
                       </div>
                     </div>
                   </div>

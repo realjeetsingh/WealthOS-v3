@@ -1,5 +1,8 @@
 import { UserProfile } from '../types';
-import { formatCurrency as globalFormatCurrency } from './currency';
+import { 
+  formatCurrencyFull as globalFormatCurrencyFull,
+  formatCurrencyShort as globalFormatCurrencyShort
+} from './currency';
 
 let currentUserProfile: UserProfile | null = null;
 
@@ -12,13 +15,24 @@ export function setGlobalUserProfile(profile: UserProfile | null) {
 }
 
 /**
- * Global currency formatter that uses the current user's preference.
- * @param value The numeric value to format
- * @param currency Optional currency code to override the user's preference
- * @returns Formatted string
+ * Global currency formatter (Full Value)
  */
-export function formatCurrency(value: number | string, currency?: string): string {
+export function formatCurrencyFull(value: number | string, currency?: string): string {
   const number = Number(value) || 0;
   const currencyCode = currency || currentUserProfile?.currency;
-  return globalFormatCurrency(number, currencyCode);
+  return globalFormatCurrencyFull(number, currencyCode);
 }
+
+/**
+ * Global currency formatter (Short Value)
+ */
+export function formatCurrencyShort(value: number | string, currency?: string): string {
+  const number = Number(value) || 0;
+  const currencyCode = currency || currentUserProfile?.currency;
+  return globalFormatCurrencyShort(number, currencyCode);
+}
+
+/**
+ * Default currency formatter (Full Value)
+ */
+export const formatCurrency = formatCurrencyFull;

@@ -56,22 +56,10 @@ export const generateFinancialAdvice = (input: DecisionInput): FinancialAdvice =
     recommendations.push("Excellent savings rate! Consider increasing your monthly investment contributions to accelerate your path to financial freedom.");
   }
 
-  // 5. Identify best scenario for UI display
-  // We prioritize the scenario that matches our recommendation logic if it's viable
-  let best = scenarios.reduce((prev, current) => (Number(prev.value) > Number(current.value)) ? prev : current);
+  // 5. Identify best scenario for UI display (Highest Impact)
+  const best = scenarios.reduce((prev, current) => (Number(prev.value) > Number(current.value)) ? prev : current);
   
-  if (savingsRate < 0.2) {
-    const reduceExp = scenarios.find(s => s.name === "Reduce Expenses");
-    if (reduceExp) best = reduceExp;
-  } else if (savingsRate >= 0.2 && savingsRate <= 0.4) {
-    const optimizeInv = scenarios.find(s => s.name === "Optimize Investments");
-    if (optimizeInv) best = optimizeInv;
-  } else {
-    const increaseInv = scenarios.find(s => s.name === "Increase Investments");
-    if (increaseInv) best = increaseInv;
-  }
-
-  const base = scenarios.find(s => s.name === "Base") || scenarios[0];
+  const base = scenarios.find(s => s.name === "Base") || { name: "Base", value: 0 };
   const improvement = (Number(best.value) || 0) - (Number(base.value) || 0);
 
   // 6. Additional Warnings - Debt ratio

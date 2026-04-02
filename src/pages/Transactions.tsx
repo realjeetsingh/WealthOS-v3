@@ -5,8 +5,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { addTransaction, updateTransaction, deleteTransaction } from '../services/financeService';
 import { Transaction } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
-import { formatCurrency } from '../lib/formatCurrency';
+import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
+import Modal from '../components/Modal';
 import { 
   PlusCircle, 
   ArrowUpCircle, 
@@ -19,7 +21,8 @@ import {
   Edit2,
   Trash2,
   X,
-  CheckCircle
+  CheckCircle,
+  Save
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -35,8 +38,17 @@ const Transactions: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [notes, setNotes] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [editType, setEditType] = useState<'income' | 'expense'>('expense');
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -76,24 +88,14 @@ const Transactions: React.FC = () => {
         throw new Error("Please enter a valid amount");
       }
 
-      if (editingId) {
-        await updateTransaction(user.uid, editingId, {
-          type,
-          amount: numAmount,
-          category,
-          notes: notes.trim() || null
-        });
-        setEditingId(null);
-      } else {
-        await addTransaction(user.uid, {
-          type,
-          amount: numAmount,
-          category,
-          notes: notes.trim() || null
-        });
-      }
+      await addTransaction(user.uid, {
+        type,
+        amount: numAmount,
+        category,
+        notes: notes.trim() || null
+      });
 
-      // STEP 5: Reset form
+      // Reset form
       setType('expense');
       setAmount('');
       setCategory('');
@@ -106,20 +108,42 @@ const Transactions: React.FC = () => {
   };
 
   const handleEdit = (t: Transaction) => {
-    setEditingId(t.id);
-    setType(t.type);
-    setAmount(t.amount.toString());
-    setCategory(t.category);
-    setNotes(t.notes || '');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setSelectedTransaction(t);
+    setEditType(t.type);
+    setEditAmount(t.amount.toString());
+    setEditCategory(t.category);
+    setEditNotes(t.notes || '');
+    setEditError(null);
+    setIsEditModalOpen(true);
   };
 
-  const cancelEdit = () => {
-    setEditingId(null);
-    setType('expense');
-    setAmount('');
-    setCategory('');
-    setNotes('');
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.uid || !selectedTransaction) return;
+
+    setEditError(null);
+    setEditSubmitting(true);
+
+    try {
+      const numAmount = parseFloat(editAmount);
+      if (isNaN(numAmount) || numAmount <= 0) {
+        throw new Error("Please enter a valid amount");
+      }
+
+      await updateTransaction(user.uid, selectedTransaction.id, {
+        type: editType,
+        amount: numAmount,
+        category: editCategory,
+        notes: editNotes.trim() || null
+      });
+
+      setIsEditModalOpen(false);
+      setSelectedTransaction(null);
+    } catch (err: any) {
+      setEditError(err.message || "Failed to update transaction");
+    } finally {
+      setEditSubmitting(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -154,23 +178,9 @@ const Transactions: React.FC = () => {
 
         {/* Add Transaction Form */}
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 relative">
-          {editingId && (
-            <button 
-              onClick={cancelEdit}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors"
-              title="Cancel Edit"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          )}
-          
           <h2 className="text-xl font-bold text-gray-900 mb-8 flex items-center">
-            {editingId ? (
-              <Edit2 className="w-6 h-6 mr-3 text-indigo-600" />
-            ) : (
-              <PlusCircle className="w-6 h-6 mr-3 text-[#4F46E5]" />
-            )}
-            {editingId ? 'Edit Transaction' : 'Add New Transaction'}
+            <PlusCircle className="w-6 h-6 mr-3 text-[#4F46E5]" />
+            Add New Transaction
           </h2>
 
           {error && (
@@ -264,18 +274,14 @@ const Transactions: React.FC = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className={`w-full text-white py-4 px-4 rounded-xl font-bold text-lg transition-all disabled:opacity-50 flex items-center justify-center shadow-md ${
-                  editingId ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-[#4F46E5] hover:bg-indigo-700'
-                }`}
+                className="w-full text-white py-4 px-4 rounded-xl font-bold text-lg transition-all disabled:opacity-50 flex items-center justify-center shadow-md bg-[#4F46E5] hover:bg-indigo-700"
               >
                 {submitting ? (
                   <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                ) : editingId ? (
-                  <CheckCircle className="w-6 h-6 mr-2" />
                 ) : (
                   <PlusCircle className="w-6 h-6 mr-2" />
                 )}
-                {editingId ? 'Update Transaction' : 'Add Transaction'}
+                Add Transaction
               </button>
             </div>
           </form>
@@ -305,7 +311,7 @@ const Transactions: React.FC = () => {
                     <div className="flex items-center space-x-6">
                       <div className="text-right">
                         <p className={`text-xl font-bold ${t.type === 'income' ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                          {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                          {t.type === 'income' ? '+' : '-'}<CurrencyDisplay value={t.amount} />
                         </p>
                         <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-1">
                           {t.timestamp?.toDate().toLocaleDateString()}
@@ -335,6 +341,126 @@ const Transactions: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Edit Transaction Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Transaction"
+        maxWidth="max-w-2xl"
+      >
+        {editError && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-start space-x-3">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+            <p className="text-sm text-red-700 font-medium">{editError}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleUpdate} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Type</label>
+                <div className="flex space-x-4">
+                  <button
+                    type="button"
+                    onClick={() => setEditType('expense')}
+                    className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-center ${
+                      editType === 'expense' 
+                        ? 'bg-red-50 border-red-200 text-[#DC2626] ring-4 ring-red-50' 
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ArrowDownCircle className="w-5 h-5 mr-2" />
+                    Expense
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditType('income')}
+                    className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-center ${
+                      editType === 'income' 
+                        ? 'bg-green-50 border-green-200 text-[#16A34A] ring-4 ring-green-50' 
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ArrowUpCircle className="w-5 h-5 mr-2" />
+                    Income
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Amount</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400 font-bold">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="0.00"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value)}
+                    className="block w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-50 focus:border-[#4F46E5] text-lg font-bold transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Category</label>
+                <div className="relative">
+                  <Tag className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Food, Salary, Rent"
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="block w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-50 focus:border-[#4F46E5] text-base transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Notes (Optional)</label>
+                <div className="relative">
+                  <FileText className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Add a note..."
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    className="block w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-50 focus:border-[#4F46E5] text-base transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex space-x-4 pt-4">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="flex-1 py-4 px-4 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={editSubmitting}
+              className="flex-1 py-4 px-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center disabled:opacity-50"
+            >
+              {editSubmitting ? (
+                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+              ) : (
+                <Save className="w-6 h-6 mr-2" />
+              )}
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (

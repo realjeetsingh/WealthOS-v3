@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { Transaction, Asset, Liability, Loan, FinancialSnapshot } from '../types';
+import { Transaction, Asset, Liability, Loan, FinancialSnapshot, PortfolioAsset } from '../types';
 import { 
   calculateMonthlyIncome, 
   calculateMonthlyExpenses, 
-  calculateNetWorth 
+  calculateNetWorth,
+  calculate10YearProjection,
+  calculateFinancialImpact
 } from '../lib/financialEngine';
 import { compareScenarios } from '../lib/scenarioEngine';
 import { generateFinancialAdvice, FinancialAdvice } from '../lib/decisionEngine';
-import { getSmartFinancialAnalysis, SmartFinancialAnalysis } from '../services/geminiService';
+import { getSmartFinancialAnalysis, SmartFinancialAnalysis, isSmartFinancialAnalysis } from '../services/geminiService';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { handleUpgrade } from '../lib/paymentService';
-import { formatCurrency } from '../lib/formatCurrency';
+import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { saveSmartAnalysis, getSmartAnalysis } from '../services/snapshotService';
 import { 
   Lightbulb, 
   AlertTriangle, 
@@ -38,9 +42,11 @@ const Insights: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [portfolio, setPortfolio] = useState<PortfolioAsset[]>([]);
   const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
   const [usingSnapshot, setUsingSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadedCollections, setLoadedCollections] = useState<Set<string>>(new Set());
   const [smartAnalysis, setSmartAnalysis] = useState<SmartFinancialAnalysis | null>(null);
   const [generatingSmart, setGeneratingSmart] = useState(false);
   const [smartError, setSmartError] = useState<string | null>(null);
@@ -65,6 +71,15 @@ const Insights: React.FC = () => {
     const assetsPath = `users/${user.uid}/assets`;
     const liabilitiesPath = `users/${user.uid}/liabilities`;
     const loansPath = `users/${user.uid}/loans`;
+    const portfolioPath = `users/${user.uid}/portfolio`;
+
+    const markLoaded = (name: string) => {
+      setLoadedCollections(prev => {
+        const next = new Set(prev);
+        next.add(name);
+        return next;
+      });
+    };
 
     // 1. Optimization Layer: Listen to Financial Snapshot
     const unsubSnapshot = onSnapshot(
@@ -76,22 +91,28 @@ const Insights: React.FC = () => {
           setLoading(false);
         } else {
           setUsingSnapshot(false);
+          markLoaded('snapshot');
         }
       },
       (err) => {
         console.warn("Snapshot fetch failed, falling back to full queries:", err);
         setUsingSnapshot(false);
+        markLoaded('snapshot');
       }
     );
 
     // 2. Fallback/Detail Layer: Listen to raw collections
     const unsubTransactions = onSnapshot(
-      query(collection(db, transactionsPath)),
+      query(collection(db, transactionsPath), orderBy('timestamp', 'desc')),
       (snapshot) => {
         const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Transaction[];
         setTransactions(docs);
+        markLoaded('transactions');
       },
-      (err) => handleFirestoreError(err, OperationType.LIST, transactionsPath)
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, transactionsPath);
+        markLoaded('transactions');
+      }
     );
 
     const unsubAssets = onSnapshot(
@@ -99,8 +120,12 @@ const Insights: React.FC = () => {
       (snapshot) => {
         const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Asset[];
         setAssets(docs);
+        markLoaded('assets');
       },
-      (err) => handleFirestoreError(err, OperationType.LIST, assetsPath)
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, assetsPath);
+        markLoaded('assets');
+      }
     );
 
     const unsubLiabilities = onSnapshot(
@@ -108,11 +133,11 @@ const Insights: React.FC = () => {
       (snapshot) => {
         const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Liability[];
         setLiabilities(docs);
-        if (!usingSnapshot) setLoading(false);
+        markLoaded('liabilities');
       },
       (err) => {
         handleFirestoreError(err, OperationType.LIST, liabilitiesPath);
-        if (!usingSnapshot) setLoading(false);
+        markLoaded('liabilities');
       }
     );
 
@@ -121,9 +146,33 @@ const Insights: React.FC = () => {
       (snapshot) => {
         const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Loan[];
         setLoans(docs);
+        markLoaded('loans');
       },
-      (err) => handleFirestoreError(err, OperationType.LIST, loansPath)
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, loansPath);
+        markLoaded('loans');
+      }
     );
+
+    const unsubPortfolio = onSnapshot(
+      query(collection(db, portfolioPath)),
+      (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as PortfolioAsset[];
+        setPortfolio(docs);
+        markLoaded('portfolio');
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, portfolioPath);
+        markLoaded('portfolio');
+      }
+    );
+
+    // Fetch cached smart analysis
+    getSmartAnalysis(user.uid).then(cached => {
+      if (cached) {
+        setSmartAnalysis(cached as SmartFinancialAnalysis);
+      }
+    });
 
     return () => {
       unsubSnapshot();
@@ -131,14 +180,27 @@ const Insights: React.FC = () => {
       unsubAssets();
       unsubLiabilities();
       unsubLoans();
+      unsubPortfolio();
     };
-  }, [user?.uid, usingSnapshot]);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!usingSnapshot && loadedCollections.size >= 6) {
+      setLoading(false);
+    }
+  }, [loadedCollections, usingSnapshot]);
 
   // Pipeline Execution with Snapshot Fallback
   const income = Number((usingSnapshot && snapshot) ? snapshot.income : calculateMonthlyIncome(transactions)) || 0;
   const expenses = Number((usingSnapshot && snapshot) ? snapshot.expenses : calculateMonthlyExpenses(transactions, loans)) || 0;
-  const currentAssets = Number((usingSnapshot && snapshot) ? snapshot.assetsTotal : assets.reduce((sum, a) => sum + (Number(a.value) || 0), 0)) || 0;
-  const currentLiabilities = Number((usingSnapshot && snapshot) ? snapshot.liabilitiesTotal : liabilities.reduce((sum, l) => sum + (Number(l.remainingBalance) || 0), 0)) || 0;
+  
+  const assetsTotal = assets.reduce((sum, a) => sum + (Number(a.value) || 0), 0);
+  const portfolioTotal = portfolio.reduce((sum, p) => sum + (Number(p.currentValue) || 0), 0);
+  const currentAssets = Number((usingSnapshot && snapshot) ? snapshot.assetsTotal : (assetsTotal + portfolioTotal)) || 0;
+  
+  const liabilitiesTotal = liabilities.reduce((sum, l) => sum + (Number(l.remainingBalance) || 0), 0);
+  const loansTotal = loans.reduce((sum, l) => sum + (Number(l.remainingAmount) || 0), 0);
+  const currentLiabilities = Number((usingSnapshot && snapshot) ? snapshot.liabilitiesTotal : (liabilitiesTotal + loansTotal)) || 0;
 
   // ALWAYS use 10-year projections for maximum impact
   const simulationYears = 10;
@@ -189,33 +251,76 @@ const Insights: React.FC = () => {
       return;
     }
 
+    // STEP 2 — LOADING LOCK
+    if (generatingSmart) return;
+
     setGeneratingSmart(true);
     setSmartError(null);
     setIsLowConfidence(false);
 
-    if (income <= 0 || transactions.length === 0) {
-      setSmartError("Add some financial data to generate analysis");
+    // STEP 1 — CREATE SINGLE SOURCE OF TRUTH
+    const financialData = {
+      income: Number(income) || 0,
+      expenses: Number(expenses) || 0,
+      assets: Number(currentAssets) || 0,
+      liabilities: Number(currentLiabilities) || 0,
+      transactions: transactions || []
+    };
+
+    // STEP 6 — MANDATORY DEBUG LOGGING
+    console.log("FINANCIAL DATA PIPELINE CHECK:", financialData);
+
+    // STEP 5 — REVISED VALIDATION LOGIC
+    // Insights should be generated if ANY of the following are true:
+    // income > 0 OR transactions exist OR assets > 0
+    const hasAnyData = financialData.income > 0 || financialData.transactions.length > 0 || financialData.assets > 0;
+
+    if (!hasAnyData) {
+      setSmartError("Add more financial data to unlock insights");
       setGeneratingSmart(false);
       return;
     }
 
+    // Ensure transactions are sorted by date descending for the AI
+    const sortedTransactions = [...financialData.transactions].sort((a, b) => {
+      const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
+      const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
+      return dateB - dateA;
+    });
+
     try {
-      const currentNetWorth = currentAssets - currentLiabilities;
-      const projectedNetWorthBase = scenarios.find(s => s.name === "Base")?.value || 0;
+      const currentNetWorth = financialData.assets - financialData.liabilities;
+      
+      // PART 2 — BUILD DETERMINISTIC ENGINE
+      // Use actual formulas for projections
+      const projectedNetWorthBase = calculate10YearProjection(currentNetWorth, financialData.income - financialData.expenses, 0.08);
+      const bestScenarioValue = scenarios.reduce((max, s) => s.value > max ? s.value : max, 0);
+      const projectedNetWorthOptimized = Math.max(projectedNetWorthBase, bestScenarioValue);
+      
+      // PART 3 — FIX “IMPACT” CALCULATION
+      // impact = (Projected Wealth with Strategy) - (Current Path Projection)
+      const financialImpact = calculateFinancialImpact(projectedNetWorthBase, projectedNetWorthOptimized);
 
       const analysis = await getSmartFinancialAnalysis({
-        income,
-        expenses,
-        assets: currentAssets,
-        liabilities: currentLiabilities,
-        transactions,
+        income: financialData.income,
+        expenses: financialData.expenses,
+        assets: financialData.assets,
+        liabilities: financialData.liabilities,
+        transactions: sortedTransactions,
         userProfile,
         systemCalculations: {
           currentNetWorth,
           projectedNetWorthBase,
+          projectedNetWorthOptimized,
+          financialImpact,
           scenarios
         }
       });
+
+      if (!isSmartFinancialAnalysis(analysis)) {
+        // STEP 4 — FAIL SILENTLY (Show fallback UI)
+        throw new Error("Analysis failed");
+      }
 
       // VALIDATION: IF AI projected net worth deviates more than 30% from simulation
       const deviation = Math.abs(analysis.projectedNetWorth - projectedNetWorthBase) / (projectedNetWorthBase || 1);
@@ -224,11 +329,19 @@ const Insights: React.FC = () => {
       }
 
       setSmartAnalysis(analysis);
+      
+      // STEP 3 — CACHE LAST RESULT
+      if (user?.uid) {
+        await saveSmartAnalysis(user.uid, analysis);
+      }
     } catch (err) {
       console.error("Smart analysis error:", err);
       
-      // FALLBACK: Basic system insight if AI fails
-      const projectedNetWorthBase = scenarios.find(s => s.name === "Base")?.value || 0;
+      // STEP 4 — FAIL SILENTLY: Show fallback UI instead of error text
+      // PART 7 — UI FIX: Never show “Failed to generate analysis”
+      const currentNetWorth = currentAssets - currentLiabilities;
+      const projectedNetWorthBase = calculate10YearProjection(currentNetWorth, income - expenses, 0.08);
+      
       const fallbackAnalysis: SmartFinancialAnalysis = {
         projectedNetWorth: projectedNetWorthBase,
         confidenceScore: 70,
@@ -249,7 +362,7 @@ const Insights: React.FC = () => {
       };
       
       setSmartAnalysis(fallbackAnalysis);
-      setSmartError("AI analysis failed, showing system-generated insights instead.");
+      // We don't set setSmartError here to "fail silently" with a fallback UI
     } finally {
       setGeneratingSmart(false);
     }
@@ -302,49 +415,55 @@ const Insights: React.FC = () => {
       {advice ? (
         <div className="space-y-8">
           {/* SECTION 1 — BEST DECISION (SYSTEM PRIMARY) */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="bg-[#4F46E5] px-8 py-5">
-              <h2 className="text-white font-bold flex items-center text-lg">
-                <CheckCircle2 className="w-6 h-6 mr-3" />
-                Recommended Strategy
-              </h2>
-            </div>
-            <div className="p-8">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                  <p className="text-sm text-gray-500 uppercase tracking-wider font-bold mb-1">Best Scenario</p>
-                  <p className="text-3xl font-bold text-gray-900">{advice.bestScenario}</p>
-                </div>
-                <div className="bg-green-50 px-8 py-6 rounded-2xl border-2 border-green-200 shadow-sm">
-                  <p className="text-sm text-[#16A34A] uppercase tracking-widest font-black mb-2">Total 10-Year Impact</p>
-                  <p className="text-5xl font-black text-[#16A34A] tracking-tighter">
-                    {formatCurrency(advice.improvement)}
-                  </p>
-                  <p className="text-sm font-bold text-green-600/80 mt-2 italic">difference over 10 years</p>
-                </div>
+          {advice.improvement >= 1000 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="bg-[#4F46E5] px-8 py-5">
+                <h2 className="text-white font-bold flex items-center text-lg">
+                  <CheckCircle2 className="w-6 h-6 mr-3" />
+                  Recommended Strategy
+                </h2>
               </div>
-              <div className="mt-8 p-8 bg-indigo-50/30 rounded-2xl border border-indigo-100/50">
-                <p className="text-gray-800 leading-relaxed text-xl">
-                  By switching to the <span className="font-black text-[#4F46E5] underline decoration-indigo-200 underline-offset-4">{advice.bestScenario}</span> strategy, 
-                  you could see a massive <span className="font-black text-[#16A34A] text-2xl">{formatCurrency(advice.improvement)} improvement</span> in your 
-                  total wealth over the next decade.
-                </p>
-              </div>
-
-              {/* AI STRATEGIC HIGHLIGHT */}
-              {smartAnalysis && (
-                <div className="mt-6 p-6 bg-indigo-50/50 rounded-xl border border-indigo-100 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
-                  <div className="flex items-center mb-3">
-                    <Sparkles className="w-5 h-5 text-[#4F46E5] mr-2" />
-                    <span className="text-sm font-bold text-[#4F46E5] uppercase tracking-widest">AI Strategic Insight</span>
+              <div className="p-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div>
+                    <p className="text-sm text-gray-500 uppercase tracking-wider font-bold mb-4">Best Scenario</p>
+                    <p className="text-4xl font-black text-gray-900 tracking-tighter">{advice.bestScenario}</p>
                   </div>
-                  <p className="text-indigo-900 font-medium leading-relaxed">
-                    {smartAnalysis.keyInsights[0]}
+                  <div className="bg-green-50 px-8 py-6 rounded-2xl border-2 border-green-200 shadow-sm">
+                    <p className="text-sm text-[#16A34A] uppercase tracking-widest font-black mb-4">1-Year Impact</p>
+                    <div className="text-5xl font-black text-[#16A34A] tracking-tighter">
+                      <CurrencyDisplay value={advice.improvement} />
+                    </div>
+                    <p className="text-sm font-bold text-green-600/80 mt-2 italic">difference over 1 year</p>
+                  </div>
+                </div>
+                <div className="mt-8 p-8 bg-indigo-50/30 rounded-2xl border border-indigo-100/50">
+                  <p className="text-gray-800 leading-relaxed text-xl">
+                    By switching to the <span className="font-black text-[#4F46E5] underline decoration-indigo-200 underline-offset-4">{advice.bestScenario}</span> strategy, 
+                    you could see a massive <span className="font-black text-[#16A34A] text-2xl"><CurrencyDisplay value={advice.improvement} /> improvement</span> in your 
+                    total wealth over the next year.
                   </p>
                 </div>
-              )}
+
+                {/* AI STRATEGIC HIGHLIGHT */}
+                {smartAnalysis && (
+                  <div className="mt-6 p-6 bg-indigo-50/50 rounded-xl border border-indigo-100 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
+                    <div className="flex items-center mb-3">
+                      <Sparkles className="w-5 h-5 text-[#4F46E5] mr-2" />
+                      <span className="text-sm font-bold text-[#4F46E5] uppercase tracking-widest">AI Strategic Insight</span>
+                    </div>
+                    <p className="text-indigo-900 font-medium leading-relaxed">
+                      {smartAnalysis.keyInsights[0]}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+              <p className="text-gray-500 font-medium">Increase activity to unlock meaningful insights</p>
+            </div>
+          )}
 
           {/* SMART ANALYSIS SECTION (AI SECONDARY) */}
           <div className="mb-10">
@@ -371,7 +490,7 @@ const Insights: React.FC = () => {
                       {generatingSmart ? (
                         <>
                           <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Thinking...
+                          Analyzing your financial data...
                         </>
                       ) : (
                         <>
@@ -384,9 +503,17 @@ const Insights: React.FC = () => {
                 </div>
 
                 {smartError && (
-                  <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center text-red-700">
-                    <AlertTriangle className="w-5 h-5 mr-3" />
-                    {smartError}
+                  <div className={`mb-6 p-4 rounded-xl flex items-center ${
+                    smartError === "Add more financial data to unlock insights"
+                      ? "bg-amber-50 border border-amber-100 text-amber-700"
+                      : "bg-gray-50 border border-gray-100 text-gray-500"
+                  }`}>
+                    {smartError === "Add more financial data to unlock insights" ? (
+                      <AlertTriangle className="w-5 h-5 mr-3" />
+                    ) : (
+                      <ShieldAlert className="w-5 h-5 mr-3 text-gray-400" />
+                    )}
+                    <span className="text-sm font-medium">{smartError}</span>
                   </div>
                 )}
 
@@ -445,7 +572,7 @@ const Insights: React.FC = () => {
                                 Reduce unnecessary expenses
                               </li>
                             </ul>
-                            <p className="text-indigo-200 text-xs font-bold">{formatCurrency(299)}/month • Start improving today</p>
+                            <div className="text-indigo-200 text-xs font-bold"><CurrencyDisplay value={299} />/month • Start improving today</div>
                           </div>
                           <button 
                             onClick={onUpgrade}
@@ -495,11 +622,11 @@ const Insights: React.FC = () => {
                             LOW CONFIDENCE
                           </div>
                         )}
-                        <p className="text-sm text-indigo-600 uppercase tracking-wider font-bold mb-2">10-Year Projected Net Worth</p>
-                        <p className="text-4xl font-bold text-gray-900 font-display">
-                          {formatCurrency(smartAnalysis.projectedNetWorth)}
-                        </p>
-                        <div className="mt-4 flex items-center">
+                        <p className="text-sm text-indigo-600 uppercase tracking-wider font-bold mb-4">10-Year Projected Net Worth</p>
+                        <div className="text-5xl font-black text-gray-900 tracking-tighter">
+                          <CurrencyDisplay value={smartAnalysis.projectedNetWorth} />
+                        </div>
+                        <div className="mt-6 flex items-center">
                           <div className="w-full bg-gray-200 rounded-full h-2 mr-4">
                             <div 
                               className="bg-[#4F46E5] h-2 rounded-full" 
@@ -676,7 +803,7 @@ const Insights: React.FC = () => {
           <div className="mx-auto w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
             <TrendingUp className="w-10 h-10 text-gray-300" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Insufficient Data</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Add more data to unlock insights</h2>
           <p className="text-gray-500 max-w-sm mx-auto text-lg">
             Add more transactions, assets, and liabilities to generate personalized financial insights and simulations.
           </p>

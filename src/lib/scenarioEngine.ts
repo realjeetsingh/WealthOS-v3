@@ -5,7 +5,7 @@
  * It does not use Firestore or external APIs.
  */
 
-import { simulateFinancialLife, SimulationInput } from './simulationEngine';
+import { SimulationInput } from './simulationEngine';
 
 export interface ScenarioResult {
   name: string;
@@ -15,50 +15,33 @@ export interface ScenarioResult {
 /**
  * compareScenarios(baseInput)
  * 
- * Compares four scenarios:
- * 1. Base: Original input
- * 2. Reduce Expenses: Reduce initial expenses by 10%
- * 3. Optimize Investments: Increase investment return rate from 10% to 12%
- * 4. Increase Investments: Increase savings by 20% (by increasing income)
+ * Compares 1-year impacts of three strategies:
+ * 1. Reduce Expenses: Reduce monthly expenses by 10%
+ * 2. Increase Income: Increase monthly income by 10%
+ * 3. Invest Surplus: 10% return on annual savings
  */
 export const compareScenarios = (baseInput: SimulationInput): ScenarioResult[] => {
+  const income = Number(baseInput.income) || 0;
+  const expenses = Number(baseInput.expenses) || 0;
+  const cashflow = income - expenses;
+  const annualSavings = cashflow * 12;
+
   const results: ScenarioResult[] = [];
 
-  // 1. Scenario A — Base
-  const baseTimeline = simulateFinancialLife(baseInput);
-  const baseFinalNetWorth = Number(baseTimeline[baseTimeline.length - 1].netWorth) || 0;
-  results.push({ name: "Base", value: isNaN(baseFinalNetWorth) ? 0 : baseFinalNetWorth });
+  // Base is 0 impact (Current Path)
+  results.push({ name: "Base", value: 0 });
 
-  // 2. Scenario B — Reduce Expenses (Reduce expenses by 10%)
-  const exp = Number(baseInput.expenses) || 0;
-  const reduceExpensesInput: SimulationInput = {
-    ...baseInput,
-    expenses: exp * 0.9
-  };
-  const reduceExpensesTimeline = simulateFinancialLife(reduceExpensesInput);
-  const reduceExpensesFinalNetWorth = Number(reduceExpensesTimeline[reduceExpensesTimeline.length - 1].netWorth) || 0;
-  results.push({ name: "Reduce Expenses", value: isNaN(reduceExpensesFinalNetWorth) ? 0 : reduceExpensesFinalNetWorth });
+  // Strategy 1 — Reduce Expenses (10% reduction)
+  const expenseReduction = expenses * 0.10;
+  results.push({ name: "Reduce Expenses", value: expenseReduction * 12 });
 
-  // 3. Scenario C — Optimize Investments (Increase return rate to 12%)
-  const optimizeInvestmentsInput: SimulationInput = {
-    ...baseInput,
-    investmentReturnRate: 0.12
-  };
-  const optimizeInvestmentsTimeline = simulateFinancialLife(optimizeInvestmentsInput);
-  const optimizeInvestmentsFinalNetWorth = Number(optimizeInvestmentsTimeline[optimizeInvestmentsTimeline.length - 1].netWorth) || 0;
-  results.push({ name: "Optimize Investments", value: isNaN(optimizeInvestmentsFinalNetWorth) ? 0 : optimizeInvestmentsFinalNetWorth });
+  // Strategy 2 — Increase Income (10% increase)
+  const incomeIncrease = income * 0.10;
+  results.push({ name: "Increase Income", value: incomeIncrease * 12 });
 
-  // 4. Scenario D — Increase Investments (Increase savings by 20%)
-  const inc = Number(baseInput.income) || 0;
-  const currentSavings = inc - exp;
-  const targetSavings = currentSavings * 1.2;
-  const increaseInvestmentsInput: SimulationInput = {
-    ...baseInput,
-    income: exp + targetSavings
-  };
-  const increaseInvestmentsTimeline = simulateFinancialLife(increaseInvestmentsInput);
-  const increaseInvestmentsFinalNetWorth = Number(increaseInvestmentsTimeline[increaseInvestmentsTimeline.length - 1].netWorth) || 0;
-  results.push({ name: "Increase Investments", value: isNaN(increaseInvestmentsFinalNetWorth) ? 0 : increaseInvestmentsFinalNetWorth });
+  // Strategy 3 — Invest Surplus (10% return on annual savings)
+  const investmentImpact = Math.max(0, annualSavings * 0.10);
+  results.push({ name: "Invest Surplus", value: investmentImpact });
 
   return results;
 };

@@ -19,7 +19,8 @@ import {
   getProgressSignal 
 } from '../lib/retentionEngine';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
-import { formatCurrency } from '../lib/formatCurrency';
+import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -239,7 +240,9 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <p className="text-indigo-100 font-medium mb-1">Total Net Worth</p>
-                <h2 className="text-5xl font-black tracking-tighter">{formatCurrency(netWorth, userCurrency)}</h2>
+                <h2 className="text-5xl font-black tracking-tighter">
+                  <CurrencyDisplay value={netWorth} currency={userCurrency} />
+                </h2>
               </div>
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${isIncreasing ? 'bg-green-400/20 text-green-300' : 'bg-red-400/20 text-red-300'}`}>
                 {isIncreasing ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
@@ -250,15 +253,21 @@ const Dashboard: React.FC = () => {
             <div className="grid grid-cols-3 gap-4 pt-8 border-t border-indigo-500/50">
               <div>
                 <p className="text-indigo-200 text-xs uppercase tracking-wider font-bold mb-1">Cash</p>
-                <p className="text-xl font-bold">{formatCurrency(cashBalance, userCurrency)}</p>
+                <div className="text-xl font-bold">
+                  <CurrencyDisplay value={cashBalance} currency={userCurrency} />
+                </div>
               </div>
               <div>
                 <p className="text-indigo-200 text-xs uppercase tracking-wider font-bold mb-1">Portfolio</p>
-                <p className="text-xl font-bold">{formatCurrency(portfolioValue, userCurrency)}</p>
+                <div className="text-xl font-bold">
+                  <CurrencyDisplay value={portfolioValue} currency={userCurrency} />
+                </div>
               </div>
               <div>
                 <p className="text-indigo-200 text-xs uppercase tracking-wider font-bold mb-1">Loans</p>
-                <p className="text-xl font-bold text-red-300">-{formatCurrency(loanBalance, userCurrency)}</p>
+                <div className="text-xl font-bold text-red-300">
+                  -<CurrencyDisplay value={loanBalance} currency={userCurrency} />
+                </div>
               </div>
             </div>
           </div>
@@ -289,7 +298,7 @@ const Dashboard: React.FC = () => {
                     </defs>
                     <Area type="monotone" dataKey="value" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                     <RechartsTooltip 
-                      formatter={(value: number) => [formatCurrency(value, userCurrency), 'Net Worth']}
+                      formatter={(value: number) => [formatCurrencyShort(value, userCurrency), 'Net Worth']}
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                     />
                   </AreaChart>
@@ -303,47 +312,51 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
           <div className="mt-6 pt-6 border-t border-gray-50">
-            <p className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600">
               {netWorthTrend !== 0 ? (
-                <>Your net worth {isIncreasing ? 'increased' : 'decreased'} by <span className={`font-bold ${isIncreasing ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(Math.abs(netWorthTrend), userCurrency)}</span> since your last visit.</>
+                <>Your net worth {isIncreasing ? 'increased' : 'decreased'} by <span className={`font-bold ${isIncreasing ? 'text-green-600' : 'text-red-600'}`}><CurrencyDisplay value={Math.abs(netWorthTrend)} currency={userCurrency} /></span> since your last visit.</>
               ) : (
                 "Start tracking your assets and liabilities to see your wealth grow."
               )}
-            </p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Secondary Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-500">Monthly Income</p>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Income</p>
             <div className="p-2 bg-green-50 rounded-lg text-green-600">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(monthlyIncome, userCurrency)}</p>
+          <h3 className="text-3xl font-black text-gray-900 tracking-tighter">
+            <CurrencyDisplay value={monthlyIncome} currency={userCurrency} />
+          </h3>
         </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-500">Monthly Expenses</p>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Expenses</p>
             <div className="p-2 bg-red-50 rounded-lg text-red-600">
               <TrendingDown className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(monthlyExpenses, userCurrency)}</p>
+          <h3 className="text-3xl font-black text-gray-900 tracking-tighter">
+            <CurrencyDisplay value={monthlyExpenses} currency={userCurrency} />
+          </h3>
         </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-500">Monthly Cashflow</p>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Cashflow</p>
             <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
               <BarChart3 className="w-4 h-4" />
             </div>
           </div>
-          <p className={`text-2xl font-bold ${cashflow >= 0 ? 'text-indigo-600' : 'text-orange-600'}`}>
-            {formatCurrency(cashflow, userCurrency)}
-          </p>
+          <h3 className={`text-3xl font-black tracking-tighter ${cashflow >= 0 ? 'text-indigo-600' : 'text-orange-600'}`}>
+            <CurrencyDisplay value={cashflow} currency={userCurrency} />
+          </h3>
         </div>
       </div>
 
@@ -394,7 +407,11 @@ const Dashboard: React.FC = () => {
 
             if (emiRatio > 40) {
               pressure = {
-                text: `High EMI burden: ${formatCurrency(totalEMI, userCurrency)}/month is limiting your financial growth`,
+                text: (
+                  <>
+                    High EMI burden: <CurrencyDisplay value={totalEMI} currency={userCurrency} />/month is limiting your financial growth
+                  </>
+                ),
                 color: 'text-red-600',
                 bgColor: 'bg-red-50',
                 borderColor: 'border-red-100',
@@ -402,7 +419,11 @@ const Dashboard: React.FC = () => {
               };
             } else if (emiRatio >= 20) {
               pressure = {
-                text: `${formatCurrency(totalEMI, userCurrency)}/month in EMIs is reducing your savings potential`,
+                text: (
+                  <>
+                    <CurrencyDisplay value={totalEMI} currency={userCurrency} />/month in EMIs is reducing your savings potential
+                  </>
+                ),
                 color: 'text-amber-600',
                 bgColor: 'bg-amber-50',
                 borderColor: 'border-amber-100',
@@ -422,7 +443,7 @@ const Dashboard: React.FC = () => {
                     </p>
                     {monthlyIncome > 0 && (
                       <p className="text-sm font-medium text-gray-500 mt-2">
-                        EMIs consume <span className="text-gray-900 font-bold">{emiRatio.toFixed(1)}%</span> of your monthly income. Reducing this can increase your monthly savings by <span className="text-gray-900 font-bold">{formatCurrency(totalEMI, userCurrency)}</span>.
+                        EMIs consume <span className="text-gray-900 font-bold">{emiRatio.toFixed(1)}%</span> of your monthly income. Reducing this can increase your monthly savings by <span className="text-gray-900 font-bold"><CurrencyDisplay value={totalEMI} currency={userCurrency} /></span>.
                       </p>
                     )}
                   </div>
