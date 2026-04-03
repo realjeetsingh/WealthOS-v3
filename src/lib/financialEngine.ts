@@ -21,7 +21,6 @@ export const calculateTotalEMI = (loans: Loan[] | null | undefined): number => {
 /**
  * 1. calculateMonthlyIncome(transactions)
  * Sums all transactions of type "income" for the current month.
- * Fallback: If current month is empty, uses the most recent month with income.
  */
 export const calculateMonthlyIncome = (transactions: Transaction[] | null | undefined): number => {
   if (!transactions || !Array.isArray(transactions) || transactions.length === 0) return 0;
@@ -30,36 +29,10 @@ export const calculateMonthlyIncome = (transactions: Transaction[] | null | unde
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  // Try current month first
-  const currentMonthIncome = transactions
+  return transactions
     .filter(t => {
       const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
       return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'income';
-    })
-    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-  if (currentMonthIncome > 0) return currentMonthIncome;
-
-  // Fallback: Find the most recent month with income
-  const incomeTransactions = transactions.filter(t => t.type === 'income');
-  if (incomeTransactions.length === 0) return 0;
-
-  // Sort by date descending
-  const sorted = [...incomeTransactions].sort((a, b) => {
-    const da = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
-    const db = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
-    return db - da;
-  });
-
-  const latest = sorted[0];
-  const latestDate = latest.timestamp?.toDate ? latest.timestamp.toDate() : new Date();
-  const lMonth = latestDate.getMonth();
-  const lYear = latestDate.getFullYear();
-
-  return sorted
-    .filter(t => {
-      const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
-      return d && d.getMonth() === lMonth && d.getFullYear() === lYear;
     })
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 };
@@ -67,7 +40,6 @@ export const calculateMonthlyIncome = (transactions: Transaction[] | null | unde
 /**
  * 2. calculateMonthlyExpenses(transactions, loans)
  * Sums all transactions of type "expense" for the current month + total EMI.
- * Fallback: If current month is empty, uses the most recent month with expenses.
  */
 export const calculateMonthlyExpenses = (
   transactions: Transaction[] | null | undefined,
@@ -81,7 +53,6 @@ export const calculateMonthlyExpenses = (
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  // Try current month first
   const currentMonthExpenses = transactions
     .filter(t => {
       const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
@@ -89,32 +60,7 @@ export const calculateMonthlyExpenses = (
     })
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-  if (currentMonthExpenses > 0) return currentMonthExpenses + totalEMI;
-
-  // Fallback: Find the most recent month with expenses
-  const expenseTransactions = transactions.filter(t => t.type === 'expense');
-  if (expenseTransactions.length === 0) return totalEMI;
-
-  // Sort by date descending
-  const sorted = [...expenseTransactions].sort((a, b) => {
-    const da = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
-    const db = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
-    return db - da;
-  });
-
-  const latest = sorted[0];
-  const latestDate = latest.timestamp?.toDate ? latest.timestamp.toDate() : new Date();
-  const lMonth = latestDate.getMonth();
-  const lYear = latestDate.getFullYear();
-
-  const latestMonthExpenses = sorted
-    .filter(t => {
-      const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
-      return d && d.getMonth() === lMonth && d.getFullYear() === lYear;
-    })
-    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-  return latestMonthExpenses + totalEMI;
+  return currentMonthExpenses + totalEMI;
 };
 
 /**

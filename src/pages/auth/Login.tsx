@@ -57,6 +57,7 @@ const Login: React.FC = () => {
           role: 'user',
           isPremium: false,
           onboardingCompleted: false,
+          hasSeenIntro: false,
           lastLogin: serverTimestamp(),
         }, { merge: true });
       } catch (firestoreErr) {
@@ -171,7 +172,7 @@ const Login: React.FC = () => {
       </div>
 
       {/* Right Side — Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8 md:p-16 bg-gray-50 relative overflow-hidden">
+      <div className="flex-1 flex flex-col items-center justify-start p-8 md:p-16 pt-12 pb-28 bg-gray-50 relative overflow-y-auto">
         {/* Subtle background noise/gradient */}
         <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20"></div>
         
@@ -179,7 +180,7 @@ const Login: React.FC = () => {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="max-w-md w-full relative z-10"
+          className="max-w-md w-full relative z-10 my-auto"
         >
           <div className="md:hidden flex items-center space-x-2 mb-8 justify-center">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">

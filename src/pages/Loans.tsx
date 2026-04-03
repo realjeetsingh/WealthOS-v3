@@ -3,12 +3,12 @@ import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore'
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { addLoan, updateLoan, deleteLoan } from '../services/financeService';
-import { Loan, FinancialSnapshot } from '../types';
+import { Loan, FinancialSnapshot, Transaction } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
-import { calculateTotalEMI } from '../lib/financialEngine';
+import { calculateTotalEMI, calculateMonthlyIncome } from '../lib/financialEngine';
 import Modal from '../components/Modal';
 import { 
   PlusCircle, 
@@ -32,6 +32,7 @@ import {
 const Loans: React.FC = () => {
   const { user, userProfile } = useAuth();
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -123,6 +124,12 @@ const Loans: React.FC = () => {
       }
     });
 
+    const transactionsPath = `users/${user.uid}/transactions`;
+    const unsubTransactions = onSnapshot(query(collection(db, transactionsPath)), (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Transaction[];
+      setTransactions(docs);
+    });
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -139,6 +146,7 @@ const Loans: React.FC = () => {
     return () => {
       unsubscribe();
       unsubSnapshot();
+      unsubTransactions();
     };
   }, [user?.uid]);
 
@@ -331,7 +339,7 @@ const Loans: React.FC = () => {
   }
 
   const totalEMI = calculateTotalEMI(loans);
-  const monthlyIncome = snapshot?.income || 0;
+  const monthlyIncome = calculateMonthlyIncome(transactions);
   const emiRatio = monthlyIncome > 0 ? (totalEMI / monthlyIncome) * 100 : 0;
 
   const getPressureMessage = () => {

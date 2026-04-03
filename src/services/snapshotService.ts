@@ -65,8 +65,6 @@ export const updateFinancialSnapshot = async (userId: string) => {
     const progressSignal = getProgressSignal(income, expenses);
 
     const snapshot: Omit<FinancialSnapshot, 'updatedAt'> & { updatedAt: any } = {
-      income,
-      expenses,
       netWorth,
       cashflow,
       savingsRate,

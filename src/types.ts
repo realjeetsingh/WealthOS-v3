@@ -7,6 +7,7 @@ export interface UserProfile {
   role: string;
   isPremium: boolean;
   onboardingCompleted?: boolean;
+  hasSeenIntro?: boolean;
   profileImage?: string;
   coverImage?: string;
   currency?: string;
@@ -58,8 +59,6 @@ export interface Loan {
 }
 
 export interface FinancialSnapshot {
-  income: number;
-  expenses: number;
   netWorth: number;
   cashflow: number;
   savingsRate: number;

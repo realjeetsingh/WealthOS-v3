@@ -44,7 +44,6 @@ const Insights: React.FC = () => {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioAsset[]>([]);
   const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
-  const [usingSnapshot, setUsingSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadedCollections, setLoadedCollections] = useState<Set<string>>(new Set());
   const [smartAnalysis, setSmartAnalysis] = useState<SmartFinancialAnalysis | null>(null);
@@ -87,16 +86,13 @@ const Insights: React.FC = () => {
       (docSnap) => {
         if (docSnap.exists()) {
           setSnapshot(docSnap.data() as FinancialSnapshot);
-          setUsingSnapshot(true);
           setLoading(false);
         } else {
-          setUsingSnapshot(false);
           markLoaded('snapshot');
         }
       },
       (err) => {
         console.warn("Snapshot fetch failed, falling back to full queries:", err);
-        setUsingSnapshot(false);
         markLoaded('snapshot');
       }
     );
@@ -185,22 +181,22 @@ const Insights: React.FC = () => {
   }, [user?.uid]);
 
   useEffect(() => {
-    if (!usingSnapshot && loadedCollections.size >= 6) {
+    if (loadedCollections.size >= 6) {
       setLoading(false);
     }
-  }, [loadedCollections, usingSnapshot]);
+  }, [loadedCollections]);
 
   // Pipeline Execution with Snapshot Fallback
-  const income = Number((usingSnapshot && snapshot) ? snapshot.income : calculateMonthlyIncome(transactions)) || 0;
-  const expenses = Number((usingSnapshot && snapshot) ? snapshot.expenses : calculateMonthlyExpenses(transactions, loans)) || 0;
+  const income = calculateMonthlyIncome(transactions) || 0;
+  const expenses = calculateMonthlyExpenses(transactions, loans) || 0;
   
   const assetsTotal = assets.reduce((sum, a) => sum + (Number(a.value) || 0), 0);
   const portfolioTotal = portfolio.reduce((sum, p) => sum + (Number(p.currentValue) || 0), 0);
-  const currentAssets = Number((usingSnapshot && snapshot) ? snapshot.assetsTotal : (assetsTotal + portfolioTotal)) || 0;
+  const currentAssets = (assetsTotal + portfolioTotal) || 0;
   
   const liabilitiesTotal = liabilities.reduce((sum, l) => sum + (Number(l.remainingBalance) || 0), 0);
   const loansTotal = loans.reduce((sum, l) => sum + (Number(l.remainingAmount) || 0), 0);
-  const currentLiabilities = Number((usingSnapshot && snapshot) ? snapshot.liabilitiesTotal : (liabilitiesTotal + loansTotal)) || 0;
+  const currentLiabilities = (liabilitiesTotal + loansTotal) || 0;
 
   // ALWAYS use 10-year projections for maximum impact
   const simulationYears = 10;

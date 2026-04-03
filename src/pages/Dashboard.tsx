@@ -58,8 +58,25 @@ const Dashboard: React.FC = () => {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [snapshots, setSnapshots] = useState<NetWorthSnapshot[]>([]);
   const [financialSnapshot, setFinancialSnapshot] = useState<FinancialSnapshot | null>(null);
-  const [usingSnapshot, setUsingSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchRawData = async () => {
+    if (!user?.uid) return;
+    setRefreshing(true);
+    try {
+      const transactionsPath = `users/${user.uid}/transactions`;
+      const q = query(collection(db, transactionsPath));
+      const snapshot = await getDocs(q);
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Transaction[];
+      setTransactions(docs);
+      console.log("MANUAL RE-FETCH COMPLETE:", docs.length, "transactions");
+    } catch (err) {
+      console.error("Manual re-fetch failed:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (!user?.uid) {
@@ -79,14 +96,10 @@ const Dashboard: React.FC = () => {
       (docSnap) => {
         if (docSnap.exists()) {
           setFinancialSnapshot(docSnap.data() as FinancialSnapshot);
-          setUsingSnapshot(true);
-        } else {
-          setUsingSnapshot(false);
         }
       },
       (err) => {
-        console.warn("Snapshot fetch failed, falling back to full queries:", err);
-        setUsingSnapshot(false);
+        console.warn("Snapshot fetch failed, falling back to raw queries:", err);
       }
     );
 
@@ -150,6 +163,18 @@ const Dashboard: React.FC = () => {
   const monthlyExpenses = calculateMonthlyExpenses(transactions, loans);
   const cashflow = calculateCashflow(monthlyIncome, monthlyExpenses);
   const totalEMI = calculateTotalEMI(loans);
+
+  // STEP 6 — MANDATORY DEBUG LOGGING
+  useEffect(() => {
+    if (transactions.length > 0) {
+      console.log("DASHBOARD SYNC CHECK:", {
+        transactionCount: transactions.length,
+        calculatedIncome: monthlyIncome,
+        calculatedExpenses: monthlyExpenses,
+        cashflow: cashflow
+      });
+    }
+  }, [transactions, monthlyIncome, monthlyExpenses, cashflow]);
 
   const userCurrency = userProfile?.currency || 'INR';
 
@@ -216,6 +241,15 @@ const Dashboard: React.FC = () => {
           <p className="mt-2 text-gray-600">Focusing on your long-term wealth and progress.</p>
         </div>
         <div className="flex items-center gap-3">
+          <button 
+            onClick={fetchRawData}
+            disabled={refreshing}
+            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+            title="Force recalculation from raw transactions"
+          >
+            {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
+            Refresh
+          </button>
           <Link 
             to="/portfolio" 
             className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-sm"

@@ -52,6 +52,32 @@ const Onboarding: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showSkipWarning, setShowSkipWarning] = useState(false);
   const [snapshot, setSnapshot] = useState<any>(null);
+  const [showIntro, setShowIntro] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  useEffect(() => {
+    if (userProfile && userProfile.hasSeenIntro === false) {
+      setShowIntro(true);
+    }
+  }, [userProfile]);
+
+  const startJourney = async () => {
+    setIsTransitioning(true);
+    try {
+      const userRef = doc(db, 'users', user!.uid);
+      await updateDoc(userRef, {
+        hasSeenIntro: true
+      });
+      setTimeout(() => {
+        setShowIntro(false);
+        setIsTransitioning(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Error updating intro status:", error);
+      setShowIntro(false);
+      setIsTransitioning(false);
+    }
+  };
 
   // Form States
   const [income, setIncome] = useState({ amount: '', category: 'Salary', notes: '' });
@@ -442,6 +468,10 @@ const Onboarding: React.FC = () => {
                 <Sparkles className="text-white w-10 h-10" />
               </motion.div>
               <h2 className="text-3xl font-black text-gray-900 tracking-tight">Aha! Your Financial Snapshot is Ready</h2>
+              <p className="text-emerald-600 font-bold flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Your financial system is now active
+              </p>
               <p className="text-gray-600">Here's what your financial future looks like.</p>
             </div>
 
@@ -514,6 +544,90 @@ const Onboarding: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 md:p-8">
+      <AnimatePresence mode="wait">
+        {showIntro ? (
+          <motion.div
+            key="intro"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-white flex flex-col items-center overflow-y-auto p-6 pt-10 pb-24 text-center"
+          >
+            {!isTransitioning ? (
+              <motion.div 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="max-w-xl w-full space-y-12"
+              >
+                <div className="space-y-4">
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-indigo-200 rotate-12"
+                  >
+                    <Rocket className="text-white w-10 h-10" />
+                  </motion.div>
+                  <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight">
+                    Take Control of Your <br />
+                    <span className="text-indigo-600">Financial Future</span>
+                  </h1>
+                  <p className="text-xl text-gray-500 font-medium">
+                    Track, analyze, and grow your wealth with AI-powered insights
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 text-left">
+                  {[
+                    { text: "Know your real net worth", icon: BarChart3 },
+                    { text: "See your future wealth in 1 year", icon: TrendingUp },
+                    { text: "Identify where your money is leaking", icon: AlertTriangle }
+                  ].map((benefit, i) => (
+                    <motion.div 
+                      key={i}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: 0.5 + (i * 0.1) }}
+                      className="flex items-center space-x-4 bg-gray-50 p-4 rounded-2xl border border-gray-100"
+                    >
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                        <benefit.icon className="w-5 h-5 text-indigo-600" />
+                      </div>
+                      <span className="font-bold text-gray-700">{benefit.text}</span>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="space-y-8">
+                  <p className="text-gray-600 font-medium italic">
+                    "Most people don’t know where their money goes. <br />
+                    <span className="text-gray-900 font-bold not-italic">You’re about to change that."</span>
+                  </p>
+                  <button
+                    onClick={startJourney}
+                    className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 flex items-center justify-center space-x-3 group"
+                  >
+                    <span className="text-lg">Start My Financial Journey</span>
+                    <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="space-y-6"
+              >
+                <div className="w-24 h-24 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto" />
+                <h2 className="text-3xl font-black text-gray-900 tracking-tight">
+                  Welcome to the new era <br />
+                  of your finances
+                </h2>
+              </motion.div>
+            )}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
       {/* Progress Header */}
       <div className="max-w-2xl w-full mb-8">
         <div className="flex items-center justify-between mb-4">
