@@ -56,6 +56,7 @@ const Signup: React.FC = () => {
           currency: 'INR',
           role: 'user',
           isPremium: false,
+          onboardingCompleted: false,
           lastLogin: serverTimestamp(),
         }, { merge: true });
       } catch (firestoreErr) {
@@ -94,6 +95,7 @@ const Signup: React.FC = () => {
           currency: 'INR',
           role: 'user',
           isPremium: false,
+          onboardingCompleted: false,
           createdAt: serverTimestamp(),
         });
       } catch (firestoreErr) {

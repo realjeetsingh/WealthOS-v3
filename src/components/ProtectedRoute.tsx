@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -22,6 +22,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (!user) {
     // Redirect to login but save the current location
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
+  }
+
+  // If user is logged in but hasn't completed onboarding, redirect to onboarding
+  // BUT don't redirect if they are ALREADY on the onboarding page
+  if (userProfile && !userProfile.onboardingCompleted && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  // If user HAS completed onboarding, don't let them go back to onboarding page
+  if (userProfile?.onboardingCompleted && location.pathname === '/onboarding') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

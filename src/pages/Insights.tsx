@@ -378,16 +378,16 @@ const Insights: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-indigo-100 rounded-lg">
-              <BrainCircuit className="w-6 h-6 text-indigo-600" />
+              <BrainCircuit className="w-5 h-5 md:w-6 md:h-6 text-indigo-600" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Financial Insights</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Financial Insights</h1>
           </div>
         </div>
-        <p className="mt-2 text-gray-600">Smart analysis of your financial future based on current data.</p>
+        <p className="mt-1 md:mt-2 text-sm md:text-base text-gray-600">Smart analysis of your financial future based on current data.</p>
       </div>
 
       {!isPremium && (
@@ -417,30 +417,30 @@ const Insights: React.FC = () => {
           {/* SECTION 1 — BEST DECISION (SYSTEM PRIMARY) */}
           {advice.improvement >= 1000 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="bg-[#4F46E5] px-8 py-5">
-                <h2 className="text-white font-bold flex items-center text-lg">
-                  <CheckCircle2 className="w-6 h-6 mr-3" />
+              <div className="bg-[#4F46E5] px-6 md:px-8 py-4 md:py-5">
+                <h2 className="text-white font-bold flex items-center text-base md:text-lg">
+                  <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 mr-3" />
                   Recommended Strategy
                 </h2>
               </div>
-              <div className="p-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="p-5 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
                   <div>
-                    <p className="text-sm text-gray-500 uppercase tracking-wider font-bold mb-4">Best Scenario</p>
-                    <p className="text-4xl font-black text-gray-900 tracking-tighter">{advice.bestScenario}</p>
+                    <p className="text-xs md:text-sm text-gray-500 uppercase tracking-wider font-bold mb-2 md:mb-4">Best Scenario</p>
+                    <p className="text-2xl md:text-4xl font-black text-gray-900 tracking-tighter">{advice.bestScenario}</p>
                   </div>
-                  <div className="bg-green-50 px-8 py-6 rounded-2xl border-2 border-green-200 shadow-sm">
-                    <p className="text-sm text-[#16A34A] uppercase tracking-widest font-black mb-4">1-Year Impact</p>
-                    <div className="text-5xl font-black text-[#16A34A] tracking-tighter">
+                  <div className="bg-green-50 px-6 md:px-8 py-4 md:py-6 rounded-2xl border-2 border-green-200 shadow-sm">
+                    <p className="text-xs md:text-sm text-[#16A34A] uppercase tracking-widest font-black mb-2 md:mb-4">1-Year Impact</p>
+                    <div className="text-3xl md:text-5xl font-black text-[#16A34A] tracking-tighter">
                       <CurrencyDisplay value={advice.improvement} />
                     </div>
-                    <p className="text-sm font-bold text-green-600/80 mt-2 italic">difference over 1 year</p>
+                    <p className="text-[10px] md:text-sm font-bold text-green-600/80 mt-1 md:mt-2 italic">difference over 1 year</p>
                   </div>
                 </div>
-                <div className="mt-8 p-8 bg-indigo-50/30 rounded-2xl border border-indigo-100/50">
-                  <p className="text-gray-800 leading-relaxed text-xl">
+                <div className="mt-6 md:mt-8 p-5 md:p-8 bg-indigo-50/30 rounded-2xl border border-indigo-100/50">
+                  <p className="text-gray-800 leading-relaxed text-lg md:text-xl">
                     By switching to the <span className="font-black text-[#4F46E5] underline decoration-indigo-200 underline-offset-4">{advice.bestScenario}</span> strategy, 
-                    you could see a massive <span className="font-black text-[#16A34A] text-2xl"><CurrencyDisplay value={advice.improvement} /> improvement</span> in your 
+                    you could see a massive <span className="font-black text-[#16A34A] text-xl md:text-2xl"><CurrencyDisplay value={advice.improvement} /> improvement</span> in your 
                     total wealth over the next year.
                   </p>
                 </div>
@@ -519,11 +519,11 @@ const Insights: React.FC = () => {
 
                 {showPaywall && !isPremium && (
                   <div className="mb-8 animate-in zoom-in-95 duration-300">
-                    <div className="bg-gradient-to-br from-indigo-50 to-white border-2 border-indigo-100 rounded-2xl p-8 shadow-xl relative overflow-hidden">
+                    <div className="bg-gradient-to-br from-indigo-50 to-white border-2 border-indigo-100 rounded-2xl p-5 md:p-8 shadow-xl relative overflow-hidden">
                       <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="p-3 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
-                            <Sparkles className="w-6 h-6 text-white" />
+                        <div className="flex items-center justify-between mb-4 md:mb-6">
+                          <div className="p-2 md:p-3 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
+                            <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-white" />
                           </div>
                           <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black tracking-widest flex items-center">
                             <Crown className="w-3 h-3 mr-1" />
@@ -531,56 +531,59 @@ const Insights: React.FC = () => {
                           </div>
                         </div>
                         
-                        <h3 className="text-2xl font-black text-gray-900 mb-2">Unlock Your Financial Future</h3>
-                        <p className="text-gray-600 mb-8 max-w-md">
-                          Get a deep-dive analysis of your wealth trajectory using the world's most advanced financial AI.
+                        <h3 className="text-xl md:text-2xl font-black text-gray-900 mb-1">Unlock Your Financial Future</h3>
+                        <p className="text-gray-600 mb-4 md:mb-8 text-sm md:text-base leading-tight">
+                          See your 1-year financial growth with AI
                         </p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                          <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
-                            <TrendingUp className="w-5 h-5 text-indigo-600 mb-2" />
-                            <p className="text-xs font-bold text-gray-900">10-Year Projection</p>
-                            <p className="text-[10px] text-gray-500 mt-1">See exactly where you'll be in a decade.</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
+                          <div className="p-3 md:p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-indigo-600 mb-1 md:mb-2" />
+                            <p className="text-[10px] md:text-xs font-bold text-gray-900">10-Year Projection</p>
+                            <p className="text-[9px] md:text-[10px] text-gray-500 mt-0.5 leading-tight">See exactly where you'll be in a decade.</p>
                           </div>
-                          <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
-                            <BrainCircuit className="w-5 h-5 text-indigo-600 mb-2" />
-                            <p className="text-xs font-bold text-gray-900">AI Insights</p>
-                            <p className="text-[10px] text-gray-500 mt-1">Strategic advice tailored to your habits.</p>
+                          <div className="p-3 md:p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <BrainCircuit className="w-4 h-4 md:w-5 md:h-5 text-indigo-600 mb-1 md:mb-2" />
+                            <p className="text-[10px] md:text-xs font-bold text-gray-900">AI Insights</p>
+                            <p className="text-[9px] md:text-[10px] text-gray-500 mt-0.5 leading-tight">Strategic advice tailored to your habits.</p>
                           </div>
-                          <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
-                            <ShieldAlert className="w-5 h-5 text-indigo-600 mb-2" />
-                            <p className="text-xs font-bold text-gray-900">Risk Analysis</p>
-                            <p className="text-[10px] text-gray-500 mt-1">Identify and fix financial blindspots.</p>
+                          <div className="p-3 md:p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <ShieldAlert className="w-4 h-4 md:w-5 md:h-5 text-indigo-600 mb-1 md:mb-2" />
+                            <p className="text-[10px] md:text-xs font-bold text-gray-900">Risk Analysis</p>
+                            <p className="text-[9px] md:text-[10px] text-gray-500 mt-0.5 leading-tight">Identify and fix financial blindspots.</p>
                           </div>
                         </div>
 
-                        <div className="bg-indigo-600 rounded-2xl p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8">
+                        <div className="bg-indigo-600 rounded-2xl p-6 md:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8">
                           <div className="text-center md:text-left">
-                            <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-2">Limited Time Offer</p>
-                            <p className="text-2xl font-black mb-4">Unlock Your Financial Plan</p>
-                            <ul className="space-y-2 mb-4">
-                              <li className="flex items-center text-sm font-bold text-indigo-100">
-                                <CheckCircle2 className="w-4 h-4 mr-2 text-white" />
+                            <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-widest mb-1">Limited Time Offer</p>
+                            <p className="text-xl md:text-2xl font-black mb-3 md:mb-4">Unlock Your Financial Plan</p>
+                            <ul className="space-y-1.5 md:space-y-2 mb-4">
+                              <li className="flex items-center text-xs md:text-sm font-bold text-indigo-100">
+                                <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 mr-2 text-white" />
                                 Close loans faster
                               </li>
-                              <li className="flex items-center text-sm font-bold text-indigo-100">
-                                <CheckCircle2 className="w-4 h-4 mr-2 text-white" />
+                              <li className="flex items-center text-xs md:text-sm font-bold text-indigo-100">
+                                <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 mr-2 text-white" />
                                 Increase net worth
                               </li>
-                              <li className="flex items-center text-sm font-bold text-indigo-100">
-                                <CheckCircle2 className="w-4 h-4 mr-2 text-white" />
+                              <li className="flex items-center text-xs md:text-sm font-bold text-indigo-100">
+                                <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 mr-2 text-white" />
                                 Reduce unnecessary expenses
                               </li>
                             </ul>
-                            <div className="text-indigo-200 text-xs font-bold"><CurrencyDisplay value={299} />/month • Start improving today</div>
+                            <div className="text-indigo-200 text-[10px] font-bold"><CurrencyDisplay value={299} />/month • Start improving today</div>
                           </div>
-                          <button 
-                            onClick={onUpgrade}
-                            className="w-full md:w-auto bg-white text-indigo-600 px-10 py-5 rounded-xl font-black text-base hover:scale-105 transition-transform shadow-2xl flex items-center justify-center"
-                          >
-                            Get Started
-                            <ArrowRight className="w-5 h-5 ml-2" />
-                          </button>
+                          <div className="w-full md:w-auto text-center">
+                            <button 
+                              onClick={onUpgrade}
+                              className="w-full md:w-auto bg-white text-indigo-600 px-8 py-4 md:px-10 md:py-5 rounded-xl font-black text-sm md:text-base hover:scale-105 transition-transform shadow-2xl flex items-center justify-center"
+                            >
+                              Generate Insights
+                              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+                            </button>
+                            <p className="mt-2 text-[10px] text-indigo-200 font-medium">Based on your real financial data</p>
+                          </div>
                         </div>
 
                         <div className="mt-6 flex items-center justify-center space-x-2 text-indigo-600/60">
@@ -614,37 +617,37 @@ const Insights: React.FC = () => {
                 {smartAnalysis ? (
                   <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     {/* 10-YEAR PROJECTION */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="bg-indigo-50/50 p-8 rounded-xl border border-indigo-100 relative">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                      <div className="bg-indigo-50/50 p-6 md:p-8 rounded-xl border border-indigo-100 relative">
                         {isLowConfidence && (
                           <div className="absolute top-4 right-4 flex items-center bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold border border-amber-200">
                             <AlertTriangle className="w-3 h-3 mr-1" />
                             LOW CONFIDENCE
                           </div>
                         )}
-                        <p className="text-sm text-indigo-600 uppercase tracking-wider font-bold mb-4">10-Year Projected Net Worth</p>
-                        <div className="text-5xl font-black text-gray-900 tracking-tighter">
+                        <p className="text-xs md:text-sm text-indigo-600 uppercase tracking-wider font-bold mb-3 md:mb-4">10-Year Projected Net Worth</p>
+                        <div className="text-3xl md:text-5xl font-black text-gray-900 tracking-tighter">
                           <CurrencyDisplay value={smartAnalysis.projectedNetWorth} />
                         </div>
-                        <div className="mt-6 flex items-center">
-                          <div className="w-full bg-gray-200 rounded-full h-2 mr-4">
+                        <div className="mt-4 md:mt-6 flex items-center">
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 md:h-2 mr-4">
                             <div 
-                              className="bg-[#4F46E5] h-2 rounded-full" 
+                              className="bg-[#4F46E5] h-full rounded-full" 
                               style={{ width: `${smartAnalysis.confidenceScore}%` }}
                             ></div>
                           </div>
-                          <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">
+                          <span className="text-[10px] md:text-xs font-bold text-indigo-600 whitespace-nowrap">
                             {smartAnalysis.confidenceScore}% Confidence
                           </span>
                         </div>
                       </div>
                       
-                      <div className="bg-amber-50/50 p-8 rounded-xl border border-amber-100">
-                        <h3 className="text-sm text-amber-700 uppercase tracking-wider font-bold mb-4 flex items-center">
+                      <div className="bg-amber-50/50 p-6 md:p-8 rounded-xl border border-amber-100">
+                        <h3 className="text-xs md:text-sm text-amber-700 uppercase tracking-wider font-bold mb-3 md:mb-4 flex items-center">
                           <ShieldAlert className="w-4 h-4 mr-2" />
                           Risk Assessment
                         </h3>
-                        <p className="text-gray-700 leading-relaxed italic">
+                        <p className="text-sm md:text-base text-gray-700 leading-relaxed italic">
                           "{smartAnalysis.riskAssessment}"
                         </p>
                       </div>
@@ -738,9 +741,9 @@ const Insights: React.FC = () => {
           </div>
 
           {/* SECTION 2 — RECOMMENDATIONS */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-              <Lightbulb className="w-6 h-6 mr-3 text-yellow-500" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
+            <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center">
+              <Lightbulb className="w-5 h-5 md:w-6 md:h-6 mr-3 text-yellow-500" />
               Actionable Recommendations
             </h2>
             <ul className="space-y-4">
@@ -782,9 +785,9 @@ const Insights: React.FC = () => {
 
           {/* SECTION 3 — WARNINGS */}
           {advice.warnings.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-red-50 p-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                <AlertTriangle className="w-6 h-6 mr-3 text-[#DC2626]" />
+            <div className="bg-white rounded-xl shadow-sm border border-red-50 p-6 md:p-8">
+              <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center">
+                <AlertTriangle className="w-5 h-5 md:w-6 md:h-6 mr-3 text-[#DC2626]" />
                 Financial Warnings
               </h2>
               <ul className="space-y-4">

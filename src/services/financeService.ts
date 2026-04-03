@@ -266,3 +266,20 @@ export const getPortfolioAssets = async (userId: string | undefined) => {
     return [];
   }
 };
+
+/**
+ * Financial Goals
+ */
+export const addGoal = async (userId: string | undefined, data: any) => {
+  if (!userId) throw new Error('User ID is required for addGoal');
+  const path = `users/${userId}/goals`;
+  try {
+    const docRef = await addDoc(collection(db, path), {
+      ...data,
+      timestamp: serverTimestamp()
+    });
+    return docRef;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+};

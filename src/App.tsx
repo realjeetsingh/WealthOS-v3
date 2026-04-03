@@ -17,6 +17,7 @@ import Portfolio from './pages/Portfolio';
 import Loans from './pages/Loans';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
+import Onboarding from './pages/Onboarding';
 import { Toaster } from 'sonner';
 import { auth } from './firebase';
 import { User as UserIcon } from 'lucide-react';
@@ -95,6 +96,14 @@ export default function App() {
                 <Layout>
                   <Settings />
                 </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/onboarding" 
+            element={
+              <ProtectedRoute>
+                <Onboarding />
               </ProtectedRoute>
             } 
           />

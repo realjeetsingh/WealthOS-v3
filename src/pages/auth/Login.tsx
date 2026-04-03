@@ -56,6 +56,7 @@ const Login: React.FC = () => {
           currency: 'INR',
           role: 'user',
           isPremium: false,
+          onboardingCompleted: false,
           lastLogin: serverTimestamp(),
         }, { merge: true });
       } catch (firestoreErr) {

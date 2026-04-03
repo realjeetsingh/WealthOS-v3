@@ -6,6 +6,7 @@ export interface UserProfile {
   phone?: string;
   role: string;
   isPremium: boolean;
+  onboardingCompleted?: boolean;
   profileImage?: string;
   coverImage?: string;
   currency?: string;
