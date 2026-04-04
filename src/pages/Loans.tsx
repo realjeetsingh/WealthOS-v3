@@ -373,7 +373,7 @@ const Loans: React.FC = () => {
   const pressure = getPressureMessage();
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-5xl mx-auto px-4 py-8 w-full overflow-x-hidden max-w-full">
       <div className="space-y-10">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -627,17 +627,17 @@ const Loans: React.FC = () => {
                           <span className="text-sm font-bold">Total Payable: <CurrencyDisplay value={l.totalAmount} /></span>
                         </div>
                       </div>
-                      <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex space-x-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => handleEdit(l)}
-                          className="p-2.5 bg-gray-50 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                          className="p-2.5 bg-gray-50 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
                           title="Edit"
                         >
                           <Edit2 className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(l.id || null)}
-                          className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                          className="p-2.5 bg-gray-50 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                           title="Delete"
                         >
                           <Trash2 className="w-5 h-5" />

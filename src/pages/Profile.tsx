@@ -9,7 +9,6 @@ import {
   HelpCircle, 
   ChevronRight,
   ExternalLink,
-  ShieldCheck,
   Trophy,
   X,
   Check,
@@ -26,8 +25,6 @@ import {
   Wallet,
   Crown,
   Settings,
-  Bell,
-  Shield,
   Award,
   Zap,
   Target,
@@ -40,7 +37,6 @@ import { toast } from 'sonner';
 import { doc, updateDoc, collection, query, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
-import { useNavigate } from 'react-router-dom';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
 import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
@@ -59,10 +55,10 @@ import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
 
 const Profile: React.FC = () => {
   const { user, userProfile, isPremium } = useAuth();
-  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   
   const [newName, setNewName] = useState(userProfile?.name || '');
   const [newPhone, setNewPhone] = useState(userProfile?.phone || '');
@@ -341,16 +337,17 @@ const Profile: React.FC = () => {
     }
   };
 
-  const accountActions = [
-    { label: 'Security Settings', icon: Shield, color: 'text-blue-600', bgColor: 'bg-blue-50', path: '/settings' },
-    { label: 'Notification Preferences', icon: Bell, color: 'text-purple-600', bgColor: 'bg-purple-50', path: '/settings' },
-    { label: 'Privacy Policy', icon: Lock, color: 'text-gray-600', bgColor: 'bg-gray-50', path: '/settings' },
-  ];
-
   const supportLinks = [
-    { label: 'Help Center', icon: LifeBuoy, href: '#' },
-    { label: 'Contact Support', icon: MessageSquare, href: '#' },
-    { label: 'Community Forum', icon: HelpCircle, href: '#' },
+    { 
+      label: 'Help Center', 
+      icon: LifeBuoy, 
+      onClick: () => setShowHelpModal(true) 
+    },
+    { 
+      label: 'Contact Support', 
+      icon: MessageSquare, 
+      onClick: () => window.location.href = `mailto:realjeetsingh@gmail.com?subject=WealthOS Support Request&body=Hi Support Team,%0D%0A%0D%0A[Describe your issue here]%0D%0A%0D%0AUser ID: ${user?.uid}`
+    },
   ];
 
   return (
@@ -661,87 +658,69 @@ const Profile: React.FC = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Details & Actions */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Account Actions Card */}
-          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-10 max-w-full overflow-hidden">
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-8">System Settings</h2>
-            <div className="space-y-3">
-              {accountActions.map((action) => (
-                <button 
-                  key={action.label}
-                  onClick={() => navigate(action.path)}
-                  className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-all group border border-transparent hover:border-gray-100"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-10 h-10 ${action.bgColor} ${action.color} rounded-xl flex items-center justify-center`}>
-                      <action.icon className="w-5 h-5" />
-                    </div>
-                    <span className="font-bold text-gray-700 group-hover:text-gray-900">{action.label}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Support & Info */}
-        <div className="space-y-8">
-          {/* Help & Support Card */}
-          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 max-w-full overflow-hidden">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-              <LifeBuoy className="w-5 h-5 mr-2 text-indigo-600" />
-              Help & Support
-            </h2>
-            <div className="space-y-2">
-              {supportLinks.map((link) => (
-                <a 
-                  key={link.label}
-                  href={link.href}
-                  className="flex items-center justify-between p-4 rounded-2xl hover:bg-indigo-50 transition-all group border border-transparent hover:border-indigo-100"
-                >
-                  <div className="flex items-center space-x-3">
-                    <link.icon className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
-                    <span className="text-sm font-bold text-gray-700 group-hover:text-indigo-900 transition-colors">{link.label}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-400 transition-colors" />
-                </a>
-              ))}
-            </div>
-            
-            <button className="w-full mt-6 py-4 bg-gray-50 text-gray-600 rounded-2xl text-sm font-bold hover:bg-gray-100 transition-all flex items-center justify-center">
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Visit Knowledge Base
-            </button>
-          </div>
-
-          {/* Premium Upsell (if not premium) */}
-          {!isPremium && (
-            <div className="bg-gradient-to-br from-indigo-900 to-indigo-950 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-2xl">
-              <div className="relative z-10">
-                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/20">
-                  <Trophy className="w-6 h-6 text-amber-400" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Help & Support Card */}
+        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 max-w-full overflow-hidden">
+          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+            <LifeBuoy className="w-5 h-5 mr-2 text-indigo-600" />
+            Help & Support
+          </h2>
+          <div className="space-y-2">
+            {supportLinks.map((link) => (
+              <button 
+                key={link.label}
+                onClick={link.onClick}
+                className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-indigo-50 transition-all group border border-transparent hover:border-indigo-100 text-left"
+              >
+                <div className="flex items-center space-x-3">
+                  <link.icon className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                  <span className="text-sm font-bold text-gray-700 group-hover:text-indigo-900 transition-colors">{link.label}</span>
                 </div>
-                <h3 className="text-2xl font-bold mb-3 tracking-tight">Upgrade to Pro</h3>
-                <p className="text-indigo-200 text-sm leading-relaxed mb-8">
-                  Unlock advanced financial insights, unlimited accounts, and priority support.
-                </p>
-                <button className="w-full py-4 bg-amber-400 text-amber-950 rounded-2xl text-sm font-bold hover:bg-amber-300 transition-all shadow-lg shadow-amber-900/20">
-                  Get Pro Access
-                </button>
-              </div>
-              <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500 rounded-full blur-[80px] opacity-30"></div>
-            </div>
-          )}
-
-          {/* App Version Info */}
-          <div className="text-center space-y-1">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">WealthOS v2.4.0</p>
-            <p className="text-[10px] text-gray-300">© 2026 WealthOS Inc. All rights reserved.</p>
+                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-400 transition-colors" />
+              </button>
+            ))}
           </div>
+          
+          <button className="w-full mt-6 py-4 bg-gray-50 text-gray-600 rounded-2xl text-sm font-bold hover:bg-gray-100 transition-all flex items-center justify-center">
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Visit Knowledge Base
+          </button>
         </div>
+
+        {/* Premium Upsell (if not premium) */}
+        {!isPremium ? (
+          <div className="bg-gradient-to-br from-indigo-900 to-indigo-950 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-2xl">
+            <div className="relative z-10">
+              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/20">
+                <Trophy className="w-6 h-6 text-amber-400" />
+              </div>
+              <h3 className="text-2xl font-bold mb-3 tracking-tight">Upgrade to Pro</h3>
+              <p className="text-indigo-200 text-sm leading-relaxed mb-8">
+                Unlock advanced financial insights, unlimited accounts, and priority support.
+              </p>
+              <button className="w-full py-4 bg-amber-400 text-amber-950 rounded-2xl text-sm font-bold hover:bg-amber-300 transition-all shadow-lg shadow-amber-900/20">
+                Get Pro Access
+              </button>
+            </div>
+            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500 rounded-full blur-[80px] opacity-30"></div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600">
+              <Crown className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Premium Member</h3>
+              <p className="text-sm text-gray-500 max-w-[200px] mx-auto">You have full access to all WealthOS Pro features.</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* App Version Info */}
+      <div className="text-center space-y-1 py-4">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">WealthOS v2.4.0</p>
+        <p className="text-[10px] text-gray-300">© 2026 WealthOS Inc. All rights reserved.</p>
       </div>
 
       {/* Hidden File Inputs */}
@@ -759,6 +738,80 @@ const Profile: React.FC = () => {
         accept="image/*"
         className="hidden"
       />
+
+      {/* Help Center Modal */}
+      {showHelpModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in duration-300 max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex justify-between items-center p-10 border-b border-gray-100 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center">
+                  <LifeBuoy className="w-6 h-6 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Help Center</h3>
+                  <p className="text-sm text-gray-500 mt-1">Frequently Asked Questions</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowHelpModal(false)}
+                className="p-3 hover:bg-gray-100 rounded-2xl transition-all"
+              >
+                <X className="w-6 h-6 text-gray-400" />
+              </button>
+            </div>
+
+            <div className="p-10 space-y-6 overflow-y-auto flex-1 pb-32 md:pb-10 custom-scrollbar">
+              {[
+                {
+                  q: "How is my net worth calculated?",
+                  a: "WealthOS aggregates your cash balance, portfolio assets, and subtracts any active loan balances to give you a real-time net worth snapshot."
+                },
+                {
+                  q: "Is my financial data secure?",
+                  a: "Yes, we use industry-standard encryption and secure Firebase infrastructure. Your data is private and only accessible by you."
+                },
+                {
+                  q: "How do I upgrade to Pro?",
+                  a: "You can upgrade by clicking the 'Upgrade to Pro' card on your profile or dashboard. Pro unlocks advanced insights and unlimited tracking."
+                },
+                {
+                  q: "Can I export my transactions?",
+                  a: "Currently, you can view all transactions in the Transactions tab. CSV export functionality is coming in a future update."
+                },
+                {
+                  q: "How do I reset my password?",
+                  a: "Go to Settings > Security to update your password. If you've forgotten it, use the 'Forgot Password' link on the login screen."
+                }
+              ].map((faq, i) => (
+                <div key={i} className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                  <h4 className="font-bold text-gray-900 mb-2 flex items-start">
+                    <span className="text-indigo-600 mr-2">Q:</span>
+                    {faq.q}
+                  </h4>
+                  <p className="text-sm text-gray-600 leading-relaxed flex items-start">
+                    <span className="text-emerald-600 mr-2 font-bold">A:</span>
+                    {faq.a}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-sm text-gray-500">Still need help?</p>
+              <button 
+                onClick={() => {
+                  setShowHelpModal(false);
+                  window.location.href = `mailto:realjeetsingh@gmail.com?subject=WealthOS Support Request`;
+                }}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+              >
+                Contact Support
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Profile Modal */}
       {isEditing && (

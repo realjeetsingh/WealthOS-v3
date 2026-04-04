@@ -484,8 +484,8 @@ const Settings: React.FC = () => {
       {/* Change Password Modal */}
       {isChangingPassword && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="flex justify-between items-center mb-8">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-300 max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex justify-between items-center p-10 border-b border-gray-100 shrink-0">
               <div>
                 <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Change Password</h3>
                 <p className="text-sm text-gray-500 mt-1">Enhance your account security</p>
@@ -498,7 +498,7 @@ const Settings: React.FC = () => {
               </button>
             </div>
             
-            <form onSubmit={handleChangePassword} className="space-y-6">
+            <form onSubmit={handleChangePassword} className="p-10 space-y-6 overflow-y-auto flex-1 pb-32 md:pb-10 custom-scrollbar">
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Current Password</label>
                 <div className="relative">
@@ -596,8 +596,8 @@ const Settings: React.FC = () => {
       {/* Delete Account Modal */}
       {isDeletingAccount && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="flex justify-between items-center mb-8">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-300 max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex justify-between items-center p-10 border-b border-gray-100 shrink-0">
               <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center">
                 <Trash2 className="w-8 h-8 text-red-500" />
               </div>
@@ -609,14 +609,15 @@ const Settings: React.FC = () => {
               </button>
             </div>
             
-            <div className="space-y-4 mb-10">
-              <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Delete Account?</h3>
-              <p className="text-gray-500 leading-relaxed">
-                This action is <span className="font-bold text-red-600 uppercase">permanent</span>. All your financial data, transactions, and settings will be deleted forever. This cannot be undone.
-              </p>
-            </div>
-            
-            <div className="flex space-x-4">
+            <div className="p-10 space-y-4 overflow-y-auto flex-1 pb-32 md:pb-10 custom-scrollbar">
+              <div className="mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Delete Account?</h3>
+                <p className="text-gray-500 leading-relaxed">
+                  This action is <span className="font-bold text-red-600 uppercase">permanent</span>. All your financial data, transactions, and settings will be deleted forever. This cannot be undone.
+                </p>
+              </div>
+              
+              <div className="flex space-x-4">
               <button 
                 onClick={() => setIsDeletingAccount(false)}
                 className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl text-sm font-bold hover:bg-gray-200 transition-all"
@@ -637,7 +638,8 @@ const Settings: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      </div>
+    )}
     </div>
   );
 };

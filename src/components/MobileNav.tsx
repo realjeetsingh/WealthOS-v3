@@ -7,7 +7,11 @@ import {
   Wallet 
 } from 'lucide-react';
 
-const MobileNav: React.FC = () => {
+interface MobileNavProps {
+  isVisible?: boolean;
+}
+
+const MobileNav: React.FC<MobileNavProps> = ({ isVisible = true }) => {
   const location = useLocation();
 
   const navLinks = [
@@ -18,7 +22,7 @@ const MobileNav: React.FC = () => {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-2 h-[70px] flex justify-around items-center z-[9999] shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.05)]">
+    <nav className={`md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-2 h-[70px] flex justify-around items-center z-[9999] shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.05)] transition-transform duration-500 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
       {navLinks.map((link) => {
         const Icon = link.icon;
         const isActive = location.pathname === link.to;

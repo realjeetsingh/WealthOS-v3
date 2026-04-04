@@ -11,7 +11,11 @@ import {
 import { auth } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
 
-const AppHeader: React.FC = () => {
+interface AppHeaderProps {
+  isVisible?: boolean;
+}
+
+const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
   const { userProfile, isPremium } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -39,7 +43,7 @@ const AppHeader: React.FC = () => {
   }, []);
 
   return (
-    <header className="bg-white border-b border-gray-100 sticky top-0 z-[900]">
+    <header className={`bg-white border-b border-gray-100 sticky top-0 z-[900] transition-transform duration-500 ease-in-out ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}>
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center space-x-8">

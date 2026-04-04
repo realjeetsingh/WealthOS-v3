@@ -373,7 +373,7 @@ const Insights: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto w-full overflow-x-hidden max-w-full">
       <div className="mb-6 md:mb-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">

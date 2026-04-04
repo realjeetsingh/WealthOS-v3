@@ -315,7 +315,7 @@ export default function Portfolio() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
+    <div className="p-6 max-w-7xl mx-auto space-y-8 w-full overflow-x-hidden max-w-full">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -616,7 +616,7 @@ export default function Portfolio() {
                         <div className="relative inline-block text-left">
                           <button
                             onClick={() => setActiveMenuId(activeMenuId === asset.id ? null : asset.id)}
-                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
@@ -706,7 +706,7 @@ export default function Portfolio() {
                     <div className="relative">
                       <button
                         onClick={() => setActiveMenuId(activeMenuId === asset.id ? null : asset.id)}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
@@ -792,9 +792,9 @@ export default function Portfolio() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden"
+              className="relative bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">{editingAssetId ? 'Edit Asset' : 'Add New Asset'}</h2>
                   <p className="text-sm text-gray-500">{editingAssetId ? 'Update your asset details.' : 'Enter the details of your investment.'}</p>
@@ -807,7 +807,7 @@ export default function Portfolio() {
                 </button>
               </div>
 
-              <form onSubmit={handleAddAsset} className="p-6 space-y-6">
+              <form onSubmit={handleAddAsset} className="p-6 space-y-6 overflow-y-auto flex-1 pb-32 md:pb-6 custom-scrollbar">
                 {/* Category Selector */}
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-gray-700">Asset Category</label>

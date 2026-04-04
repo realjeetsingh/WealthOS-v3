@@ -9,6 +9,7 @@ import {
   ArrowRight, 
   CheckCircle2, 
   AlertTriangle, 
+  ShieldCheck,
   ChevronRight, 
   ChevronLeft,
   Plus,
@@ -85,6 +86,120 @@ const Onboarding: React.FC = () => {
   const [loan, setLoan] = useState({ name: '', principalAmount: '', emi: '', tenureMonths: '', paidMonths: '0' });
   const [asset, setAsset] = useState({ name: '', value: '', type: 'Savings' });
   const [goal, setGoal] = useState({ name: '', targetAmount: '', currentAmount: '0' });
+  const [selectedGoalOption, setSelectedGoalOption] = useState<string | null>(null);
+
+  const totalMonthlyIncome = Number(income.amount) || 0;
+  const totalMonthlyExpenses = Number(expense.amount) || 0;
+  const totalMonthlyEMI = Number(loan.emi) || 0;
+  const monthlyCashflow = totalMonthlyIncome - totalMonthlyExpenses - totalMonthlyEMI;
+  const expenseRatio = totalMonthlyIncome > 0 ? ((totalMonthlyExpenses + totalMonthlyEMI) / totalMonthlyIncome) * 100 : 0;
+
+  const getFinancialFeedback = () => {
+    if (totalMonthlyIncome === 0) return null;
+    if (expenseRatio > 70) {
+      return {
+        message: `You're spending ${expenseRatio.toFixed(0)}% of your income. That's quite high!`,
+        color: 'text-rose-600',
+        bgColor: 'bg-rose-50',
+        borderColor: 'border-rose-100',
+        icon: AlertTriangle
+      };
+    }
+    if (expenseRatio > 50) {
+      return {
+        message: `You're spending ${expenseRatio.toFixed(0)}% of your income. Good, but we can optimize.`,
+        color: 'text-amber-600',
+        bgColor: 'bg-amber-50',
+        borderColor: 'border-amber-100',
+        icon: TrendingDown
+      };
+    }
+    return {
+      message: `Great! You're saving ${formatCurrency(monthlyCashflow)} every month.`,
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
+      borderColor: 'border-emerald-100',
+      icon: CheckCircle2
+    };
+  };
+
+  const feedback = getFinancialFeedback();
+
+  const getStepGuidance = () => {
+    if (currentStep === 1) return "Good start — now let’s understand your spending";
+    if (currentStep === 2 && totalMonthlyExpenses > 0) return `You’re spending ${formatCurrency(totalMonthlyExpenses)}/month — we’ll optimize this`;
+    if (currentStep === 3 && totalMonthlyEMI > 0) {
+      const emiLoad = (totalMonthlyEMI / totalMonthlyIncome) * 100;
+      return `Your EMI load is ${emiLoad.toFixed(0)}% of your income`;
+    }
+    return null;
+  };
+
+  const guidance = getStepGuidance();
+
+  const GOAL_OPTIONS = [
+    { id: 'save_1l', name: 'Save ₹1L', target: 100000, icon: PiggyBank },
+    { id: 'debt_free', name: 'Become debt-free', target: totalMonthlyEMI * 12 || 500000, icon: ShieldCheck },
+    { id: 'build_10l', name: 'Build ₹10L portfolio', target: 1000000, icon: TrendingUp },
+    { id: 'custom', name: 'Custom goal', target: 0, icon: Plus }
+  ];
+
+  const calculateGoalProjection = () => {
+    const target = Number(goal.targetAmount) || 0;
+    const current = Number(goal.currentAmount) || 0;
+    const remaining = target - current;
+    
+    if (remaining <= 0) return "You've already reached this goal!";
+    if (monthlyCashflow <= 0) return "Increase your cashflow to reach this goal";
+    
+    const months = Math.ceil(remaining / monthlyCashflow);
+    if (months > 120) return "This will take over 10 years at your current pace";
+    return `At your current pace, you’ll reach this in ${months} month${months > 1 ? 's' : ''}`;
+  };
+
+  const LivePreview = () => {
+    if (currentStep > 2 || totalMonthlyIncome === 0) return null;
+    
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`mt-8 p-6 rounded-2xl border ${feedback?.borderColor} ${feedback?.bgColor} space-y-4`}
+      >
+        <div className="flex items-center justify-between">
+          <h4 className="font-bold text-gray-900 flex items-center">
+            <BarChart3 className="w-4 h-4 mr-2 text-indigo-600" />
+            Live Preview
+          </h4>
+          <span className={`text-xs font-black uppercase tracking-widest px-2 py-1 rounded-md ${feedback?.bgColor} ${feedback?.color} border ${feedback?.borderColor}`}>
+            Real-time
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Monthly Cashflow</p>
+            <p className={`text-xl font-black ${monthlyCashflow >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {monthlyCashflow >= 0 ? '+' : ''}{formatCurrency(monthlyCashflow)}
+            </p>
+          </div>
+          <div className="space-y-1 text-right">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Savings Potential</p>
+            <p className="text-xl font-black text-indigo-600">
+              {expenseRatio > 100 ? '0%' : `${(100 - expenseRatio).toFixed(0)}%`}
+            </p>
+          </div>
+        </div>
+
+        {feedback && (
+          <div className={`flex items-start space-x-3 pt-3 border-t ${feedback.borderColor}`}>
+            <feedback.icon className={`w-5 h-5 ${feedback.color} mt-0.5 flex-shrink-0`} />
+            <p className={`text-sm font-bold ${feedback.color}`}>{feedback.message}</p>
+          </div>
+        )}
+      </motion.div>
+    );
+  };
 
   const progress = (currentStep / (STEPS.length - 1)) * 100;
 
@@ -240,6 +355,7 @@ const Onboarding: React.FC = () => {
                 </select>
               </div>
             </div>
+            <LivePreview />
           </div>
         );
       case 'expenses':
@@ -286,6 +402,7 @@ const Onboarding: React.FC = () => {
                 </select>
               </div>
             </div>
+            <LivePreview />
           </div>
         );
       case 'loans':
@@ -352,6 +469,7 @@ const Onboarding: React.FC = () => {
                 />
               </div>
             </div>
+            <LivePreview />
           </div>
         );
       case 'assets':
@@ -410,131 +528,180 @@ const Onboarding: React.FC = () => {
         );
       case 'goals':
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 flex items-center space-x-4">
               <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
                 <Target className="text-white w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-900">Set a Financial Goal</h3>
-                <p className="text-sm text-gray-600">What are you working towards?</p>
+                <h3 className="font-bold text-gray-900">What’s your financial goal?</h3>
+                <p className="text-sm text-gray-600">Select one to see your path to wealth.</p>
               </div>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Goal Name</label>
-                <input
-                  type="text"
-                  value={goal.name}
-                  onChange={(e) => setGoal({ ...goal, name: e.target.value })}
-                  className="block w-full px-4 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium"
-                  placeholder="e.g. New Car, House Downpayment"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Target Amount</label>
-                  <input
-                    type="number"
-                    value={goal.targetAmount}
-                    onChange={(e) => setGoal({ ...goal, targetAmount: e.target.value })}
-                    className="block w-full px-4 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium"
-                    placeholder="e.g. 1000000"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Already Saved</label>
-                  <input
-                    type="number"
-                    value={goal.currentAmount}
-                    onChange={(e) => setGoal({ ...goal, currentAmount: e.target.value })}
-                    className="block w-full px-4 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium"
-                    placeholder="e.g. 50000"
-                  />
-                </div>
-              </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {GOAL_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => {
+                    setSelectedGoalOption(option.id);
+                    if (option.id !== 'custom') {
+                      setGoal({ ...goal, name: option.name, targetAmount: option.target.toString() });
+                    } else {
+                      setGoal({ ...goal, name: '', targetAmount: '' });
+                    }
+                  }}
+                  className={`p-[14px] md:p-[18px] rounded-[12px] md:rounded-[16px] border-2 text-left transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center space-x-4 min-h-[48px] sm:min-h-[56px] md:min-h-[60px] ${
+                    selectedGoalOption === option.id 
+                      ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-500/10' 
+                      : 'border-gray-100 bg-white hover:border-gray-200'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                    selectedGoalOption === option.id ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    <option.icon className="w-5 h-5" />
+                  </div>
+                  <span className={`font-bold ${selectedGoalOption === option.id ? 'text-indigo-900' : 'text-gray-700'}`}>
+                    {option.name}
+                  </span>
+                </button>
+              ))}
             </div>
+
+            <AnimatePresence>
+              {(selectedGoalOption === 'custom' || (selectedGoalOption && selectedGoalOption !== 'custom')) && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="space-y-6 pt-4 border-t border-gray-100"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Goal Name</label>
+                      <input
+                        type="text"
+                        value={goal.name}
+                        onChange={(e) => setGoal({ ...goal, name: e.target.value })}
+                        className="block w-full px-4 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium"
+                        placeholder="e.g. New Car"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Target Amount</label>
+                      <input
+                        type="number"
+                        value={goal.targetAmount}
+                        onChange={(e) => setGoal({ ...goal, targetAmount: e.target.value })}
+                        className="block w-full px-4 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium"
+                        placeholder="e.g. 1000000"
+                      />
+                    </div>
+                  </div>
+
+                  {goal.targetAmount && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-indigo-900 p-6 rounded-2xl text-white flex items-center space-x-4 shadow-xl shadow-indigo-200"
+                    >
+                      <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                        <Rocket className="text-indigo-300 w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest mb-1">AI Projection</p>
+                        <p className="font-black text-lg leading-tight">
+                          {calculateGoalProjection()}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         );
       case 'reward':
         return (
-          <div className="space-y-8">
-            <div className="text-center space-y-2">
+          <div className="space-y-8 py-4">
+            <div className="text-center space-y-4">
               <motion.div 
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl shadow-indigo-200"
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-emerald-200"
               >
-                <Sparkles className="text-white w-10 h-10" />
+                <CheckCircle2 className="text-white w-12 h-12" />
               </motion.div>
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight">Aha! Your Financial Snapshot is Ready</h2>
-              <p className="text-emerald-600 font-bold flex items-center justify-center">
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Your financial system is now active
-              </p>
-              <p className="text-gray-600">Here's what your financial future looks like.</p>
+              
+              <div className="space-y-2">
+                <motion.h2 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-4xl font-black text-gray-900 tracking-tight leading-tight"
+                >
+                  Your financial system <br />
+                  <span className="text-emerald-600">is now active</span>
+                </motion.h2>
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-gray-500 font-medium text-lg"
+                >
+                  We've analyzed your data. Here is your current standing.
+                </motion.p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center space-y-2"
-              >
-                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-2">
-                  <BarChart3 className="text-indigo-600 w-5 h-5" />
-                </div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Net Worth</p>
-                <p className="text-2xl font-black text-gray-900">{formatCurrency(snapshot?.netWorth || 0)}</p>
-              </motion.div>
-
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center space-y-2"
-              >
-                <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-2">
-                  <PieChart className="text-emerald-600 w-5 h-5" />
-                </div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Monthly Cashflow</p>
-                <p className="text-2xl font-black text-emerald-600">+{formatCurrency(snapshot?.cashflow || 0)}</p>
-              </motion.div>
-
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center space-y-2"
-              >
-                <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mx-auto mb-2">
-                  <Rocket className="text-amber-600 w-5 h-5" />
-                </div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">1-Year Projection</p>
-                <p className="text-2xl font-black text-gray-900">
-                  {formatCurrency((snapshot?.netWorth || 0) + (snapshot?.cashflow || 0) * 12)}
-                </p>
-              </motion.div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { label: 'Net Worth', value: snapshot?.netWorth || 0, icon: BarChart3, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                { label: 'Monthly Cashflow', value: snapshot?.cashflow || 0, icon: PieChart, color: 'text-emerald-600', bg: 'bg-emerald-50', prefix: '+' },
+                { label: '1-Year Projection', value: (snapshot?.netWorth || 0) + (snapshot?.cashflow || 0) * 12, icon: Rocket, color: 'text-amber-600', bg: 'bg-amber-50' }
+              ].map((item, i) => (
+                <motion.div 
+                  key={item.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + (i * 0.1) }}
+                  className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm text-center space-y-2 hover:shadow-md transition-shadow"
+                >
+                  <div className={`w-12 h-12 ${item.bg} rounded-2xl flex items-center justify-center mx-auto mb-3`}>
+                    <item.icon className={`${item.color} w-6 h-6`} />
+                  </div>
+                  <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{item.label}</p>
+                  <p className={`text-2xl font-black ${item.label === 'Monthly Cashflow' ? item.color : 'text-gray-900'}`}>
+                    {item.prefix || ''}{formatCurrency(item.value)}
+                  </p>
+                </motion.div>
+              ))}
             </div>
 
-            <div className="bg-indigo-900 p-8 rounded-3xl text-white relative overflow-hidden">
-              <div className="relative z-10">
-                <h4 className="text-xl font-black mb-2">Ready to grow?</h4>
-                <p className="text-indigo-200 text-sm leading-relaxed mb-6">
-                  Your data is now being analyzed by WealthOS AI to provide personalized wealth-building strategies.
-                </p>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.6 }}
+              className="bg-gray-900 p-8 rounded-[2.5rem] text-white relative overflow-hidden shadow-2xl shadow-gray-200"
+            >
+              <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="text-center md:text-left space-y-2">
+                  <h4 className="text-2xl font-black">Ready to grow?</h4>
+                  <p className="text-gray-400 text-sm font-medium leading-relaxed max-w-xs">
+                    Your personalized wealth-building strategies are waiting in your dashboard.
+                  </p>
+                </div>
                 <button 
                   onClick={handleComplete}
-                  className="w-full py-4 bg-white text-indigo-900 font-black rounded-2xl hover:bg-indigo-50 transition-all flex items-center justify-center space-x-2"
+                  className="w-full md:w-auto px-[20px] md:px-[24px] py-[14px] md:py-[18px] bg-white text-gray-900 font-black rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center space-x-3 group shadow-xl min-h-[48px] sm:min-h-[56px] md:min-h-[60px] leading-[1.6] tracking-[0.3px]"
                 >
-                  <span>Go to Dashboard</span>
-                  <ArrowRight className="w-5 h-5" />
+                  <span className="text-lg">Go to Dashboard</span>
+                  <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
-              <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-              <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl"></div>
-            </div>
+              <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/5 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl"></div>
+            </motion.div>
           </div>
         );
       default:
@@ -604,7 +771,7 @@ const Onboarding: React.FC = () => {
                   </p>
                   <button
                     onClick={startJourney}
-                    className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 flex items-center justify-center space-x-3 group"
+                    className="w-full px-[20px] md:px-[24px] py-[14px] md:py-[18px] bg-indigo-600 text-white font-black rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] shadow-xl shadow-indigo-200 flex items-center justify-center space-x-3 group min-h-[48px] sm:min-h-[56px] md:min-h-[60px] leading-[1.6] tracking-[0.3px]"
                   >
                     <span className="text-lg">Start My Financial Journey</span>
                     <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
@@ -661,6 +828,20 @@ const Onboarding: React.FC = () => {
         <div className="p-8 md:p-12">
           {currentStep < STEPS.length - 1 && (
             <div className="mb-10">
+              <AnimatePresence mode="wait">
+                {guidance && (
+                  <motion.div 
+                    key={guidance}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="mb-4 inline-flex items-center px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-black uppercase tracking-widest rounded-full border border-indigo-100"
+                  >
+                    <Sparkles className="w-3 h-3 mr-2" />
+                    {guidance}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="flex items-center space-x-3 mb-2">
                 {React.createElement(STEPS[currentStep].icon, { className: "w-6 h-6 text-indigo-600" })}
                 <h2 className="text-3xl font-black text-gray-900 tracking-tight">{STEPS[currentStep].title}</h2>
@@ -676,7 +857,7 @@ const Onboarding: React.FC = () => {
               {currentStep > 0 && (
                 <button 
                   onClick={() => setCurrentStep(prev => prev - 1)}
-                  className="p-4 bg-gray-100 text-gray-600 rounded-2xl hover:bg-gray-200 transition-all"
+                  className="p-[14px] md:p-[18px] bg-gray-100 text-gray-600 rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] min-h-[48px] sm:min-h-[56px] md:min-h-[60px] flex items-center justify-center"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
@@ -684,7 +865,7 @@ const Onboarding: React.FC = () => {
               <button 
                 onClick={handleNext}
                 disabled={loading}
-                className="flex-1 py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center space-x-2 shadow-lg shadow-indigo-200 disabled:opacity-70"
+                className="flex-1 px-[20px] md:px-[24px] py-[14px] md:py-[18px] bg-indigo-600 text-white font-black rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center space-x-3 shadow-lg shadow-indigo-200 disabled:opacity-70 min-h-[48px] sm:min-h-[56px] md:min-h-[60px] leading-[1.6] tracking-[0.3px]"
               >
                 {loading ? (
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -697,7 +878,7 @@ const Onboarding: React.FC = () => {
               </button>
               <button 
                 onClick={handleSkip}
-                className="px-6 py-4 text-gray-400 font-bold hover:text-gray-600 transition-all"
+                className="px-[20px] md:px-[24px] py-[14px] md:py-[18px] text-gray-400 font-bold transition-all duration-200 hover:scale-[1.02] hover:text-gray-600 active:scale-[0.98] min-h-[48px] sm:min-h-[56px] md:min-h-[60px] flex items-center justify-center leading-[1.6] tracking-[0.3px]"
               >
                 Skip
               </button>
@@ -726,13 +907,13 @@ const Onboarding: React.FC = () => {
               <div className="flex flex-col space-y-3">
                 <button 
                   onClick={() => setShowSkipWarning(false)}
-                  className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all"
+                  className="w-full px-[20px] md:px-[24px] py-[14px] md:py-[18px] bg-indigo-600 text-white font-black rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] min-h-[48px] sm:min-h-[56px] md:min-h-[60px] leading-[1.6] tracking-[0.3px]"
                 >
                   I'll add it now
                 </button>
                 <button 
                   onClick={confirmSkip}
-                  className="w-full py-4 bg-gray-100 text-gray-600 font-black rounded-2xl hover:bg-gray-200 transition-all"
+                  className="w-full px-[20px] md:px-[24px] py-[14px] md:py-[18px] bg-gray-100 text-gray-600 font-black rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:bg-gray-200 active:scale-[0.98] min-h-[48px] sm:min-h-[56px] md:min-h-[60px] leading-[1.6] tracking-[0.3px]"
                 >
                   Skip anyway
                 </button>

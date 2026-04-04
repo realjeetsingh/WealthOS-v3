@@ -317,17 +317,17 @@ const Transactions: React.FC = () => {
                           {t.timestamp?.toDate().toLocaleDateString()}
                         </p>
                       </div>
-                      <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center space-x-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => handleEdit(t)}
-                          className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                          className="p-2 text-gray-500 hover:text-indigo-600 transition-colors"
                           title="Edit"
                         >
                           <Edit2 className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(t.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                          className="p-2 text-gray-500 hover:text-red-600 transition-colors"
                           title="Delete"
                         >
                           <Trash2 className="w-5 h-5" />

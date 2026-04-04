@@ -234,7 +234,7 @@ const Dashboard: React.FC = () => {
   }));
 
   return (
-    <>
+    <div className="w-full max-w-full overflow-x-hidden">
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Financial Dashboard</h1>
@@ -493,7 +493,7 @@ const Dashboard: React.FC = () => {
           })()}
         </div>
       )}
-    </>
+    </div>
   );
 };
 
