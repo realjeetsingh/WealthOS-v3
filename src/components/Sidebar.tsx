@@ -17,18 +17,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../firebase';
 
 interface SidebarProps {
-  isPinned: boolean;
-  setIsPinned: (pinned: boolean) => void;
   isHovered: boolean;
   setIsHovered: (hovered: boolean) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned, isHovered, setIsHovered }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isHovered, setIsHovered }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { userProfile, isPremium } = useAuth();
 
-  const isExpanded = isPinned || isHovered;
+  const isExpanded = isHovered;
 
   const handleLogout = async () => {
     try {
@@ -51,32 +49,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned, isHovered, set
     <aside 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`hidden md:flex flex-col bg-white border-r border-gray-100 transition-[width] duration-200 ease-in-out fixed top-0 left-0 h-[100dvh] overflow-hidden z-[1000] ${
+      className={`hidden md:flex flex-col bg-white border-r border-gray-100 transition-[width] duration-200 ease-in-out fixed top-0 md:top-16 left-0 h-[100dvh] md:h-[calc(100dvh-64px)] overflow-hidden z-[1000] ${
         isExpanded ? 'w-[240px]' : 'w-[70px]'
       }`}
     >
-      {/* Logo Section */}
-      <div className={`p-4 flex items-center transition-all duration-200 ${isExpanded ? 'justify-between' : 'justify-center'}`}>
-        <button 
-          onClick={() => setIsPinned(!isPinned)}
-          className="flex items-center group outline-none overflow-hidden active:scale-[0.98] transition-transform duration-150"
-          title={isPinned ? "Unpin sidebar" : "Pin sidebar"}
-        >
-          <div className="min-w-[40px] w-10 h-10 bg-[#4F46E5] rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform shrink-0">
-            <span className="text-white font-bold text-2xl font-display">W</span>
-          </div>
-          {isExpanded && (
-            <div className="ml-3 animate-in fade-in slide-in-from-left-2 duration-200">
-              <span className="text-2xl font-bold text-gray-900 tracking-tight font-display whitespace-nowrap">
-                WealthOS
-              </span>
-            </div>
-          )}
-        </button>
-      </div>
-
       {/* Navigation Links */}
-      <nav className={`flex-1 space-y-2 mt-4 transition-all duration-200 ${isExpanded ? 'px-4' : 'px-2'}`}>
+      <nav className={`flex-1 space-y-2 pt-6 transition-all duration-200 ${isExpanded ? 'px-4' : 'px-2'}`}>
         {navLinks.map((link) => {
           const Icon = link.icon;
           const isActive = location.pathname === link.to;

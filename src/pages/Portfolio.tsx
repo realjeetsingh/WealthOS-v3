@@ -582,19 +582,25 @@ export default function Portfolio() {
             <tbody className="divide-y divide-gray-50">
               {assets.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <Briefcase className="w-12 h-12 text-gray-200" />
-                      <p className="text-gray-500 font-medium">No assets in your portfolio yet.</p>
-                      <button 
+                  <td colSpan={6} className="px-6 py-20 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <div className="p-4 bg-gray-50 rounded-full">
+                        <Briefcase className="w-12 h-12 text-gray-300" />
+                      </div>
+                      <div>
+                        <p className="text-gray-900 font-bold text-xl">No assets in your portfolio yet</p>
+                        <p className="text-gray-500 font-medium mt-1">Start tracking your diverse investments to see them here.</p>
+                      </div>
+                      <Button 
+                        variant="outline"
                         onClick={() => {
                           resetForm();
                           setIsModalOpen(true);
                         }}
-                        className="text-indigo-600 font-bold hover:underline mt-2"
+                        icon={<Plus className="w-5 h-5" />}
                       >
                         Add your first asset
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -695,20 +701,24 @@ export default function Portfolio() {
         {/* Mobile Card View */}
         <div className="md:hidden divide-y divide-gray-50">
           {assets.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="flex flex-col items-center gap-2">
-                <Briefcase className="w-12 h-12 text-gray-200" />
-                <p className="text-gray-500 font-medium">No assets in your portfolio yet.</p>
-                <button 
-                  onClick={() => {
-                    resetForm();
-                    setIsModalOpen(true);
-                  }}
-                  className="text-indigo-600 font-bold hover:underline mt-2"
-                >
-                  Add your first asset
-                </button>
+            <div className="p-12 text-center bg-white rounded-3xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center space-y-4">
+              <div className="p-4 bg-gray-50 rounded-full">
+                <Briefcase className="w-12 h-12 text-gray-300" />
               </div>
+              <div>
+                <p className="text-gray-900 font-bold text-xl">No assets yet</p>
+                <p className="text-gray-500 font-medium mt-1">Start tracking your diverse investments to see them here.</p>
+              </div>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  resetForm();
+                  setIsModalOpen(true);
+                }}
+                icon={<Plus className="w-5 h-5" />}
+              >
+                Add your first asset
+              </Button>
             </div>
           ) : (
             assets.map((asset) => {

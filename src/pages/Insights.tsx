@@ -32,7 +32,8 @@ import {
   Sparkles,
   ShieldAlert,
   Target,
-  ArrowRight
+  ArrowRight,
+  PlusCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
@@ -788,19 +789,24 @@ const Insights: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-16 text-center">
-          <div className="mx-auto w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-            <TrendingUp className="w-10 h-10 text-gray-300" />
+        <div className="bg-white rounded-3xl shadow-sm border-2 border-dashed border-gray-100 p-16 text-center flex flex-col items-center justify-center space-y-6">
+          <div className="p-6 bg-gray-50 rounded-full">
+            <TrendingUp className="w-12 h-12 text-gray-300" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Add more data to unlock insights</h2>
-          <p className="text-gray-500 max-w-sm mx-auto text-lg">
-            Add more transactions, assets, and liabilities to generate personalized financial insights and simulations.
-          </p>
-          <Link 
-            to="/transactions" 
-            className="mt-8 inline-block bg-[#4F46E5] text-white px-8 py-3 rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-sm"
-          >
-            Add Data
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Unlock Your Financial Future</h2>
+            <p className="text-gray-500 max-w-sm mx-auto text-lg leading-relaxed">
+              Add more transactions, assets, and liabilities to generate personalized financial insights and simulations.
+            </p>
+          </div>
+          <Link to="/transactions">
+            <Button
+              variant="primary"
+              size="lg"
+              icon={<PlusCircle className="w-5 h-5" />}
+            >
+              Add your first transaction
+            </Button>
           </Link>
         </div>
       )}

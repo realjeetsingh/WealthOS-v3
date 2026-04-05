@@ -306,8 +306,25 @@ const Transactions: React.FC = () => {
         <div className="space-y-6">
           <h2 className="text-xl font-bold text-gray-900">Recent Activity</h2>
           {transactions.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-200">
-              <p className="text-gray-500 text-lg">No transactions yet. Start by adding one above!</p>
+            <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center space-y-4">
+              <div className="p-4 bg-gray-50 rounded-full">
+                <FileText className="w-12 h-12 text-gray-300" />
+              </div>
+              <div>
+                <p className="text-gray-900 font-bold text-xl">No transactions yet</p>
+                <p className="text-gray-500 font-medium mt-1">Start tracking your income and expenses to see them here.</p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  const amountInput = document.querySelector('input[type="number"]');
+                  if (amountInput instanceof HTMLElement) amountInput.focus();
+                }}
+                icon={<PlusCircle className="w-5 h-5" />}
+              >
+                Add your first transaction
+              </Button>
             </div>
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">

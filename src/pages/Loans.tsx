@@ -571,9 +571,25 @@ const Loans: React.FC = () => {
             </div>
           </div>
           {loans.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-100">
-              <Wallet className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-              <p className="text-gray-400 font-bold text-lg">No active loans found. Add one to start tracking!</p>
+            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center space-y-4">
+              <div className="p-4 bg-gray-50 rounded-full">
+                <Wallet className="w-12 h-12 text-gray-300" />
+              </div>
+              <div>
+                <p className="text-gray-900 font-bold text-xl">No active loans yet</p>
+                <p className="text-gray-500 font-medium mt-1">Add your loans to track EMIs and debt reduction progress.</p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.scrollTo({ top: 300, behavior: 'smooth' });
+                  const nameInput = document.querySelector('input[placeholder="e.g. Home Loan, Car Loan"]');
+                  if (nameInput instanceof HTMLElement) nameInput.focus();
+                }}
+                icon={<PlusCircle className="w-5 h-5" />}
+              >
+                Add your first loan
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
