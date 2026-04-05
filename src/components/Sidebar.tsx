@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { 
   LayoutDashboard, 
   BrainCircuit, 
@@ -58,7 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned, isHovered, set
       <div className={`p-4 flex items-center transition-all duration-200 ${isExpanded ? 'justify-between' : 'justify-center'}`}>
         <button 
           onClick={() => setIsPinned(!isPinned)}
-          className="flex items-center group outline-none overflow-hidden"
+          className="flex items-center group outline-none overflow-hidden active:scale-[0.98] transition-transform duration-150"
           title={isPinned ? "Unpin sidebar" : "Pin sidebar"}
         >
           <div className="min-w-[40px] w-10 h-10 bg-[#4F46E5] rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform shrink-0">
@@ -83,17 +84,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned, isHovered, set
             <Link
               key={link.to}
               to={link.to}
-              className={`flex items-center rounded-xl text-sm font-bold transition-all group ${
+              className={`relative flex items-center rounded-xl text-sm font-bold transition-all group active:scale-[0.98] duration-150 ${
                 isExpanded ? 'px-4 py-3' : 'p-3 justify-center'
               } ${
                 isActive 
-                  ? 'bg-indigo-50 text-[#4F46E5] shadow-sm' 
+                  ? 'text-[#4F46E5]' 
                   : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
-              <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[#4F46E5]' : 'text-gray-400 group-hover:text-gray-600'}`} />
+              {isActive && (
+                <motion.div
+                  layoutId="sidebar-active-pill"
+                  className="absolute inset-0 bg-indigo-50 rounded-xl shadow-[0_0_15px_rgba(79,70,229,0.1)]"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <motion.div
+                animate={isActive ? { scale: 1.1 } : { scale: 1 }}
+                className="relative z-10"
+              >
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[#4F46E5]' : 'text-gray-400 group-hover:text-gray-600'}`} />
+              </motion.div>
               {isExpanded && (
-                <div className="ml-3 animate-in fade-in slide-in-from-left-2 duration-200">
+                <div className="ml-3 relative z-10 animate-in fade-in slide-in-from-left-2 duration-200">
                   <span className="whitespace-nowrap">{link.label}</span>
                 </div>
               )}
@@ -109,13 +122,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned, isHovered, set
             isExpanded ? 'px-4 py-2' : 'p-3 justify-center border-none bg-transparent'
           }`}>
             <Crown className="w-4 h-4 shrink-0" />
-            {isExpanded && <span className="ml-2 whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-200">PREMIUM PLAN</span>}
+            {isExpanded && <span className="ml-2 whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-200">PRO PLAN</span>}
           </div>
         )}
         
         <button
           onClick={handleLogout}
-          className={`w-full flex items-center rounded-xl text-sm font-bold transition-all group ${
+          className={`w-full flex items-center rounded-xl text-sm font-bold transition-all group active:scale-[0.98] duration-150 ${
             isExpanded ? 'px-4 py-3' : 'p-3 justify-center'
           } text-red-600 hover:bg-red-50`}
         >

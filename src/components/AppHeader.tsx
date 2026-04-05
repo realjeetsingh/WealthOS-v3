@@ -10,16 +10,18 @@ import {
 } from 'lucide-react';
 import { auth } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
+import PricingModal from './PricingModal';
 
 interface AppHeaderProps {
   isVisible?: boolean;
 }
 
 const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
-  const { userProfile, isPremium } = useAuth();
+  const { user, userProfile, isPremium } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
@@ -44,30 +46,38 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
 
   return (
     <header className={`bg-white border-b border-gray-100 sticky top-0 z-[900] transition-transform duration-500 ease-in-out ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-      <div className="px-4 sm:px-6 lg:px-8">
+      <div className="px-3 sm:px-6 lg:px-8 max-w-full">
         <div className="flex justify-between h-16 items-center">
-          <div className="flex items-center space-x-8">
-            <Link to="/dashboard" className="flex items-center space-x-3 group md:hidden">
-              <div className="w-10 h-10 bg-[#4F46E5] rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform">
-                <span className="text-white font-bold text-2xl font-display">W</span>
+          <div className="flex items-center">
+            <Link to="/dashboard" className="flex items-center space-x-2 group">
+              <div className="w-9 h-9 bg-[#4F46E5] rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform shrink-0">
+                <span className="text-white font-bold text-xl font-display">W</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900 tracking-tight font-display">WealthOS</span>
+              <span className="hidden sm:block text-xl font-bold text-gray-900 tracking-tight font-display">WealthOS</span>
             </Link>
           </div>
 
-          <div className="flex items-center space-x-4">
-            {isPremium && (
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {isPremium ? (
               <div className="flex items-center space-x-1 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-bold border border-amber-100">
                 <Crown className="w-3 h-3" />
-                <span>PREMIUM</span>
+                <span>PRO</span>
               </div>
+            ) : (
+              <button
+                onClick={() => setShowPricing(true)}
+                className="flex items-center space-x-1.5 bg-indigo-600 text-white px-4 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 active:scale-[0.98] duration-150"
+              >
+                <Crown className="w-3.5 h-3.5" />
+                <span>Upgrade</span>
+              </button>
             )}
 
             {/* Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-gray-50 transition-colors group"
+                className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-gray-50 transition-all group active:scale-[0.98] duration-150"
               >
                 <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-100 transition-colors overflow-hidden">
                   {userProfile?.profileImage ? (
@@ -86,7 +96,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
                     {userProfile?.name?.split(' ')[0] || 'User'}
                   </p>
                 </div>
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`hidden sm:block w-4 h-4 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence>
@@ -140,6 +150,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
           </div>
         </div>
       </div>
+      <PricingModal isOpen={showPricing} onClose={() => setShowPricing(false)} />
     </header>
   );
 };

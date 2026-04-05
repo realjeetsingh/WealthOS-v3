@@ -1,5 +1,6 @@
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import { toast } from 'sonner';
 
 interface RazorpayOptions {
   key: string;
@@ -29,13 +30,13 @@ export const handleUpgrade = async (userId: string, userEmail?: string, userName
 
   if (!key || key === 'rzp_test_placeholder') {
     console.error("Razorpay Key ID is missing or invalid. Current value:", key);
-    alert("Payment configuration error. Please ensure VITE_RAZORPAY_KEY_ID is set in the Settings menu (not just .env.example).");
+    toast.error("Payment configuration error. Please ensure VITE_RAZORPAY_KEY_ID is set in the Settings menu.");
     return;
   }
 
   if (!(window as any).Razorpay) {
     console.error("Razorpay SDK not loaded");
-    alert("Payment system is still loading. Please try again in a moment.");
+    toast.error("Payment system is still loading. Please try again in a moment.");
     return;
   }
 
@@ -68,10 +69,10 @@ export const handleUpgrade = async (userId: string, userEmail?: string, userName
           premiumSince: serverTimestamp()
         });
         console.log("Firestore update complete. Real-time snapshot should trigger UI refresh.");
-        alert("Upgrade successful. Premium unlocked.");
+        toast.success("Upgrade successful. Premium unlocked.");
       } catch (error) {
         console.error("Error updating premium status:", error);
-        alert("Payment successful, but failed to update status. Please contact support.");
+        toast.error("Payment successful, but failed to update status. Please contact support.");
       }
     },
   };
@@ -80,11 +81,11 @@ export const handleUpgrade = async (userId: string, userEmail?: string, userName
     const rzp = new (window as any).Razorpay(options);
     rzp.on('payment.failed', function (response: any) {
       console.error("Payment failed:", response.error);
-      alert("Payment failed: " + response.error.description);
+      toast.error("Payment failed: " + response.error.description);
     });
     rzp.open();
   } catch (err) {
     console.error("Razorpay initialization error:", err);
-    alert("Could not open payment window. Please check your internet connection.");
+    toast.error("Could not open payment window. Please check your internet connection.");
   }
 };

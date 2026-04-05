@@ -21,6 +21,8 @@ import {
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import Button from '../components/ui/Button';
+import Skeleton from '../components/ui/Skeleton';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -222,8 +224,35 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+      <div className="w-full max-w-full">
+        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex-1 min-w-0">
+            <Skeleton className="h-10 w-64 mb-2" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+          <Skeleton className="lg:col-span-2 h-[320px]" />
+          <Skeleton className="h-[320px]" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <Skeleton className="h-48" />
+          <Skeleton className="h-48" />
+          <Skeleton className="h-48" />
+        </div>
       </div>
     );
   }
@@ -234,32 +263,32 @@ const Dashboard: React.FC = () => {
   }));
 
   return (
-    <div className="w-full max-w-full overflow-x-hidden">
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Financial Dashboard</h1>
+    <div className="w-full max-w-full">
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight truncate">Financial Dashboard</h1>
           <p className="mt-2 text-gray-600">Focusing on your long-term wealth and progress.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button 
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <Button 
             onClick={fetchRawData}
-            disabled={refreshing}
-            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+            loading={refreshing}
+            variant="outline"
+            icon={<Activity className="w-4 h-4" />}
             title="Force recalculation from raw transactions"
           >
-            {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
             Refresh
-          </button>
+          </Button>
           <Link 
             to="/portfolio" 
-            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-sm"
+            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-all active:scale-[0.98] duration-150 shadow-sm whitespace-nowrap"
           >
             <PieChartIcon className="w-4 h-4" />
             Portfolio
           </Link>
           <Link 
             to="/transactions" 
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors shadow-md"
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-all active:scale-[0.98] duration-150 shadow-md whitespace-nowrap"
           >
             <TrendingUp className="w-4 h-4" />
             Manage Data
@@ -359,7 +388,7 @@ const Dashboard: React.FC = () => {
 
       {/* Secondary Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Income</p>
             <div className="p-2 bg-green-50 rounded-lg text-green-600">
@@ -370,7 +399,7 @@ const Dashboard: React.FC = () => {
             <CurrencyDisplay value={monthlyIncome} currency={userCurrency} />
           </h3>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Expenses</p>
             <div className="p-2 bg-red-50 rounded-lg text-red-600">
@@ -381,7 +410,7 @@ const Dashboard: React.FC = () => {
             <CurrencyDisplay value={monthlyExpenses} currency={userCurrency} />
           </h3>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Cashflow</p>
             <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">

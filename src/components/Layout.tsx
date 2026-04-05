@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import AppHeader from './AppHeader';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
@@ -8,6 +10,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const location = useLocation();
   const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -63,7 +66,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         
         {/* MainContent: ONLY scrollable area */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full p-6 md:p-8 pb-24 md:pb-8">
-          {children}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="w-full h-full"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
         {/* BottomNavbar: outside scroll area, fixed at bottom */}

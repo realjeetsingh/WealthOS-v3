@@ -32,6 +32,7 @@ import { CURRENCIES } from '../lib/currency';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
+import Button from '../components/ui/Button';
 
 const Settings: React.FC = () => {
   const { user, userProfile, isPremium } = useAuth();
@@ -198,7 +199,7 @@ const Settings: React.FC = () => {
             {/* Edit Profile */}
             <button 
               onClick={() => navigate('/profile')}
-              className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.99]"
+              className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.98] duration-150"
             >
               <div className="flex items-center space-x-5">
                 <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
@@ -215,7 +216,7 @@ const Settings: React.FC = () => {
             {/* Change Password */}
             <button 
               onClick={() => setIsChangingPassword(true)}
-              className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.99]"
+              className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.98] duration-150"
             >
               <div className="flex items-center space-x-5">
                 <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
@@ -322,7 +323,7 @@ const Settings: React.FC = () => {
           <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] ml-2">Section 3 — Security</h2>
           <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
             {/* Security Settings */}
-            <div className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group cursor-pointer active:scale-[0.99]">
+            <div className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group cursor-pointer active:scale-[0.98] duration-150">
               <div className="flex items-center space-x-5">
                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-600 group-hover:scale-110 transition-transform">
                   <ShieldCheck className="w-6 h-6" />
@@ -371,7 +372,7 @@ const Settings: React.FC = () => {
           <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
             <button 
               onClick={handleLogout}
-              className="w-full flex items-center justify-between p-6 hover:bg-red-50 active:bg-red-100 transition-all group text-left active:scale-[0.99]"
+              className="w-full flex items-center justify-between p-6 hover:bg-red-50 active:bg-red-100 transition-all group text-left active:scale-[0.98] duration-150"
             >
               <div className="flex items-center space-x-5">
                 <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 group-hover:scale-110 transition-transform">
@@ -394,7 +395,7 @@ const Settings: React.FC = () => {
             {/* Help Center */}
             <a 
               href="#" 
-              className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group active:scale-[0.99]"
+              className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group active:scale-[0.98] duration-150"
             >
               <div className="flex items-center space-x-5">
                 <div className="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-600 group-hover:scale-110 transition-transform">
@@ -409,7 +410,7 @@ const Settings: React.FC = () => {
             </a>
 
             {/* Contact Support */}
-            <button className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.99]">
+            <button className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.98] duration-150">
               <div className="flex items-center space-x-5">
                 <div className="w-12 h-12 bg-pink-50 rounded-2xl flex items-center justify-center text-pink-600 group-hover:scale-110 transition-transform">
                   <MessageSquare className="w-6 h-6" />
@@ -423,7 +424,7 @@ const Settings: React.FC = () => {
             </button>
 
             {/* Privacy Policy */}
-            <button className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.99]">
+            <button className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.98] duration-150">
               <div className="flex items-center space-x-5">
                 <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-600 group-hover:scale-110 transition-transform">
                   <FileText className="w-6 h-6" />
@@ -469,12 +470,14 @@ const Settings: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <button 
+                <Button
+                  variant="danger"
+                  size="lg"
                   onClick={() => setIsDeletingAccount(true)}
-                  className="px-8 py-4 bg-red-600 text-white rounded-2xl text-sm font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-100 shrink-0 active:scale-95"
+                  icon={<AlertTriangle className="w-5 h-5" />}
                 >
                   Delete My Account
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -566,27 +569,22 @@ const Settings: React.FC = () => {
               </div>
 
               <div className="flex space-x-4 pt-4">
-                <button 
-                  type="button"
+                <Button
+                  variant="secondary"
+                  fullWidth
                   onClick={() => setIsChangingPassword(false)}
-                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl text-sm font-bold hover:bg-gray-200 transition-all"
                 >
                   Cancel
-                </button>
-                <button 
+                </Button>
+                <Button
                   type="submit"
-                  disabled={isPasswordSaving || !newPassword || !currentPassword}
-                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 disabled:opacity-50 flex items-center justify-center"
+                  fullWidth
+                  loading={isPasswordSaving}
+                  disabled={!newPassword || !currentPassword}
+                  icon={<Check className="w-4 h-4" />}
                 >
-                  {isPasswordSaving ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4 mr-2" />
-                      Update Password
-                    </>
-                  )}
-                </button>
+                  Update Password
+                </Button>
               </div>
             </form>
           </div>
@@ -618,24 +616,22 @@ const Settings: React.FC = () => {
               </div>
               
               <div className="flex space-x-4">
-              <button 
-                onClick={() => setIsDeletingAccount(false)}
-                className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl text-sm font-bold hover:bg-gray-200 transition-all"
-              >
-                No, Keep it
-              </button>
-              <button 
-                onClick={handleDeleteAccount}
-                disabled={isDeleting}
-                className="flex-1 py-4 bg-red-600 text-white rounded-2xl text-sm font-bold hover:bg-red-700 transition-all shadow-xl shadow-red-200 disabled:opacity-50 flex items-center justify-center"
-              >
-                {isDeleting ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                ) : (
-                  'Yes, Delete'
-                )}
-              </button>
-            </div>
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => setIsDeletingAccount(false)}
+                >
+                  No, Keep it
+                </Button>
+                <Button
+                  variant="danger"
+                  fullWidth
+                  onClick={handleDeleteAccount}
+                  loading={isDeleting}
+                >
+                  Yes, Delete
+                </Button>
+              </div>
           </div>
         </div>
       </div>

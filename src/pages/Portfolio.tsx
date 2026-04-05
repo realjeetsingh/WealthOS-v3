@@ -52,6 +52,8 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { Tooltip } from '../components/Tooltip';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
+import Button from '../components/ui/Button';
+import Skeleton from '../components/ui/Skeleton';
 
 const CATEGORIES = [
   { id: 'Stocks', label: 'Stocks / Shares', icon: Activity },
@@ -68,6 +70,8 @@ export default function Portfolio() {
   const [assets, setAssets] = useState<PortfolioAsset[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>('Stocks');
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -119,6 +123,7 @@ export default function Portfolio() {
     e.preventDefault();
     if (!user) return;
 
+    setIsSubmitting(true);
     try {
       const metadata: any = {};
       
@@ -168,6 +173,8 @@ export default function Portfolio() {
     } catch (error) {
       console.error('Error saving asset:', error);
       toast.error(editingAssetId ? 'Failed to update asset' : 'Failed to add asset');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -203,6 +210,7 @@ export default function Portfolio() {
   const confirmDelete = async () => {
     if (!user || !assetToDelete) return;
 
+    setIsDeleting(true);
     try {
       // Optimistic UI update
       setAssets(prev => prev.filter(a => a.id !== assetToDelete.id));
@@ -214,6 +222,8 @@ export default function Portfolio() {
     } catch (error) {
       console.error('Error deleting asset:', error);
       toast.error('Failed to delete asset');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -314,30 +324,54 @@ export default function Portfolio() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto space-y-8 w-full overflow-x-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <Skeleton className="h-10 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-12 w-32 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Skeleton className="h-32 w-full rounded-2xl" />
+          <Skeleton className="h-32 w-full rounded-2xl" />
+          <Skeleton className="h-32 w-full rounded-2xl" />
+          <Skeleton className="h-32 w-full rounded-2xl" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton className="h-[400px] w-full rounded-2xl" />
+          <Skeleton className="h-[400px] w-full rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8 w-full overflow-x-hidden max-w-full">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Your Portfolio</h1>
           <p className="text-gray-500 mt-1">Track and manage your diverse investments in one place.</p>
         </div>
-        <button
+        <Button
           onClick={() => {
             resetForm();
             setIsModalOpen(true);
           }}
-          className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-200"
+          icon={<Plus className="w-5 h-5" />}
+          size="lg"
         >
-          <Plus className="w-5 h-5" />
           Add Asset
-        </button>
+        </Button>
       </div>
 
       {/* Dashboard Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {/* Invested */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Invested</p>
             <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
@@ -350,7 +384,7 @@ export default function Portfolio() {
         </div>
 
         {/* Current Value */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Current Value</p>
             <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
@@ -363,7 +397,7 @@ export default function Portfolio() {
         </div>
 
         {/* Profit/Loss */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Profit/Loss</p>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
@@ -376,7 +410,7 @@ export default function Portfolio() {
         </div>
 
         {/* Return % */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Return %</p>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
@@ -524,10 +558,10 @@ export default function Portfolio() {
         <div className="p-6 border-b border-gray-50 flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900">Asset List</h2>
           <div className="flex items-center gap-2">
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all active:scale-[0.98] duration-150">
               <Search className="w-5 h-5" />
             </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all active:scale-[0.98] duration-150">
               <Filter className="w-5 h-5" />
             </button>
           </div>
@@ -546,11 +580,7 @@ export default function Portfolio() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">Loading assets...</td>
-                </tr>
-              ) : assets.length === 0 ? (
+              {assets.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
@@ -616,7 +646,7 @@ export default function Portfolio() {
                         <div className="relative inline-block text-left">
                           <button
                             onClick={() => setActiveMenuId(activeMenuId === asset.id ? null : asset.id)}
-                            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all active:scale-[0.98] duration-150"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
@@ -636,14 +666,14 @@ export default function Portfolio() {
                                 >
                                   <button
                                     onClick={() => handleEdit(asset)}
-                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-all active:scale-[0.98] duration-150"
                                   >
                                     <Edit2 className="w-4 h-4 text-indigo-600" />
                                     Edit
                                   </button>
                                   <button
                                     onClick={() => handleDeleteClick(asset)}
-                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all active:scale-[0.98] duration-150"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                     Delete
@@ -664,9 +694,7 @@ export default function Portfolio() {
 
         {/* Mobile Card View */}
         <div className="md:hidden divide-y divide-gray-50">
-          {isLoading ? (
-            <div className="p-12 text-center text-gray-400">Loading assets...</div>
-          ) : assets.length === 0 ? (
+          {assets.length === 0 ? (
             <div className="p-12 text-center">
               <div className="flex flex-col items-center gap-2">
                 <Briefcase className="w-12 h-12 text-gray-200" />
@@ -706,7 +734,7 @@ export default function Portfolio() {
                     <div className="relative">
                       <button
                         onClick={() => setActiveMenuId(activeMenuId === asset.id ? null : asset.id)}
-                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all active:scale-[0.98] duration-150"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
@@ -726,14 +754,14 @@ export default function Portfolio() {
                             >
                               <button
                                 onClick={() => handleEdit(asset)}
-                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-all active:scale-[0.98] duration-150"
                               >
                                 <Edit2 className="w-4 h-4 text-indigo-600" />
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleDeleteClick(asset)}
-                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all active:scale-[0.98] duration-150"
                               >
                                 <Trash2 className="w-4 h-4" />
                                 Delete
@@ -1024,19 +1052,21 @@ export default function Portfolio() {
                 </div>
 
                 <div className="pt-4 flex gap-3">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    fullWidth
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-all border border-gray-100"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-200"
+                    loading={isSubmitting}
+                    fullWidth
                   >
                     {editingAssetId ? 'Update Asset' : 'Save Asset'}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </motion.div>
@@ -1069,18 +1099,21 @@ export default function Portfolio() {
                 This will permanently delete <span className="font-bold text-gray-900">{assetToDelete?.assetName}</span> from your portfolio. This action cannot be undone.
               </p>
               <div className="flex gap-3">
-                <button
+                <Button
+                  variant="outline"
+                  fullWidth
                   onClick={() => setIsDeleteModalOpen(false)}
-                  className="flex-1 px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-all border border-gray-100"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="danger"
+                  fullWidth
+                  loading={isDeleting}
                   onClick={confirmDelete}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-red-200"
                 >
                   Delete Asset
-                </button>
+                </Button>
               </div>
             </motion.div>
           </div>

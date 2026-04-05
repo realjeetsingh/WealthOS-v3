@@ -35,6 +35,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import Button from '../components/ui/Button';
 
 const Insights: React.FC = () => {
   const { user, userProfile, isPremium } = useAuth();
@@ -396,13 +397,14 @@ const Insights: React.FC = () => {
             <p className="text-indigo-100 text-sm max-w-md mb-4">
               Unlock deep AI-powered strategic insights, unlimited financial scenarios, and personalized wealth-building recommendations.
             </p>
-            <button 
+            <Button 
               onClick={onUpgrade}
-              className="bg-white text-indigo-600 px-6 py-2 rounded-lg font-bold text-sm hover:bg-indigo-50 transition-all flex items-center group"
+              variant="secondary"
+              size="sm"
+              icon={<ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />}
             >
               Upgrade Now
-              <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-            </button>
+            </Button>
           </div>
           <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-white opacity-10 rounded-full blur-3xl"></div>
         </div>
@@ -474,27 +476,14 @@ const Insights: React.FC = () => {
                     <p className="text-gray-500 mt-1">AI-powered deep dive into your financial future.</p>
                   </div>
                   {!smartAnalysis && (
-                    <button
+                    <Button
                       onClick={handleGenerateSmartAnalysis}
-                      disabled={generatingSmart}
-                      className={`flex items-center px-6 py-3 rounded-xl font-bold transition-all shadow-md ${
-                        generatingSmart 
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                          : 'bg-[#4F46E5] text-white hover:bg-indigo-700 active:scale-95'
-                      }`}
+                      loading={generatingSmart}
+                      size="lg"
+                      icon={<BrainCircuit className="w-5 h-5 mr-2" />}
                     >
-                      {generatingSmart ? (
-                        <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Analyzing your financial data...
-                        </>
-                      ) : (
-                        <>
-                          <BrainCircuit className="w-5 h-5 mr-2" />
-                          Generate Smart Analysis
-                        </>
-                      )}
-                    </button>
+                      Generate Smart Analysis
+                    </Button>
                   )}
                 </div>
 
@@ -523,7 +512,7 @@ const Insights: React.FC = () => {
                           </div>
                           <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black tracking-widest flex items-center">
                             <Crown className="w-3 h-3 mr-1" />
-                            PREMIUM ONLY
+                            PRO ONLY
                           </div>
                         </div>
                         
@@ -571,13 +560,14 @@ const Insights: React.FC = () => {
                             <div className="text-indigo-200 text-[10px] font-bold"><CurrencyDisplay value={299} />/month • Start improving today</div>
                           </div>
                           <div className="w-full md:w-auto text-center">
-                            <button 
+                            <Button 
                               onClick={onUpgrade}
-                              className="w-full md:w-auto bg-white text-indigo-600 px-8 py-4 md:px-10 md:py-5 rounded-xl font-black text-sm md:text-base hover:scale-105 transition-transform shadow-2xl flex items-center justify-center"
+                              size="lg"
+                              fullWidth
+                              icon={<ArrowRight className="w-4 h-4 md:w-5 md:h-5 ml-2" />}
                             >
                               Generate Insights
-                              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-                            </button>
+                            </Button>
                             <p className="mt-2 text-[10px] text-indigo-200 font-medium">Based on your real financial data</p>
                           </div>
                         </div>

@@ -9,6 +9,8 @@ import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
 import Modal from '../components/Modal';
+import Button from '../components/ui/Button';
+import Skeleton from '../components/ui/Skeleton';
 import { 
   PlusCircle, 
   ArrowUpCircle, 
@@ -39,6 +41,7 @@ const Transactions: React.FC = () => {
   const [category, setCategory] = useState('');
   const [notes, setNotes] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -148,11 +151,14 @@ const Transactions: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!user?.uid) return;
+    setDeletingId(id);
     try {
       await deleteTransaction(user.uid, id);
       setDeleteConfirmId(null);
     } catch (err: any) {
       setError(err.message || "Failed to delete transaction");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -161,8 +167,20 @@ const Transactions: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+      <div className="max-w-4xl mx-auto">
+        <div className="space-y-8">
+          <div>
+            <Skeleton className="h-10 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-[400px] w-full" />
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -198,7 +216,7 @@ const Transactions: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setType('expense')}
-                    className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-center ${
+                    className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all active:scale-[0.98] duration-150 flex items-center justify-center ${
                       type === 'expense' 
                         ? 'bg-red-50 border-red-200 text-[#DC2626] ring-4 ring-red-50' 
                         : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -210,7 +228,7 @@ const Transactions: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setType('income')}
-                    className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-center ${
+                    className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all active:scale-[0.98] duration-150 flex items-center justify-center ${
                       type === 'income' 
                         ? 'bg-green-50 border-green-200 text-[#16A34A] ring-4 ring-green-50' 
                         : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -271,18 +289,15 @@ const Transactions: React.FC = () => {
             </div>
 
             <div className="md:col-span-2">
-              <button
+              <Button
                 type="submit"
-                disabled={submitting}
-                className="w-full text-white py-4 px-4 rounded-xl font-bold text-lg transition-all disabled:opacity-50 flex items-center justify-center shadow-md bg-[#4F46E5] hover:bg-indigo-700"
+                loading={submitting}
+                fullWidth
+                size="lg"
+                icon={<PlusCircle className="w-6 h-6" />}
               >
-                {submitting ? (
-                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                ) : (
-                  <PlusCircle className="w-6 h-6 mr-2" />
-                )}
                 Add Transaction
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -320,14 +335,14 @@ const Transactions: React.FC = () => {
                       <div className="flex items-center space-x-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => handleEdit(t)}
-                          className="p-2 text-gray-500 hover:text-indigo-600 transition-colors"
+                          className="p-2 text-gray-500 hover:text-indigo-600 transition-all active:scale-[0.98] duration-150"
                           title="Edit"
                         >
                           <Edit2 className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(t.id)}
-                          className="p-2 text-gray-500 hover:text-red-600 transition-colors"
+                          className="p-2 text-gray-500 hover:text-red-600 transition-all active:scale-[0.98] duration-150"
                           title="Delete"
                         >
                           <Trash2 className="w-5 h-5" />
@@ -365,7 +380,7 @@ const Transactions: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setEditType('expense')}
-                    className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-center ${
+                    className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all active:scale-[0.98] duration-150 flex items-center justify-center ${
                       editType === 'expense' 
                         ? 'bg-red-50 border-red-200 text-[#DC2626] ring-4 ring-red-50' 
                         : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -377,7 +392,7 @@ const Transactions: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setEditType('income')}
-                    className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-center ${
+                    className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all active:scale-[0.98] duration-150 flex items-center justify-center ${
                       editType === 'income' 
                         ? 'bg-green-50 border-green-200 text-[#16A34A] ring-4 ring-green-50' 
                         : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -439,25 +454,24 @@ const Transactions: React.FC = () => {
           </div>
 
           <div className="flex space-x-4 pt-4">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              fullWidth
+              size="lg"
               onClick={() => setIsEditModalOpen(false)}
-              className="flex-1 py-4 px-4 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-all"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={editSubmitting}
-              className="flex-1 py-4 px-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center disabled:opacity-50"
+              loading={editSubmitting}
+              fullWidth
+              size="lg"
+              icon={<Save className="w-6 h-6" />}
             >
-              {editSubmitting ? (
-                <Loader2 className="w-6 h-6 animate-spin mr-2" />
-              ) : (
-                <Save className="w-6 h-6 mr-2" />
-              )}
               Save Changes
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -476,18 +490,21 @@ const Transactions: React.FC = () => {
               Are you sure you want to delete this transaction? This action cannot be undone.
             </p>
             <div className="flex space-x-4">
-              <button
+              <Button
+                variant="outline"
+                fullWidth
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-3 px-4 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-all"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
+                fullWidth
+                loading={deletingId === deleteConfirmId}
                 onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
-                className="flex-1 py-3 px-4 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-100"
               >
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         </div>

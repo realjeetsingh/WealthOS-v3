@@ -6,6 +6,7 @@ import { handleFirestoreError, OperationType } from '../../lib/firestore-errors'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { AlertCircle, Lock, Mail, CheckCircle2, TrendingUp, BrainCircuit, ShieldCheck, Sparkles, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import Button from '../../components/ui/Button';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -275,20 +276,14 @@ const Login: React.FC = () => {
             </div>
 
             <div>
-              <motion.button
-                whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)" }}
-                whileTap={{ scale: 0.98 }}
+              <Button
                 type="submit"
-                disabled={loading}
-                className={`group relative w-full flex justify-center items-center py-4 px-4 border border-transparent text-sm font-black rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all shadow-lg shadow-indigo-200 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                loading={loading}
+                fullWidth
+                size="lg"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                    Connecting...
-                  </>
-                ) : 'Access Dashboard'}
-              </motion.button>
+                Access Dashboard
+              </Button>
             </div>
           </form>
 
@@ -306,16 +301,16 @@ const Login: React.FC = () => {
               <p className="text-sm font-bold text-gray-700">Login with Google</p>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <Button
+              variant="outline"
+              fullWidth
+              size="lg"
               onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full flex items-center justify-center py-3.5 px-4 border border-gray-300 rounded-xl bg-white text-sm font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all shadow-sm disabled:opacity-70"
+              loading={loading}
+              icon={<GoogleIcon />}
             >
-              <GoogleIcon />
               Continue with Google
-            </motion.button>
+            </Button>
           </div>
 
           <div className="mt-8 text-center">

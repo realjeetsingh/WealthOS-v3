@@ -10,6 +10,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
 import { calculateTotalEMI, calculateMonthlyIncome } from '../lib/financialEngine';
 import Modal from '../components/Modal';
+import Button from '../components/ui/Button';
 import { 
   PlusCircle, 
   Wallet, 
@@ -546,18 +547,15 @@ const Loans: React.FC = () => {
             </div>
 
             <div className="md:col-span-3 flex items-end">
-              <button
+              <Button
                 type="submit"
-                disabled={submitting}
-                className="w-full text-white py-4 px-4 rounded-2xl font-black text-lg transition-all disabled:opacity-50 flex items-center justify-center shadow-xl bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100"
+                loading={submitting}
+                fullWidth
+                size="lg"
+                icon={<PlusCircle className="w-6 h-6 mr-2" />}
               >
-                {submitting ? (
-                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                ) : (
-                  <PlusCircle className="w-6 h-6 mr-2" />
-                )}
                 Add Loan
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -630,14 +628,14 @@ const Loans: React.FC = () => {
                       <div className="flex space-x-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => handleEdit(l)}
-                          className="p-2.5 bg-gray-50 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                          className="p-2.5 bg-gray-50 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-[0.98] duration-150"
                           title="Edit"
                         >
                           <Edit2 className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(l.id || null)}
-                          className="p-2.5 bg-gray-50 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                          className="p-2.5 bg-gray-50 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-[0.98] duration-150"
                           title="Delete"
                         >
                           <Trash2 className="w-5 h-5" />
@@ -687,13 +685,14 @@ const Loans: React.FC = () => {
                     </div>
 
                     {l.status === 'active' && (
-                      <button
+                      <Button
                         onClick={() => handleMarkPaid(l)}
-                        className="w-full py-3 bg-indigo-50 text-indigo-600 rounded-xl font-black text-sm hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center space-x-2"
+                        variant="secondary"
+                        fullWidth
+                        icon={<CheckCircle className="w-4 h-4" />}
                       >
-                        <CheckCircle className="w-4 h-4" />
-                        <span>Mark EMI Paid</span>
-                      </button>
+                        Mark EMI Paid
+                      </Button>
                     )}
                   </div>
                 );
@@ -837,25 +836,24 @@ const Loans: React.FC = () => {
           </div>
 
           <div className="md:col-span-3 flex space-x-4">
-            <button
+            <Button
               type="button"
+              variant="secondary"
               onClick={() => setIsEditModalOpen(false)}
-              className="flex-1 py-4 px-4 rounded-2xl border-2 border-gray-100 font-black text-gray-400 hover:bg-gray-50 transition-all"
+              fullWidth
+              size="lg"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={editSubmitting}
-              className="flex-1 py-4 px-4 rounded-2xl bg-indigo-600 text-white font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center disabled:opacity-50"
+              loading={editSubmitting}
+              fullWidth
+              size="lg"
+              icon={<Save className="w-6 h-6 mr-2" />}
             >
-              {editSubmitting ? (
-                <Loader2 className="w-6 h-6 animate-spin mr-2" />
-              ) : (
-                <Save className="w-6 h-6 mr-2" />
-              )}
               Save Changes
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -874,18 +872,22 @@ const Loans: React.FC = () => {
               Are you sure you want to remove this loan? This will also remove its EMI from your monthly expense calculations.
             </p>
             <div className="flex space-x-4">
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-4 px-4 rounded-2xl border-2 border-gray-100 font-black text-gray-400 hover:bg-gray-50 transition-all"
+                fullWidth
+                size="lg"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
                 onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
-                className="flex-1 py-4 px-4 rounded-2xl bg-red-600 text-white font-black hover:bg-red-700 transition-all shadow-xl shadow-red-100"
+                fullWidth
+                size="lg"
               >
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         </div>

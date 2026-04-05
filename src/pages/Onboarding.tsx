@@ -36,6 +36,7 @@ import {
 import { updateFinancialSnapshot, getFinancialSnapshot } from '../services/snapshotService';
 import { formatCurrency } from '../lib/formatCurrency';
 import { toast } from 'sonner';
+import Button from '../components/ui/Button';
 
 const STEPS = [
   { id: 'income', title: 'Monthly Income', icon: TrendingUp, description: 'How much do you earn each month?' },
@@ -551,7 +552,7 @@ const Onboarding: React.FC = () => {
                       setGoal({ ...goal, name: '', targetAmount: '' });
                     }
                   }}
-                  className={`p-[14px] md:p-[18px] rounded-[12px] md:rounded-[16px] border-2 text-left transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center space-x-4 min-h-[48px] sm:min-h-[56px] md:min-h-[60px] ${
+                  className={`p-[14px] md:p-[18px] rounded-[12px] md:rounded-[16px] border-2 text-left transition-all duration-150 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center space-x-4 min-h-[48px] sm:min-h-[56px] md:min-h-[60px] ${
                     selectedGoalOption === option.id 
                       ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-500/10' 
                       : 'border-gray-100 bg-white hover:border-gray-200'
@@ -691,13 +692,14 @@ const Onboarding: React.FC = () => {
                     Your personalized wealth-building strategies are waiting in your dashboard.
                   </p>
                 </div>
-                <button 
+                <Button 
                   onClick={handleComplete}
-                  className="w-full md:w-auto px-[20px] md:px-[24px] py-[14px] md:py-[18px] bg-white text-gray-900 font-black rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center space-x-3 group shadow-xl min-h-[48px] sm:min-h-[56px] md:min-h-[60px] leading-[1.6] tracking-[0.3px]"
+                  loading={loading}
+                  size="lg"
+                  icon={<ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />}
                 >
-                  <span className="text-lg">Go to Dashboard</span>
-                  <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                </button>
+                  Go to Dashboard
+                </Button>
               </div>
               <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/5 rounded-full blur-3xl"></div>
               <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl"></div>
@@ -769,13 +771,14 @@ const Onboarding: React.FC = () => {
                     "Most people don’t know where their money goes. <br />
                     <span className="text-gray-900 font-bold not-italic">You’re about to change that."</span>
                   </p>
-                  <button
+                  <Button
                     onClick={startJourney}
-                    className="w-full px-[20px] md:px-[24px] py-[14px] md:py-[18px] bg-indigo-600 text-white font-black rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] shadow-xl shadow-indigo-200 flex items-center justify-center space-x-3 group min-h-[48px] sm:min-h-[56px] md:min-h-[60px] leading-[1.6] tracking-[0.3px]"
+                    fullWidth
+                    size="lg"
+                    icon={<ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />}
                   >
-                    <span className="text-lg">Start My Financial Journey</span>
-                    <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                  </button>
+                    Start My Financial Journey
+                  </Button>
                 </div>
               </motion.div>
             ) : (
@@ -855,33 +858,26 @@ const Onboarding: React.FC = () => {
           {currentStep < STEPS.length - 1 && (
             <div className="mt-12 flex items-center space-x-4">
               {currentStep > 0 && (
-                <button 
+                <Button 
+                  variant="secondary"
                   onClick={() => setCurrentStep(prev => prev - 1)}
-                  className="p-[14px] md:p-[18px] bg-gray-100 text-gray-600 rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] min-h-[48px] sm:min-h-[56px] md:min-h-[60px] flex items-center justify-center"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
+                  icon={<ChevronLeft className="w-6 h-6" />}
+                />
               )}
-              <button 
+              <Button 
                 onClick={handleNext}
-                disabled={loading}
-                className="flex-1 px-[20px] md:px-[24px] py-[14px] md:py-[18px] bg-indigo-600 text-white font-black rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center space-x-3 shadow-lg shadow-indigo-200 disabled:opacity-70 min-h-[48px] sm:min-h-[56px] md:min-h-[60px] leading-[1.6] tracking-[0.3px]"
+                loading={loading}
+                fullWidth
+                icon={<ChevronRight className="w-5 h-5" />}
               >
-                {loading ? (
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <span>Continue</span>
-                    <ChevronRight className="w-5 h-5" />
-                  </>
-                )}
-              </button>
-              <button 
+                Continue
+              </Button>
+              <Button 
+                variant="ghost"
                 onClick={handleSkip}
-                className="px-[20px] md:px-[24px] py-[14px] md:py-[18px] text-gray-400 font-bold transition-all duration-200 hover:scale-[1.02] hover:text-gray-600 active:scale-[0.98] min-h-[48px] sm:min-h-[56px] md:min-h-[60px] flex items-center justify-center leading-[1.6] tracking-[0.3px]"
               >
                 Skip
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -905,18 +901,21 @@ const Onboarding: React.FC = () => {
                 Skipping this step will reduce the accuracy of your financial insights and AI-powered recommendations.
               </p>
               <div className="flex flex-col space-y-3">
-                <button 
+                <Button 
                   onClick={() => setShowSkipWarning(false)}
-                  className="w-full px-[20px] md:px-[24px] py-[14px] md:py-[18px] bg-indigo-600 text-white font-black rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] min-h-[48px] sm:min-h-[56px] md:min-h-[60px] leading-[1.6] tracking-[0.3px]"
+                  fullWidth
+                  size="lg"
                 >
                   I'll add it now
-                </button>
-                <button 
+                </Button>
+                <Button 
+                  variant="secondary"
                   onClick={confirmSkip}
-                  className="w-full px-[20px] md:px-[24px] py-[14px] md:py-[18px] bg-gray-100 text-gray-600 font-black rounded-[12px] md:rounded-[16px] transition-all duration-200 hover:scale-[1.02] hover:bg-gray-200 active:scale-[0.98] min-h-[48px] sm:min-h-[56px] md:min-h-[60px] leading-[1.6] tracking-[0.3px]"
+                  fullWidth
+                  size="lg"
                 >
                   Skip anyway
-                </button>
+                </Button>
               </div>
             </motion.div>
           </div>
