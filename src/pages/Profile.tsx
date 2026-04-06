@@ -384,7 +384,7 @@ const Profile: React.FC = () => {
           </div>
         </div>
         
-        <div className="px-8 pb-8 pt-[60px] relative -mt-16">
+        <div className="px-8 pb-8 pt-8 relative">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="w-32 h-32 bg-white rounded-[2rem] p-1 shadow-sm border border-gray-100 relative shrink-0 z-[2] group">

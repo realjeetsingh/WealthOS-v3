@@ -15,6 +15,9 @@ export interface UserProfile {
   location?: string;
   occupation?: string;
   financialGoals?: string[];
+  emailAlerts?: boolean;
+  budgetAlerts?: boolean;
+  investmentAlerts?: boolean;
   createdAt: Timestamp;
 }
 
@@ -98,5 +101,12 @@ export interface NetWorthSnapshot {
   cashBalance: number;
   portfolioValue: number;
   loanBalance: number;
+  timestamp: Timestamp;
+}
+
+export interface Budget {
+  id?: string;
+  category: string;
+  limit: number;
   timestamp: Timestamp;
 }

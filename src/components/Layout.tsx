@@ -57,12 +57,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         />
         
         <div 
-          className={`flex-1 flex flex-col min-w-0 h-screen overflow-hidden max-w-full transition-[margin] duration-200 ease-in-out ${
+          className={`flex-1 flex flex-col min-w-0 h-screen pt-16 overflow-hidden max-w-full transition-[margin] duration-200 ease-in-out ${
             isExpanded ? 'md:ml-[240px]' : 'md:ml-[70px]'
           }`}
         >
           {/* MainContent: ONLY scrollable area */}
-          <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full p-6 md:p-8 pt-24 pb-24 md:pb-8">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full p-6 md:p-8 pb-24 md:pb-8">
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}

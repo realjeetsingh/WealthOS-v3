@@ -11,8 +11,47 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
-import { Transaction, Asset, Liability, Loan } from '../types';
+import { Budget, Transaction, Asset, Liability, Loan } from '../types';
 import { updateFinancialSnapshot } from './snapshotService';
+
+/**
+ * Budgets
+ */
+export const addBudget = async (userId: string | undefined, data: Omit<Budget, 'id' | 'timestamp'>) => {
+  if (!userId) throw new Error('User ID is required for addBudget');
+  const path = `users/${userId}/budgets`;
+  try {
+    const docRef = await addDoc(collection(db, path), {
+      ...data,
+      timestamp: serverTimestamp()
+    });
+    return docRef;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+};
+
+export const updateBudget = async (userId: string | undefined, budgetId: string, data: Partial<Omit<Budget, 'id' | 'timestamp'>>) => {
+  if (!userId) throw new Error('User ID is required for updateBudget');
+  const path = `users/${userId}/budgets`;
+  try {
+    const docRef = doc(db, path, budgetId);
+    await updateDoc(docRef, data);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${path}/${budgetId}`);
+  }
+};
+
+export const deleteBudget = async (userId: string | undefined, budgetId: string) => {
+  if (!userId) throw new Error('User ID is required for deleteBudget');
+  const path = `users/${userId}/budgets`;
+  try {
+    const docRef = doc(db, path, budgetId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `${path}/${budgetId}`);
+  }
+};
 
 /**
  * Transactions

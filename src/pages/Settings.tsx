@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Settings as SettingsIcon, 
   Shield, 
   Bell, 
-  CreditCard, 
   Globe, 
   Lock, 
   Trash2, 
@@ -18,27 +17,40 @@ import {
   ShieldCheck,
   User as UserIcon,
   Languages,
-  Link as LinkIcon,
   LifeBuoy,
   MessageSquare,
   FileText,
   Download,
   AlertTriangle,
-  ExternalLink
+  Phone,
+  Moon,
+  Database,
+  RefreshCw,
+  Camera
 } from 'lucide-react';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { CURRENCIES } from '../lib/currency';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
 import Button from '../components/ui/Button';
+import { motion, AnimatePresence } from 'motion/react';
 
 const Settings: React.FC = () => {
   const { user, userProfile, isPremium } = useAuth();
   const navigate = useNavigate();
   const [isUpdating, setIsUpdating] = useState(false);
   
+  // Account State
+  const [name, setName] = useState(userProfile?.name || '');
+  const [phone, setPhone] = useState(userProfile?.phone || '');
+  const [currency, setCurrency] = useState(userProfile?.currency || 'INR');
+
+  // Notification State
+  const [expenseAlerts, setExpenseAlerts] = useState(userProfile?.emailAlerts ?? true);
+  const [budgetAlerts, setBudgetAlerts] = useState(userProfile?.budgetAlerts ?? true);
+
   // Password Change State
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -53,37 +65,69 @@ const Settings: React.FC = () => {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const updateCurrency = async (currency: string) => {
+  // Reset Data State
+  const [isResettingData, setIsResettingData] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  // Contact Support State
+  const [isContactingSupport, setIsContactingSupport] = useState(false);
+
+  useEffect(() => {
+    if (userProfile) {
+      setName(userProfile.name);
+      setPhone(userProfile.phone || '');
+      setCurrency(userProfile.currency || 'INR');
+      setExpenseAlerts(userProfile.emailAlerts ?? true);
+      setBudgetAlerts(userProfile.budgetAlerts ?? true);
+    }
+  }, [userProfile]);
+
+  const handleSaveChanges = async () => {
     if (!user) return;
-    
     setIsUpdating(true);
     try {
       const userRef = doc(db, 'users', user.uid);
       await updateDoc(userRef, {
-        currency: currency
+        name,
+        phone,
+        currency,
+        emailAlerts: expenseAlerts,
+        budgetAlerts: budgetAlerts
       });
-      toast.success(`Currency updated to ${currency}`);
+      toast.success('Account settings saved successfully');
     } catch (error) {
-      console.error("Error updating currency:", error);
-      toast.error("Failed to update currency");
+      console.error("Error saving settings:", error);
+      toast.error('Failed to save settings');
     } finally {
       setIsUpdating(false);
     }
   };
 
-  const toggleEmailAlerts = async () => {
+  const handleResetData = async () => {
     if (!user) return;
-    
-    setIsUpdating(true);
+    setIsResetting(true);
     try {
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        emailAlerts: !userProfile?.emailAlerts
-      });
+      const batch = writeBatch(db);
+      
+      // Collections to clear
+      const collectionsToClear = ['transactions', 'budgets', 'loans', 'assets', 'liabilities', 'goals', 'portfolio', 'netWorthSnapshots'];
+      
+      for (const collName of collectionsToClear) {
+        const collRef = collection(db, 'users', user.uid, collName);
+        const snapshot = await getDocs(collRef);
+        snapshot.docs.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+      }
+
+      await batch.commit();
+      toast.success('All financial data has been reset');
+      setIsResettingData(false);
     } catch (error) {
-      console.error("Error updating settings:", error);
+      console.error("Error resetting data:", error);
+      toast.error('Failed to reset data');
     } finally {
-      setIsUpdating(false);
+      setIsResetting(false);
     }
   };
 
@@ -159,483 +203,514 @@ const Settings: React.FC = () => {
     }
   };
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-12 pb-24">
-      {/* STEP 1 — PAGE HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center space-x-5">
-          <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-[1.5rem] flex items-center justify-center shadow-xl shadow-indigo-200 shrink-0">
-            <SettingsIcon className="w-8 h-8 text-white" />
-          </div>
+  const Card = ({ title, children, icon: Icon, description }: { title: string, children: React.ReactNode, icon?: any, description?: string }) => (
+    <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+      <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          {Icon && (
+            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+              <Icon className="w-5 h-5" />
+            </div>
+          )}
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 tracking-tight">Settings</h1>
-            <p className="text-gray-500 font-medium mt-1">Manage your account, preferences, and security</p>
-          </div>
-        </div>
-
-        {/* User Info Preview */}
-        <div className="flex items-center space-x-4 bg-white p-3 pr-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="w-12 h-12 bg-indigo-50 rounded-xl overflow-hidden flex items-center justify-center border border-indigo-100">
-            {userProfile?.profileImage ? (
-              <img src={userProfile.profileImage} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            ) : (
-              <UserIcon className="w-6 h-6 text-indigo-600" />
-            )}
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-900">{userProfile?.name || 'User'}</p>
-            <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
-              {isPremium ? 'Pro Member' : 'Free Plan'}
-            </p>
+            <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+            {description && <p className="text-sm text-gray-500 mt-0.5">{description}</p>}
           </div>
         </div>
       </div>
+      <div className="p-8 space-y-6">
+        {children}
+      </div>
+    </div>
+  );
 
-      <div className="space-y-12">
+  const Toggle = ({ label, description, enabled, onChange, disabled = false }: { label: string, description?: string, enabled: boolean, onChange: (val: boolean) => void, disabled?: boolean }) => (
+    <div className={`flex items-center justify-between py-2 ${disabled ? 'opacity-50 grayscale' : ''}`}>
+      <div className="space-y-0.5">
+        <p className="font-bold text-gray-900">{label}</p>
+        {description && <p className="text-xs text-gray-500">{description}</p>}
+      </div>
+      <button 
+        onClick={() => !disabled && onChange(!enabled)}
+        disabled={disabled}
+        className={`w-12 h-6 rounded-full relative transition-colors duration-200 ease-in-out focus:outline-none ${
+          enabled ? 'bg-[#4F46E5]' : 'bg-gray-200'
+        } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      >
+        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ease-in-out ${
+          enabled ? 'translate-x-7' : 'translate-x-1'
+        }`}></div>
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8 pb-24">
+      {/* HEADER */}
+      <div className="flex items-center space-x-5">
+        <div className="w-14 h-14 bg-[#4F46E5] rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
+          <SettingsIcon className="w-7 h-7 text-white" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Settings</h1>
+          <p className="text-gray-500 font-medium">System control center & preferences</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8">
         {/* SECTION 1 — ACCOUNT */}
-        <div className="space-y-4">
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] ml-2">Section 1 — Account</h2>
-          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
-            {/* Edit Profile */}
-            <button 
-              onClick={() => navigate('/profile')}
-              className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.98] duration-150"
-            >
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                  <UserIcon className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Edit Profile</p>
-                  <p className="text-xs text-gray-500">Update your personal information and appearance</p>
+        <Card title="Account" icon={UserIcon} description="Manage your personal information">
+          <div className="flex flex-col md:flex-row items-center gap-8 pb-4">
+            <div className="relative group">
+              <div className="w-24 h-24 bg-gray-100 rounded-[2rem] overflow-hidden border-4 border-white shadow-md">
+                {userProfile?.profileImage ? (
+                  <img src={userProfile.profileImage} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-600">
+                    <UserIcon className="w-10 h-10" />
+                  </div>
+                )}
+              </div>
+              <button className="absolute -bottom-1 -right-1 w-8 h-8 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center text-gray-600 hover:text-indigo-600 transition-colors">
+                <Camera className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
+                <div className="relative">
+                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input 
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all font-bold text-gray-900"
+                    placeholder="Your Name"
+                  />
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-400 group-hover:translate-x-1 transition-all" />
-            </button>
-
-            {/* Change Password */}
-            <button 
-              onClick={() => setIsChangingPassword(true)}
-              className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.98] duration-150"
-            >
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
-                  <Lock className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Change Password</p>
-                  <p className="text-xs text-gray-500">Update your account security credentials</p>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input 
+                    type="email"
+                    value={user?.email || ''}
+                    readOnly
+                    className="w-full pl-11 pr-4 py-3 bg-gray-100 border border-gray-100 rounded-xl outline-none font-bold text-gray-400 cursor-not-allowed"
+                  />
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-400 group-hover:translate-x-1 transition-all" />
-            </button>
-
-            {/* Subscription Management (Future Ready) */}
-            <div className="w-full flex items-center justify-between p-6 opacity-60 grayscale cursor-not-allowed">
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600">
-                  <CreditCard className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Subscription Management</p>
-                  <p className="text-xs text-gray-500">Manage your Pro plan and billing (Coming Soon)</p>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number</label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input 
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all font-bold text-gray-900"
+                    placeholder="+1 234 567 890"
+                  />
                 </div>
               </div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Optional Future</span>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Default Currency</label>
+                <div className="relative">
+                  <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className="w-full pl-11 pr-10 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all font-bold text-gray-900 appearance-none cursor-pointer"
+                  >
+                    {CURRENCIES.map(c => (
+                      <option key={c.code} value={c.code}>
+                        {c.symbol} - {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90 pointer-events-none" />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+          <div className="flex justify-end pt-2">
+            <Button 
+              onClick={handleSaveChanges} 
+              loading={isUpdating}
+              icon={<Check className="w-4 h-4" />}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </Card>
 
-        {/* SECTION 2 — PREFERENCES */}
-        <div className="space-y-4">
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] ml-2">Section 2 — Preferences</h2>
-          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
-            {/* Currency Selection */}
-            <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
-                  <Globe className="w-6 h-6" />
+        {/* SECTION 2 — SECURITY */}
+        <Card title="Security" icon={ShieldCheck} description="Manage your account protection">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm">
+                  <Lock className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900">Currency Selection</p>
-                  <p className="text-xs text-gray-500">Currently using: <span className="font-bold text-emerald-600">{userProfile?.currency || 'INR'}</span></p>
+                  <p className="font-bold text-gray-900">Account Password</p>
+                  <p className="text-xs text-gray-500">Last changed: {userProfile?.createdAt ? new Date(userProfile.createdAt.toMillis()).toLocaleDateString() : 'Recently'}</p>
                 </div>
               </div>
-              <div className="relative min-w-[160px]">
+              <Button variant="secondary" size="sm" onClick={() => setIsChangingPassword(true)}>
+                Change Password
+              </Button>
+            </div>
+            
+            <Toggle 
+              label="Two-factor authentication" 
+              description="Add an extra layer of security to your account"
+              enabled={false}
+              onChange={() => {}}
+              disabled={true}
+            />
+          </div>
+        </Card>
+
+        {/* SECTION 3 — PREFERENCES */}
+        <Card title="App Preferences" icon={Globe} description="Customize your application experience">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between py-2">
+              <div className="space-y-0.5">
+                <p className="font-bold text-gray-900">Currency</p>
+                <p className="text-xs text-gray-500">Global display currency for all modules</p>
+              </div>
+              <div className="relative min-w-[140px]">
                 <select
-                  value={userProfile?.currency || 'INR'}
-                  onChange={(e) => updateCurrency(e.target.value)}
-                  disabled={isUpdating}
-                  className="w-full px-6 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-gray-900 appearance-none cursor-pointer pr-10"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-gray-900 appearance-none cursor-pointer pr-10"
                 >
                   {CURRENCIES.map(c => (
                     <option key={c.code} value={c.code}>
-                      {c.symbol} - {c.name}
+                      {c.symbol} {c.code}
                     </option>
                   ))}
                 </select>
-                <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90 pointer-events-none" />
+                <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90 pointer-events-none" />
               </div>
             </div>
 
-            {/* Notification Preferences */}
-            <div className="p-6 flex items-center justify-between">
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-violet-50 rounded-2xl flex items-center justify-center text-violet-600">
-                  <Bell className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Notification Preferences</p>
-                  <p className="text-xs text-gray-500">Receive weekly financial summaries and alerts</p>
-                </div>
+            <div className="flex items-center justify-between py-2 opacity-50 grayscale cursor-not-allowed">
+              <div className="space-y-0.5">
+                <p className="font-bold text-gray-900">Language</p>
+                <p className="text-xs text-gray-500">Choose your preferred language</p>
               </div>
-              <button 
-                onClick={toggleEmailAlerts}
-                disabled={isUpdating}
-                className={`w-14 h-7 rounded-full relative transition-colors duration-200 ease-in-out focus:outline-none ${
-                  userProfile?.emailAlerts ? 'bg-indigo-600' : 'bg-gray-200'
-                } ${isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              >
-                <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ease-in-out ${
-                  userProfile?.emailAlerts ? 'translate-x-8' : 'translate-x-1'
-                }`}></div>
-              </button>
+              <div className="flex items-center space-x-2 text-sm font-bold text-gray-500">
+                <Languages className="w-4 h-4" />
+                <span>English (US)</span>
+              </div>
             </div>
 
-            {/* Language (Future Ready) */}
-            <div className="w-full flex items-center justify-between p-6 opacity-60 grayscale cursor-not-allowed">
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
-                  <Languages className="w-6 h-6" />
+            <Toggle 
+              label="Dark Mode" 
+              description="Switch between light and dark themes"
+              enabled={false}
+              onChange={() => {}}
+              disabled={true}
+            />
+          </div>
+        </Card>
+
+        {/* SECTION 4 — NOTIFICATIONS */}
+        <Card title="Notifications" icon={Bell} description="Control how you receive alerts">
+          <div className="space-y-6">
+            <Toggle 
+              label="Expense alerts" 
+              description="Get notified when you record a large expense"
+              enabled={expenseAlerts}
+              onChange={setExpenseAlerts}
+            />
+            <Toggle 
+              label="Budget alerts" 
+              description="Receive warnings when you approach budget limits"
+              enabled={budgetAlerts}
+              onChange={setBudgetAlerts}
+            />
+            <Toggle 
+              label="Investment alerts" 
+              description="Real-time updates on your portfolio performance"
+              enabled={false}
+              onChange={() => {}}
+              disabled={true}
+            />
+          </div>
+        </Card>
+
+        {/* SECTION 5 — DATA MANAGEMENT */}
+        <Card title="Data & Privacy" icon={Database} description="Manage your financial records and privacy">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm">
+                  <Download className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900">Language Settings</p>
-                  <p className="text-xs text-gray-500">Choose your preferred application language (Coming Soon)</p>
+                  <p className="font-bold text-gray-900">Export Data</p>
+                  <p className="text-xs text-gray-500">Download all your records in CSV format</p>
                 </div>
               </div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Optional Future</span>
+              <Button variant="secondary" size="sm" disabled>
+                Coming Soon
+              </Button>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-red-50/30 rounded-2xl border border-red-100">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-red-600 shadow-sm">
+                  <RefreshCw className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900">Reset Data</p>
+                  <p className="text-xs text-gray-500">Clear all transactions and financial history</p>
+                </div>
+              </div>
+              <Button variant="danger" size="sm" onClick={() => setIsResettingData(true)}>
+                Reset Now
+              </Button>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-red-50/30 rounded-2xl border border-red-100">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-red-600 shadow-sm">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900">Delete Account</p>
+                  <p className="text-xs text-gray-500">Permanently remove your account and data</p>
+                </div>
+              </div>
+              <Button variant="danger" size="sm" onClick={() => setIsDeletingAccount(true)}>
+                Delete Account
+              </Button>
             </div>
           </div>
-        </div>
+        </Card>
 
-        {/* SECTION 3 — SECURITY */}
-        <div className="space-y-4">
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] ml-2">Section 3 — Security</h2>
-          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
-            {/* Security Settings */}
-            <div className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group cursor-pointer active:scale-[0.98] duration-150">
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-600 group-hover:scale-110 transition-transform">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Security Settings</p>
-                  <p className="text-xs text-gray-500">Review your account security logs and activity</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-400 group-hover:translate-x-1 transition-all" />
-            </div>
-
-            {/* Two-Factor Authentication (Placeholder) */}
-            <div className="w-full flex items-center justify-between p-6 opacity-60 grayscale cursor-not-allowed">
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-cyan-50 rounded-2xl flex items-center justify-center text-cyan-600">
-                  <Shield className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Two-Factor Authentication</p>
-                  <p className="text-xs text-gray-500">Add an extra layer of security to your account (Coming Soon)</p>
-                </div>
-              </div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Optional Future</span>
-            </div>
-
-            {/* Connected Accounts (Future Ready) */}
-            <div className="w-full flex items-center justify-between p-6 opacity-60 grayscale cursor-not-allowed">
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600">
-                  <LinkIcon className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Connected Accounts</p>
-                  <p className="text-xs text-gray-500">Manage third-party app connections (Coming Soon)</p>
-                </div>
-              </div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Optional Future</span>
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 4 — SESSION */}
-        <div className="space-y-4">
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] ml-2">Section 4 — Session</h2>
-          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+        {/* SECTION 6 — HELP & SUPPORT */}
+        <Card title="Help & Support" icon={LifeBuoy} description="Get assistance and review policies">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button 
-              onClick={handleLogout}
-              className="w-full flex items-center justify-between p-6 hover:bg-red-50 active:bg-red-100 transition-all group text-left active:scale-[0.98] duration-150"
+              onClick={() => setIsContactingSupport(true)}
+              className="p-6 bg-gray-50 rounded-2xl border border-gray-100 hover:bg-indigo-50 hover:border-indigo-100 transition-all group text-center"
             >
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 group-hover:scale-110 transition-transform">
-                  <LogOut className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Sign Out</p>
-                  <p className="text-xs text-gray-500">Securely log out of your WealthOS account</p>
-                </div>
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm mx-auto mb-4 group-hover:scale-110 transition-transform">
+                <MessageSquare className="w-6 h-6" />
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-red-400 group-hover:translate-x-1 transition-all" />
-            </button>
-          </div>
-        </div>
-
-        {/* SECTION 5 — SUPPORT & LEGAL */}
-        <div className="space-y-4">
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] ml-2">Section 5 — Support & Legal</h2>
-          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
-            {/* Help Center */}
-            <a 
-              href="#" 
-              className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group active:scale-[0.98] duration-150"
-            >
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-600 group-hover:scale-110 transition-transform">
-                  <LifeBuoy className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Help Center</p>
-                  <p className="text-xs text-gray-500">Browse guides and tutorials for WealthOS</p>
-                </div>
-              </div>
-              <ExternalLink className="w-4 h-4 text-gray-300 group-hover:text-gray-400" />
-            </a>
-
-            {/* Contact Support */}
-            <button className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.98] duration-150">
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-pink-50 rounded-2xl flex items-center justify-center text-pink-600 group-hover:scale-110 transition-transform">
-                  <MessageSquare className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Contact Support</p>
-                  <p className="text-xs text-gray-500">Get help from our dedicated support team</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-400 group-hover:translate-x-1 transition-all" />
+              <p className="font-bold text-gray-900">Contact Support</p>
+              <p className="text-xs text-gray-500 mt-1">Talk to our team</p>
             </button>
 
-            {/* Privacy Policy */}
-            <button className="w-full flex items-center justify-between p-6 hover:bg-gray-50 active:bg-gray-100 transition-all group text-left active:scale-[0.98] duration-150">
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-600 group-hover:scale-110 transition-transform">
-                  <FileText className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Privacy Policy</p>
-                  <p className="text-xs text-gray-500">Review how we handle your data and privacy</p>
-                </div>
+            <button className="p-6 bg-gray-50 rounded-2xl border border-gray-100 hover:bg-indigo-50 hover:border-indigo-100 transition-all group text-center">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm mx-auto mb-4 group-hover:scale-110 transition-transform">
+                <FileText className="w-6 h-6" />
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-400 group-hover:translate-x-1 transition-all" />
+              <p className="font-bold text-gray-900">FAQs</p>
+              <p className="text-xs text-gray-500 mt-1">Common questions</p>
             </button>
 
-            {/* Data Export (Future Ready) */}
-            <div className="w-full flex items-center justify-between p-6 opacity-60 grayscale cursor-not-allowed">
-              <div className="flex items-center space-x-5">
-                <div className="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600">
-                  <Download className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Export Your Data</p>
-                  <p className="text-xs text-gray-500">Download a copy of your financial records (Coming Soon)</p>
-                </div>
+            <button className="p-6 bg-gray-50 rounded-2xl border border-gray-100 hover:bg-indigo-50 hover:border-indigo-100 transition-all group text-center">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm mx-auto mb-4 group-hover:scale-110 transition-transform">
+                <Shield className="w-6 h-6" />
               </div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Optional Future</span>
-            </div>
+              <p className="font-bold text-gray-900">Privacy Policy</p>
+              <p className="text-xs text-gray-500 mt-1">Data protection</p>
+            </button>
           </div>
-        </div>
-
-        {/* STEP 6 — DANGER ZONE */}
-        <div className="space-y-4">
-          <h2 className="text-xs font-bold text-red-400 uppercase tracking-[0.2em] ml-2">Danger Zone</h2>
-          <div className="bg-red-50/30 rounded-[2rem] shadow-sm border border-red-100 overflow-hidden">
-            <div className="p-8">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-8 rounded-3xl bg-white border border-red-100 shadow-sm">
-                <div className="flex items-start space-x-5">
-                  <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 shrink-0">
-                    <AlertTriangle className="w-7 h-7" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold text-gray-900">Delete Account</h3>
-                    <p className="text-sm text-gray-500 max-w-md leading-relaxed">
-                      Permanently remove your account and all associated data. This action is <span className="font-bold text-red-600 uppercase">irreversible</span> and all your financial history will be lost.
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="danger"
-                  size="lg"
-                  onClick={() => setIsDeletingAccount(true)}
-                  icon={<AlertTriangle className="w-5 h-5" />}
-                >
-                  Delete My Account
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        </Card>
       </div>
 
-      {/* Change Password Modal */}
-      {isChangingPassword && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-300 max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="flex justify-between items-center p-10 border-b border-gray-100 shrink-0">
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Change Password</h3>
-                <p className="text-sm text-gray-500 mt-1">Enhance your account security</p>
-              </div>
-              <button 
-                onClick={() => setIsChangingPassword(false)}
-                className="p-3 hover:bg-gray-100 rounded-2xl transition-all"
-              >
-                <X className="w-6 h-6 text-gray-400" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleChangePassword} className="p-10 space-y-6 overflow-y-auto flex-1 pb-32 md:pb-10 custom-scrollbar">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Current Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input 
-                    type={showPasswordCurrent ? "text" : "password"}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordCurrent(!showPasswordCurrent)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-lg transition-colors"
-                  >
-                    {showPasswordCurrent ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
-                  </button>
+      {/* MODALS */}
+      <AnimatePresence>
+        {/* Change Password Modal */}
+        {isChangingPassword && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden"
+            >
+              <div className="flex justify-between items-center p-8 border-b border-gray-100">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Change Password</h3>
+                  <p className="text-sm text-gray-500 mt-1">Enhance your account security</p>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">New Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input 
-                    type={showPasswordNew ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordNew(!showPasswordNew)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-lg transition-colors"
-                  >
-                    {showPasswordNew ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Confirm New Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input 
-                    type={showPasswordConfirm ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-lg transition-colors"
-                  >
-                    {showPasswordConfirm ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex space-x-4 pt-4">
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  onClick={() => setIsChangingPassword(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  fullWidth
-                  loading={isPasswordSaving}
-                  disabled={!newPassword || !currentPassword}
-                  icon={<Check className="w-4 h-4" />}
-                >
-                  Update Password
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Account Modal */}
-      {isDeletingAccount && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-300 max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="flex justify-between items-center p-10 border-b border-gray-100 shrink-0">
-              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center">
-                <Trash2 className="w-8 h-8 text-red-500" />
-              </div>
-              <button 
-                onClick={() => setIsDeletingAccount(false)}
-                className="p-3 hover:bg-gray-100 rounded-2xl transition-all"
-              >
-                <X className="w-6 h-6 text-gray-400" />
-              </button>
-            </div>
-            
-            <div className="p-10 space-y-4 overflow-y-auto flex-1 pb-32 md:pb-10 custom-scrollbar">
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Delete Account?</h3>
-                <p className="text-gray-500 leading-relaxed">
-                  This action is <span className="font-bold text-red-600 uppercase">permanent</span>. All your financial data, transactions, and settings will be deleted forever. This cannot be undone.
-                </p>
+                <button onClick={() => setIsChangingPassword(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-all">
+                  <X className="w-6 h-6 text-gray-400" />
+                </button>
               </div>
               
-              <div className="flex space-x-4">
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  onClick={() => setIsDeletingAccount(false)}
-                >
-                  No, Keep it
+              <form onSubmit={handleChangePassword} className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Current Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input 
+                      type={showPasswordCurrent ? "text" : "password"}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
+                      placeholder="••••••••"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordCurrent(!showPasswordCurrent)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      {showPasswordCurrent ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">New Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input 
+                      type={showPasswordNew ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
+                      placeholder="••••••••"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordNew(!showPasswordNew)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      {showPasswordNew ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Confirm New Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input 
+                      type={showPasswordConfirm ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
+                      placeholder="••••••••"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      {showPasswordConfirm ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex space-x-4 pt-4">
+                  <Button variant="secondary" fullWidth onClick={() => setIsChangingPassword(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" fullWidth loading={isPasswordSaving} icon={<Check className="w-4 h-4" />}>
+                    Update Password
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Reset Data Modal */}
+        {isResettingData && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl p-10 text-center"
+            >
+              <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <RefreshCw className="w-10 h-10 text-red-600" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">Reset Financial Data?</h3>
+              <p className="text-gray-500 mb-8 leading-relaxed">
+                This will permanently delete all your transactions, budgets, and financial records. Your account settings will remain intact.
+              </p>
+              <div className="flex flex-col space-y-3">
+                <Button variant="danger" fullWidth size="lg" onClick={handleResetData} loading={isResetting}>
+                  Yes, Reset Everything
                 </Button>
-                <Button
-                  variant="danger"
-                  fullWidth
-                  onClick={handleDeleteAccount}
-                  loading={isDeleting}
-                >
-                  Yes, Delete
+                <Button variant="secondary" fullWidth size="lg" onClick={() => setIsResettingData(false)}>
+                  Cancel
                 </Button>
               </div>
+            </motion.div>
           </div>
-        </div>
-      </div>
-    )}
+        )}
+
+        {/* Delete Account Modal */}
+        {isDeletingAccount && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl p-10 text-center"
+            >
+              <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <Trash2 className="w-10 h-10 text-red-600" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">Delete Account?</h3>
+              <p className="text-gray-500 mb-8 leading-relaxed">
+                This action is <span className="font-bold text-red-600 uppercase">irreversible</span>. All your data will be permanently removed from our servers.
+              </p>
+              <div className="flex flex-col space-y-3">
+                <Button variant="danger" fullWidth size="lg" onClick={handleDeleteAccount} loading={isDeleting}>
+                  Delete Permanently
+                </Button>
+                <Button variant="secondary" fullWidth size="lg" onClick={() => setIsDeletingAccount(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Contact Support Modal */}
+        {isContactingSupport && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl p-10 text-center"
+            >
+              <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <MessageSquare className="w-10 h-10 text-indigo-600" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">Contact Support</h3>
+              <p className="text-gray-500 mb-8 leading-relaxed">
+                Our support team is available 24/7 to help you with any issues. You can reach us at <span className="font-bold text-indigo-600">support@wealthos.app</span>
+              </p>
+              <div className="flex flex-col space-y-3">
+                <Button fullWidth size="lg" onClick={() => window.location.href = 'mailto:support@wealthos.app'}>
+                  Send Email
+                </Button>
+                <Button variant="secondary" fullWidth size="lg" onClick={() => setIsContactingSupport(false)}>
+                  Close
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

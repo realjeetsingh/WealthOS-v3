@@ -30,6 +30,10 @@ service cloud.firestore {
              (!('profileImage' in data) || data.profileImage is string) &&
              (!('currency' in data) || data.currency is string) &&
              (!('paymentId' in data) || data.paymentId is string) &&
+             (!('phone' in data) || data.phone is string) &&
+             (!('emailAlerts' in data) || data.emailAlerts is bool) &&
+             (!('budgetAlerts' in data) || data.budgetAlerts is bool) &&
+             (!('investmentAlerts' in data) || data.investmentAlerts is bool) &&
              (!('premiumSince' in data) || data.premiumSince is timestamp) &&
              (!('lastLogin' in data) || data.lastLogin is timestamp) &&
              (!('createdAt' in data) || data.createdAt is timestamp);
@@ -94,6 +98,12 @@ service cloud.firestore {
              data.cashBalance is number &&
              data.portfolioValue is number &&
              data.loanBalance is number &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidBudget(data) {
+      return data.category is string && data.category.size() > 0 &&
+             data.limit is number && data.limit >= 0 &&
              data.timestamp is timestamp;
     }
 
@@ -179,6 +189,13 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && isValidNetWorthSnapshot(request.resource.data);
         allow update: if isOwner(userId) && isValidNetWorthSnapshot(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /budgets/{budgetId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidBudget(request.resource.data);
+        allow update: if isOwner(userId) && isValidBudget(request.resource.data);
         allow delete: if isOwner(userId) || isAdmin();
       }
     }

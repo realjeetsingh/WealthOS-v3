@@ -3,6 +3,7 @@ import { X, Check, Crown, Zap, Shield, Star, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { handleUpgrade } from '../lib/paymentService';
 import { useAuth } from '../contexts/AuthContext';
+import { formatCurrency } from '../lib/formatCurrency';
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -72,8 +73,8 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-indigo-900 font-bold">Lifetime Access</span>
                 <div className="flex items-center">
-                  <span className="text-gray-400 line-through text-sm mr-2">₹999</span>
-                  <span className="text-2xl font-black text-indigo-600">₹299</span>
+                  <span className="text-gray-400 line-through text-sm mr-2">{formatCurrency(999)}</span>
+                  <span className="text-2xl font-black text-indigo-600">{formatCurrency(299)}</span>
                 </div>
               </div>
               <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest text-left">Limited time offer • One-time payment</p>

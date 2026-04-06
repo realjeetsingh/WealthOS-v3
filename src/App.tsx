@@ -17,6 +17,7 @@ import Portfolio from './pages/Portfolio';
 import Loans from './pages/Loans';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
+import Budgets from './pages/Budgets';
 import Onboarding from './pages/Onboarding';
 import { Toaster } from 'sonner';
 import { auth } from './firebase';
@@ -65,6 +66,16 @@ export default function App() {
               <ProtectedRoute>
                 <Layout>
                   <Transactions />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/budgets" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Budgets />
                 </Layout>
               </ProtectedRoute>
             } 

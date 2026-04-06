@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   Plus,
   Minus,
-  IndianRupee,
   Briefcase,
   Home,
   Car,
@@ -34,7 +33,7 @@ import {
   addGoal 
 } from '../services/financeService';
 import { updateFinancialSnapshot, getFinancialSnapshot } from '../services/snapshotService';
-import { formatCurrency } from '../lib/formatCurrency';
+import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
 import { toast } from 'sonner';
 import Button from '../components/ui/Button';
 
@@ -139,9 +138,9 @@ const Onboarding: React.FC = () => {
   const guidance = getStepGuidance();
 
   const GOAL_OPTIONS = [
-    { id: 'save_1l', name: 'Save ₹1L', target: 100000, icon: PiggyBank },
+    { id: 'save_1l', name: `Save ${formatCurrencyShort(100000)}`, target: 100000, icon: PiggyBank },
     { id: 'debt_free', name: 'Become debt-free', target: totalMonthlyEMI * 12 || 500000, icon: ShieldCheck },
-    { id: 'build_10l', name: 'Build ₹10L portfolio', target: 1000000, icon: TrendingUp },
+    { id: 'build_10l', name: `Build ${formatCurrencyShort(1000000)} portfolio`, target: 1000000, icon: TrendingUp },
     { id: 'custom', name: 'Custom goal', target: 0, icon: Plus }
   ];
 
@@ -330,7 +329,7 @@ const Onboarding: React.FC = () => {
                 <label className="block text-sm font-bold text-gray-700 mb-2">Monthly Amount</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <IndianRupee className="h-5 w-5 text-gray-400" />
+                    <span className="text-gray-400 font-bold">{userProfile?.currency || '₹'}</span>
                   </div>
                   <input
                     type="number"
@@ -376,7 +375,7 @@ const Onboarding: React.FC = () => {
                 <label className="block text-sm font-bold text-gray-700 mb-2">Monthly Amount</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <IndianRupee className="h-5 w-5 text-gray-400" />
+                    <span className="text-gray-400 font-bold">{userProfile?.currency || '₹'}</span>
                   </div>
                   <input
                     type="number"

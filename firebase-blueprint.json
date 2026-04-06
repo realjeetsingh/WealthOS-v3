@@ -148,6 +148,17 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "netWorth", "cashBalance", "portfolioValue", "loanBalance", "timestamp"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "A monthly budget limit for a specific category.",
+      "type": "object",
+      "properties": {
+        "category": { "type": "string" },
+        "limit": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["category", "limit", "timestamp"]
     }
   },
   "firestore": {
@@ -178,6 +189,10 @@
     "/users/{uid}/netWorthSnapshots/{snapshotId}": {
       "schema": "NetWorthSnapshot",
       "description": "Subcollection of net worth snapshots for a specific user."
+    },
+    "/users/{uid}/budgets/{budgetId}": {
+      "schema": "Budget",
+      "description": "Subcollection of monthly budgets for a specific user."
     }
   }
 }

@@ -11,7 +11,8 @@ import {
   ChevronRight,
   User as UserIcon,
   LogOut,
-  Crown
+  Crown,
+  Target
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../firebase';
@@ -41,6 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isHovered, setIsHovered }) => {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/insights', label: 'Insights', icon: BrainCircuit },
     { to: '/transactions', label: 'Transactions', icon: ReceiptText },
+    { to: '/budgets', label: 'Budgets', icon: Target },
     { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
     { to: '/loans', label: 'Loans', icon: Wallet },
   ];
