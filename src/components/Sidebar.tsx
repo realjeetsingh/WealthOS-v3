@@ -13,7 +13,8 @@ import {
   LogOut,
   Crown,
   Target,
-  Trophy
+  Trophy,
+  GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../firebase';
@@ -47,6 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isHovered, setIsHovered }) => {
     { to: '/goals', label: 'Goals', icon: Trophy },
     { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
     { to: '/loans', label: 'Loans', icon: Wallet },
+    { to: '/academy', label: 'Wealth Academy', icon: GraduationCap },
   ];
 
   return (

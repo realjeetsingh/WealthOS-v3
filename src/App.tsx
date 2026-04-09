@@ -25,6 +25,8 @@ import SupportSettings from './pages/settings/SupportSettings';
 import Profile from './pages/Profile';
 import Budgets from './pages/Budgets';
 import Goals from './pages/Goals';
+import More from './pages/More';
+import WealthAcademy from './pages/WealthAcademy';
 import Onboarding from './pages/Onboarding';
 import FAQ from './pages/FAQ';
 import Privacy from './pages/Privacy';
@@ -175,6 +177,26 @@ export default function App() {
               <ProtectedRoute>
                 <Layout>
                   <SupportSettings />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/more" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <More />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/academy" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <WealthAcademy />
                 </Layout>
               </ProtectedRoute>
             } 
