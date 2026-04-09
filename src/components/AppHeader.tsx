@@ -47,7 +47,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
   return (
     <header className={`bg-white border-b border-gray-100 fixed top-0 left-0 w-full z-[1100] transition-transform duration-500 ease-in-out ${isVisible ? 'translate-y-0' : 'md:translate-y-0 -translate-y-full'}`}>
       <div className="px-3 sm:px-6 lg:px-8 max-w-full">
-        <div className="flex justify-between h-16 items-center">
+        <div className="flex justify-between h-[70px] items-center">
           <div className="flex items-center">
             <Link to="/dashboard" className="flex items-center space-x-2 group">
               <div className="w-9 h-9 bg-[#4F46E5] rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform shrink-0">

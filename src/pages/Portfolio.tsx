@@ -326,7 +326,7 @@ export default function Portfolio() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto space-y-8 w-full overflow-x-hidden">
+      <div className="max-w-7xl mx-auto space-y-8 w-full overflow-x-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <Skeleton className="h-10 w-48 mb-2" />
@@ -371,53 +371,53 @@ export default function Portfolio() {
       {/* Dashboard Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {/* Invested */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
           <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Invested</p>
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Invested</p>
             <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
               <DollarSign className="w-4 h-4 text-blue-600" />
             </div>
           </div>
-          <h3 className="text-3xl font-black text-gray-900 tracking-tighter">
+          <h3 className="text-3xl font-black text-gray-900 tracking-tighter truncate mt-auto">
             <CurrencyDisplay value={totalInvested} />
           </h3>
         </div>
 
         {/* Current Value */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
           <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Current Value</p>
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Current Value</p>
             <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
               <PieChartIcon className="w-4 h-4 text-indigo-600" />
             </div>
           </div>
-          <h3 className="text-3xl font-black text-gray-900 tracking-tighter">
+          <h3 className="text-3xl font-black text-gray-900 tracking-tighter truncate mt-auto">
             <CurrencyDisplay value={totalCurrentValue} />
           </h3>
         </div>
 
         {/* Profit/Loss */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
           <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Profit/Loss</p>
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Profit/Loss</p>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
               {totalGainLoss >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-600" /> : <TrendingDown className="w-4 h-4 text-rose-600" />}
             </div>
           </div>
-          <h3 className={`text-3xl font-black tracking-tighter ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+          <h3 className={`text-3xl font-black tracking-tighter truncate mt-auto ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
             {totalGainLoss >= 0 ? '+' : ''}<CurrencyDisplay value={totalGainLoss} />
           </h3>
         </div>
 
         {/* Return % */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
           <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Return %</p>
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Return %</p>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
               <Activity className={`w-4 h-4 ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} />
             </div>
           </div>
-          <h3 className={`text-3xl font-black tracking-tighter ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+          <h3 className={`text-3xl font-black tracking-tighter truncate mt-auto ${totalGainLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
             <Tooltip content={`${totalGainLoss >= 0 ? '+' : ''}${totalGainLossPercentage.toFixed(4)}%`}>
               <span className="border-b-2 border-dotted border-gray-200">
                 {totalGainLoss >= 0 ? '+' : ''}{totalGainLossPercentage.toFixed(2)}%
@@ -727,21 +727,21 @@ export default function Portfolio() {
               const CategoryIcon = CATEGORIES.find(c => c.id === asset.category)?.icon || Activity;
 
               return (
-                <div key={asset.id} className="p-4 space-y-4 relative">
+                <div key={asset.id} className="p-4 space-y-4 relative flex flex-col min-h-[220px]">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
                         <CategoryIcon className="w-5 h-5 text-gray-400" />
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-gray-900 truncate">{asset.assetName}</p>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 uppercase tracking-wider">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 uppercase tracking-wider truncate">
                           {asset.category}
                         </span>
                       </div>
                     </div>
                     
-                    <div className="relative">
+                    <div className="relative shrink-0">
                       <button
                         onClick={() => setActiveMenuId(activeMenuId === asset.id ? null : asset.id)}
                         className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all active:scale-[0.98] duration-150"
@@ -783,7 +783,7 @@ export default function Portfolio() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 pt-2">
+                  <div className="grid grid-cols-1 gap-3 pt-2 mt-auto">
                     <div className="flex items-center justify-between gap-4">
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0">Invested</p>
                       <p className="text-sm font-bold text-gray-900 truncate">
@@ -798,13 +798,11 @@ export default function Portfolio() {
                     </div>
                     <div className="pt-2 border-t border-gray-50 flex justify-between items-center gap-4">
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0">Profit / Loss</p>
-                      <div className={`text-sm font-bold truncate text-right ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      <div className={`text-sm font-bold truncate ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                         {profit >= 0 ? '+' : ''}<CurrencyDisplay value={profit} />
-                        <Tooltip content={`${profit >= 0 ? '+' : ''}${profitPercentage.toFixed(4)}%`}>
-                          <span className="ml-2 text-[10px] opacity-70 border-b border-dotted border-gray-300">
-                            ({profitPercentage.toFixed(2)}%)
-                          </span>
-                        </Tooltip>
+                        <span className="text-[10px] opacity-70 ml-1">
+                          ({profitPercentage.toFixed(2)}%)
+                        </span>
                       </div>
                     </div>
                   </div>

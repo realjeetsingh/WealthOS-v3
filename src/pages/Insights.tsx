@@ -13,6 +13,12 @@ import {
 import { compareScenarios } from '../lib/scenarioEngine';
 import { generateFinancialAdvice, FinancialAdvice } from '../lib/decisionEngine';
 import { getSmartFinancialAnalysis, SmartFinancialAnalysis, isSmartFinancialAnalysis } from '../services/geminiService';
+import { 
+  getMonthlyStatus, 
+  getMonthlyTrend, 
+  getProgressSignal,
+  getUpgradedInsights
+} from '../lib/retentionEngine';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { handleUpgrade } from '../lib/paymentService';
 import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
@@ -33,7 +39,8 @@ import {
   ShieldAlert,
   Target,
   ArrowRight,
-  PlusCircle
+  PlusCircle,
+  Zap
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
@@ -243,6 +250,9 @@ const Insights: React.FC = () => {
     console.error("Advice generation error:", error);
   }
 
+  const userCurrency = userProfile?.currency || 'INR';
+  const upgradedInsights = getUpgradedInsights(income, expenses, transactions);
+
   const handleGenerateSmartAnalysis = async () => {
     if (!isPremium) {
       setShowPaywall(true);
@@ -408,6 +418,30 @@ const Insights: React.FC = () => {
             </Button>
           </div>
           <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-white opacity-10 rounded-full blur-3xl"></div>
+        </div>
+      )}
+
+      {/* Upgraded Actionable Insights */}
+      {upgradedInsights.length > 0 && (
+        <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {upgradedInsights.map((insight, i) => (
+            <div key={i} className="bg-white p-6 rounded-2xl border border-indigo-100 shadow-sm flex flex-col min-h-[160px]">
+              <div className="flex items-start gap-4 mb-3">
+                <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600 shrink-0">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-gray-900 truncate">{insight.title}</h4>
+                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">{insight.description}</p>
+                </div>
+              </div>
+              <div className="mt-auto">
+                <div className="inline-flex items-center gap-2 text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full truncate max-w-full">
+                  Action: {insight.action}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

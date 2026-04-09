@@ -113,6 +113,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && 
                       isValidUser(request.resource.data) &&
                       request.resource.data.isPremium == false && 

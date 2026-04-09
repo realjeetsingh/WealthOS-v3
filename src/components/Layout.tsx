@@ -46,6 +46,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
   }, [resetTimer]);
 
+  const isFormPage = ['/transactions', '/budgets', '/loans', '/settings', '/profile'].includes(location.pathname);
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 w-full max-w-full overflow-x-hidden relative">
       <AppHeader isVisible={isVisible} />
@@ -57,12 +59,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         />
         
         <div 
-          className={`flex-1 flex flex-col min-w-0 h-screen pt-16 overflow-hidden max-w-full transition-[margin] duration-200 ease-in-out ${
+          className={`flex-1 flex flex-col min-w-0 h-screen overflow-hidden max-w-full transition-[margin] duration-200 ease-in-out ${
             isExpanded ? 'md:ml-[240px]' : 'md:ml-[70px]'
           }`}
         >
-          {/* MainContent: ONLY scrollable area */}
-          <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full p-6 md:p-8 pb-24 md:pb-8">
+          {/* MainContent: ONLY scrollable area with fixed height to prevent overlap */}
+          <main className="w-full h-[calc(100vh-140px-env(safe-area-inset-bottom))] md:h-[calc(100vh-70px)] mt-[70px] md:mt-[70px] overflow-y-auto overflow-x-hidden max-w-full pt-4 pb-[90px] md:pb-6 px-6 md:px-8">
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}

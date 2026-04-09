@@ -41,6 +41,8 @@ const Budgets: React.FC = () => {
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [category, setCategory] = useState('');
   const [limit, setLimit] = useState('');
@@ -200,12 +202,23 @@ const Budgets: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!user?.uid || !window.confirm("Are you sure you want to delete this budget?")) return;
+  const handleDeleteClick = (id: string) => {
+    setSelectedBudgetId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!user?.uid || !selectedBudgetId) return;
+    
+    setSubmitting(true);
     try {
-      await deleteBudget(user.uid, id);
-    } catch (err) {
-      console.error("Delete error:", err);
+      await deleteBudget(user.uid, selectedBudgetId);
+      setIsDeleteModalOpen(false);
+      setSelectedBudgetId(null);
+    } catch (err: any) {
+      setError(err.message || "Failed to delete budget");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -223,7 +236,7 @@ const Budgets: React.FC = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-20">
+    <div className="max-w-5xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -345,21 +358,21 @@ const Budgets: React.FC = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all group"
+                      className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col min-h-[180px]"
                     >
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${budget.statusColor} bg-opacity-10 ${budget.statusColor.replace('bg-', 'text-')}`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${budget.statusColor} bg-opacity-10 ${budget.statusColor.replace('bg-', 'text-')}`}>
                             <Target className="w-6 h-6" />
                           </div>
-                          <div>
-                            <h4 className="font-bold text-gray-900 text-lg">{budget.category}</h4>
-                            <p className="text-xs text-gray-500 font-medium">
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-gray-900 text-lg truncate">{budget.category}</h4>
+                            <p className="text-xs text-gray-500 font-medium truncate">
                               <CurrencyDisplay value={budget.spent} /> of <CurrencyDisplay value={budget.limit} /> used
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                           <button 
                             onClick={() => handleOpenModal(budget)}
                             className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
@@ -367,7 +380,7 @@ const Budgets: React.FC = () => {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
-                            onClick={() => budget.id && handleDelete(budget.id)}
+                            onClick={() => budget.id && handleDeleteClick(budget.id)}
                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -375,7 +388,7 @@ const Budgets: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-2 mt-auto">
                         <div className="h-2.5 bg-gray-50 rounded-full overflow-hidden">
                           <motion.div 
                             initial={{ width: 0 }}
@@ -385,10 +398,10 @@ const Budgets: React.FC = () => {
                           />
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className={`text-[10px] font-bold uppercase tracking-wider ${budget.spent > budget.limit ? 'text-red-600' : 'text-gray-400'}`}>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider truncate ${budget.spent > budget.limit ? 'text-red-600' : 'text-gray-400'}`}>
                             {budget.spent > budget.limit ? 'Overspent' : `${Math.round(budget.progress)}% Used`}
                           </span>
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">
                             {budget.remaining >= 0 ? (
                               <><CurrencyDisplay value={budget.remaining} /> Left</>
                             ) : (
@@ -523,6 +536,47 @@ const Budgets: React.FC = () => {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Budget?"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-6">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
+              <Trash2 className="w-8 h-8 text-red-500" />
+            </div>
+            <div>
+              <p className="text-gray-600 font-medium">
+                Are you sure you want to delete this budget? This action cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Button 
+              variant="outline"
+              fullWidth
+              onClick={() => setIsDeleteModalOpen(false)}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="primary"
+              fullWidth
+              onClick={handleConfirmDelete}
+              loading={submitting}
+              className="bg-red-600 hover:bg-red-700 border-red-600 hover:border-red-700 shadow-lg shadow-red-100"
+            >
+              Delete Budget
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

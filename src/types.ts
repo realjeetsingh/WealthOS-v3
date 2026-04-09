@@ -18,6 +18,8 @@ export interface UserProfile {
   emailAlerts?: boolean;
   budgetAlerts?: boolean;
   investmentAlerts?: boolean;
+  streakCount?: number;
+  lastActiveDate?: Timestamp;
   createdAt: Timestamp;
 }
 
@@ -108,5 +110,16 @@ export interface Budget {
   id?: string;
   category: string;
   limit: number;
+  timestamp: Timestamp;
+}
+
+export interface Goal {
+  id?: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline: Timestamp;
+  category: string;
+  status: 'active' | 'completed';
   timestamp: Timestamp;
 }

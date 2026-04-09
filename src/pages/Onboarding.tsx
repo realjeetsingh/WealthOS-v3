@@ -711,7 +711,7 @@ const Onboarding: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 md:p-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-start p-4 md:p-8 pt-16 pb-32 overflow-y-auto">
       <AnimatePresence mode="wait">
         {showIntro ? (
           <motion.div

@@ -16,9 +16,18 @@ import Insights from './pages/Insights';
 import Portfolio from './pages/Portfolio';
 import Loans from './pages/Loans';
 import Settings from './pages/Settings';
+import AccountSettings from './pages/settings/AccountSettings';
+import SecuritySettings from './pages/settings/SecuritySettings';
+import PreferencesSettings from './pages/settings/PreferencesSettings';
+import NotificationSettings from './pages/settings/NotificationSettings';
+import PrivacySettings from './pages/settings/PrivacySettings';
+import SupportSettings from './pages/settings/SupportSettings';
 import Profile from './pages/Profile';
 import Budgets from './pages/Budgets';
+import Goals from './pages/Goals';
 import Onboarding from './pages/Onboarding';
+import FAQ from './pages/FAQ';
+import Privacy from './pages/Privacy';
 import { Toaster } from 'sonner';
 import { auth } from './firebase';
 import { User as UserIcon } from 'lucide-react';
@@ -111,10 +120,100 @@ export default function App() {
             } 
           />
           <Route 
+            path="/settings/account" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AccountSettings />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/settings/security" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SecuritySettings />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/settings/preferences" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <PreferencesSettings />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/settings/notifications" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <NotificationSettings />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/settings/privacy" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <PrivacySettings />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/settings/support" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SupportSettings />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/onboarding" 
             element={
               <ProtectedRoute>
                 <Onboarding />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/goals" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Goals />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/faq" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <FAQ />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/privacy" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Privacy />
+                </Layout>
               </ProtectedRoute>
             } 
           />

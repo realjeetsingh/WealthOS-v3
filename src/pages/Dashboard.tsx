@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, doc, addDoc, serverTimestamp, orderBy, limit, getDocs, where } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, addDoc, serverTimestamp, orderBy, limit, getDocs, where, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Transaction, Asset, Liability, Loan, FinancialSnapshot, PortfolioAsset, NetWorthSnapshot } from '../types';
@@ -16,7 +16,10 @@ import {
 import { 
   getMonthlyStatus, 
   getMonthlyTrend, 
-  getProgressSignal 
+  getProgressSignal,
+  getWeeklySummary,
+  getAlerts,
+  getUpgradedInsights
 } from '../lib/retentionEngine';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
@@ -41,6 +44,7 @@ import {
   History
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { 
   LineChart, 
   Line, 
@@ -184,6 +188,51 @@ const Dashboard: React.FC = () => {
   const monthlyStatus = getMonthlyStatus(monthlyIncome, monthlyExpenses);
   const monthlyTrend = getMonthlyTrend(transactions);
   const progressSignal = getProgressSignal(monthlyIncome, monthlyExpenses);
+  const weeklySummary = getWeeklySummary(transactions);
+  const alerts = getAlerts(monthlyIncome, monthlyExpenses, userProfile?.lastActiveDate);
+  const upgradedInsights = getUpgradedInsights(monthlyIncome, monthlyExpenses, transactions);
+
+  // Streak System Logic
+  useEffect(() => {
+    if (!user?.uid || !userProfile || loading) return;
+
+    const updateStreak = async () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const lastActive = userProfile.lastActiveDate?.toDate();
+      if (lastActive) {
+        lastActive.setHours(0, 0, 0, 0);
+        
+        const diffTime = today.getTime() - lastActive.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) return; // Already updated today
+
+        if (diffDays === 1) {
+          // Increment streak
+          await updateDoc(doc(db, 'users', user.uid), {
+            streakCount: (userProfile.streakCount || 0) + 1,
+            lastActiveDate: serverTimestamp()
+          });
+        } else if (diffDays > 1) {
+          // Reset streak
+          await updateDoc(doc(db, 'users', user.uid), {
+            streakCount: 1,
+            lastActiveDate: serverTimestamp()
+          });
+        }
+      } else {
+        // First time
+        await updateDoc(doc(db, 'users', user.uid), {
+          streakCount: 1,
+          lastActiveDate: serverTimestamp()
+        });
+      }
+    };
+
+    updateStreak();
+  }, [user?.uid, userProfile?.lastActiveDate, loading]);
 
   // Snapshot Saving Logic (Daily)
   useEffect(() => {
@@ -266,8 +315,16 @@ const Dashboard: React.FC = () => {
     <div className="w-full max-w-full">
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex-1 min-w-0">
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight truncate">Financial Dashboard</h1>
-          <p className="mt-2 text-gray-600">Focusing on your long-term wealth and progress.</p>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight truncate">Financial Dashboard</h1>
+            {userProfile?.streakCount && (
+              <div className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-sm font-black border border-orange-100 animate-pulse">
+                <Zap className="w-4 h-4 fill-orange-600" />
+                {userProfile.streakCount} DAY STREAK
+              </div>
+            )}
+          </div>
+          <p className="text-gray-600">Focusing on your long-term wealth and progress.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 shrink-0">
           <Button 
@@ -295,6 +352,33 @@ const Dashboard: React.FC = () => {
           </Link>
         </div>
       </div>
+
+      {/* Alerts Section */}
+      {alerts.length > 0 && (
+        <div className="mb-8 space-y-3">
+          {alerts.map((alert, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className={`flex items-center justify-between p-4 rounded-xl border ${
+                alert.type === 'danger' ? 'bg-red-50 border-red-100 text-red-700' :
+                alert.type === 'warning' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                'bg-blue-50 border-blue-100 text-blue-700'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <div>
+                  <p className="font-bold text-sm">{alert.title}</p>
+                  <p className="text-xs opacity-90">{alert.message}</p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       {/* Primary Net Worth Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
@@ -388,71 +472,101 @@ const Dashboard: React.FC = () => {
 
       {/* Secondary Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
           <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Income</p>
-            <div className="p-2 bg-green-50 rounded-lg text-green-600">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Monthly Income</p>
+            <div className="p-2 bg-green-50 rounded-lg text-green-600 shrink-0">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <h3 className="text-3xl font-black text-gray-900 tracking-tighter">
+          <h3 className="text-3xl font-black text-gray-900 tracking-tighter truncate">
             <CurrencyDisplay value={monthlyIncome} currency={userCurrency} />
           </h3>
+          <p className="text-xs text-gray-400 mt-auto line-clamp-2">Total earnings from all sources this month.</p>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
           <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Expenses</p>
-            <div className="p-2 bg-red-50 rounded-lg text-red-600">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Monthly Expenses</p>
+            <div className="p-2 bg-red-50 rounded-lg text-red-600 shrink-0">
               <TrendingDown className="w-4 h-4" />
             </div>
           </div>
-          <h3 className="text-3xl font-black text-gray-900 tracking-tighter">
+          <h3 className="text-3xl font-black text-gray-900 tracking-tighter truncate">
             <CurrencyDisplay value={monthlyExpenses} currency={userCurrency} />
           </h3>
+          <p className="text-xs text-gray-400 mt-auto line-clamp-2">Total spending including EMIs and bills.</p>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
           <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Cashflow</p>
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Monthly Cashflow</p>
+            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 shrink-0">
               <BarChart3 className="w-4 h-4" />
             </div>
           </div>
-          <h3 className={`text-3xl font-black tracking-tighter ${cashflow >= 0 ? 'text-indigo-600' : 'text-orange-600'}`}>
+          <h3 className={`text-3xl font-black tracking-tighter truncate ${cashflow >= 0 ? 'text-indigo-600' : 'text-orange-600'}`}>
             <CurrencyDisplay value={cashflow} currency={userCurrency} />
           </h3>
+          <p className="text-xs text-gray-400 mt-auto line-clamp-2">Net savings after all expenses.</p>
         </div>
       </div>
 
       {/* Retention Engine Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[220px]">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-indigo-50 rounded-lg">
+            <div className="p-2.5 bg-indigo-50 rounded-lg shrink-0">
               <Activity className="w-6 h-6 text-[#4F46E5]" />
             </div>
-            <h3 className="font-bold text-gray-900 text-lg">Monthly Status</h3>
+            <h3 className="font-bold text-gray-900 text-lg truncate">Monthly Status</h3>
           </div>
-          <p className="text-gray-600 leading-relaxed">{monthlyStatus}</p>
+          <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">{monthlyStatus}</p>
         </div>
 
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[220px]">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-indigo-50 rounded-lg">
+            <div className="p-2.5 bg-indigo-50 rounded-lg shrink-0">
               <Calendar className="w-6 h-6 text-[#4F46E5]" />
             </div>
-            <h3 className="font-bold text-gray-900 text-lg">Monthly Trend</h3>
+            <h3 className="font-bold text-gray-900 text-lg truncate">Weekly Summary</h3>
           </div>
-          <p className="text-gray-600 leading-relaxed">{monthlyTrend}</p>
+          <div className="space-y-2 flex-1">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">This Week:</span>
+              <span className="font-bold text-gray-900"><CurrencyDisplay value={weeklySummary.thisWeek.savings} currency={userCurrency} /></span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Last Week:</span>
+              <span className="font-bold text-gray-900"><CurrencyDisplay value={weeklySummary.lastWeek.savings} currency={userCurrency} /></span>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-4 line-clamp-2">
+            {weeklySummary.thisWeek.savings > weeklySummary.lastWeek.savings 
+              ? "Great! You've saved more than last week." 
+              : "Try to reduce expenses to beat last week's savings."}
+          </p>
         </div>
 
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[220px]">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-indigo-50 rounded-lg">
+            <div className="p-2.5 bg-indigo-50 rounded-lg shrink-0">
               <Zap className="w-6 h-6 text-[#4F46E5]" />
             </div>
-            <h3 className="font-bold text-gray-900 text-lg">Progress Signal</h3>
+            <h3 className="font-bold text-gray-900 text-lg truncate">Smart Insights</h3>
           </div>
-          <p className="text-gray-600 leading-relaxed">{progressSignal}</p>
+          <div className="space-y-4 flex-1 overflow-hidden">
+            {upgradedInsights.length > 0 ? (
+              <div className="space-y-3">
+                {upgradedInsights.slice(0, 2).map((insight, i) => (
+                  <div key={i} className="space-y-1">
+                    <p className="text-sm font-bold text-gray-900 truncate">{insight.title}</p>
+                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest truncate">Action: {insight.action}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">{progressSignal}</p>
+            )}
+          </div>
         </div>
       </div>
 

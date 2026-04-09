@@ -6,6 +6,7 @@
  */
 
 import { Transaction } from '../types';
+import { Timestamp } from 'firebase/firestore';
 import { formatCurrencyShort } from './formatCurrency';
 
 /**
@@ -88,4 +89,124 @@ export const getProgressSignal = (income: number, expenses: number): string => {
   } else {
     return "Your savings are currently flat";
   }
+};
+
+/**
+ * 4. getWeeklySummary(transactions)
+ * Calculates weekly income, expenses, and savings compared to last week.
+ */
+export const getWeeklySummary = (transactions: Transaction[]) => {
+  const now = new Date();
+  const startOfThisWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+  startOfThisWeek.setHours(0, 0, 0, 0);
+  
+  const startOfLastWeek = new Date(startOfThisWeek);
+  startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+
+  const thisWeek = transactions.filter(t => t.timestamp.toDate() >= startOfThisWeek);
+  const lastWeek = transactions.filter(t => {
+    const d = t.timestamp.toDate();
+    return d >= startOfLastWeek && d < startOfThisWeek;
+  });
+
+  const calc = (list: Transaction[]) => ({
+    income: list.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+    expenses: list.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+  });
+
+  const thisWeekStats = calc(thisWeek);
+  const lastWeekStats = calc(lastWeek);
+
+  return {
+    thisWeek: {
+      ...thisWeekStats,
+      savings: thisWeekStats.income - thisWeekStats.expenses
+    },
+    lastWeek: {
+      ...lastWeekStats,
+      savings: lastWeekStats.income - lastWeekStats.expenses
+    }
+  };
+};
+
+/**
+ * 5. getAlerts(income, expenses, lastActiveDate)
+ * Logic-based alerts for overspending, negative cashflow, and inactivity.
+ */
+export interface Alert {
+  type: 'danger' | 'warning' | 'info';
+  title: string;
+  message: string;
+}
+
+export const getAlerts = (income: number, expenses: number, lastActiveDate?: Timestamp): Alert[] => {
+  const alerts: Alert[] = [];
+  const cashflow = income - expenses;
+
+  if (cashflow < 0) {
+    alerts.push({
+      type: 'danger',
+      title: 'Negative Cashflow',
+      message: `You've spent ${formatCurrencyShort(Math.abs(cashflow))} more than you earned this month.`
+    });
+  }
+
+  if (income > 0 && expenses > income * 0.8) {
+    alerts.push({
+      type: 'warning',
+      title: 'High Spending',
+      message: `Your expenses have reached ${Math.round((expenses / income) * 100)}% of your monthly income.`
+    });
+  }
+
+  if (lastActiveDate) {
+    const lastActive = lastActiveDate.toDate();
+    const daysInactive = Math.floor((new Date().getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysInactive >= 3) {
+      alerts.push({
+        type: 'info',
+        title: 'Inactivity Alert',
+        message: `It's been ${daysInactive} days since your last update. Keep your records fresh!`
+      });
+    }
+  }
+
+  return alerts;
+};
+
+/**
+ * 6. getUpgradedInsights(income, expenses, transactions)
+ * Numeric, specific, and actionable insights.
+ */
+export const getUpgradedInsights = (income: number, expenses: number, transactions: Transaction[]) => {
+  const insights = [];
+  const savings = income - expenses;
+  const savingsRate = income > 0 ? (savings / income) * 100 : 0;
+
+  if (savingsRate < 20 && income > 0) {
+    const targetSavings = income * 0.2;
+    const gap = targetSavings - savings;
+    insights.push({
+      title: 'Boost Savings Rate',
+      description: `Your current savings rate is ${Math.round(savingsRate)}%. To reach the recommended 20%, try to save an additional ${formatCurrencyShort(gap)} this month.`,
+      action: 'Review non-essential expenses'
+    });
+  }
+
+  // Category specific insight
+  const categoryTotals: Record<string, number> = {};
+  transactions.filter(t => t.type === 'expense').forEach(t => {
+    categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+  });
+
+  const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
+  if (topCategory) {
+    insights.push({
+      title: `Optimize ${topCategory[0]}`,
+      description: `You've spent ${formatCurrencyShort(topCategory[1])} on ${topCategory[0]} this month, which is your highest expense category.`,
+      action: `Set a budget for ${topCategory[0]}`
+    });
+  }
+
+  return insights;
 };

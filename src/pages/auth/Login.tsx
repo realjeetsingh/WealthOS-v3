@@ -87,7 +87,7 @@ const Login: React.FC = () => {
       if (err.code === 'auth/invalid-email') {
         setError("Invalid email address format.");
       } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setError("Invalid email or password.");
+        setError("Invalid email or password. If you signed up with Google, please use the Google Sign-In button.");
       } else if (err.code === 'auth/too-many-requests') {
         setError("Too many failed attempts. Please try again later.");
       } else {
@@ -173,7 +173,7 @@ const Login: React.FC = () => {
       </div>
 
       {/* Right Side — Login Form */}
-      <div className="flex-1 flex flex-col items-center justify-start p-8 md:p-16 pt-12 pb-28 bg-gray-50 relative overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-start p-8 md:p-16 pt-12 bg-gray-50 relative overflow-y-auto">
         {/* Subtle background noise/gradient */}
         <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20"></div>
         

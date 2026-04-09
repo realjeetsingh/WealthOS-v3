@@ -35,8 +35,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, updateDoc, collection, query, onSnapshot, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, auth, storage } from '../firebase';
+import { db, auth } from '../firebase';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
 import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
@@ -273,8 +272,8 @@ const Profile: React.FC = () => {
     if (!file || !user?.uid) return;
 
     // Basic validation
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size should be less than 5MB");
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error("Image size should be less than 1MB for optimal performance");
       return;
     }
 
@@ -287,23 +286,30 @@ const Profile: React.FC = () => {
     else setUploadingCover(true);
 
     try {
-      const fileName = type === 'profile' ? 'profile.jpg' : 'cover.jpg';
-      const storageRef = ref(storage, `users/${user.uid}/${fileName}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
-      
-      // Update Firestore
-      const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, { [type === 'profile' ? 'profileImage' : 'coverImage']: downloadURL });
-      
-      if (type === 'profile') setNewProfileImage(downloadURL);
-      else setNewCoverImage(downloadURL);
-      
-      toast.success(`${type === 'profile' ? 'Profile' : 'Cover'} picture updated!`);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        
+        // Update Firestore
+        const userDocRef = doc(db, 'users', user.uid);
+        await updateDoc(userDocRef, { [type === 'profile' ? 'profileImage' : 'coverImage']: base64String });
+        
+        if (type === 'profile') setNewProfileImage(base64String);
+        else setNewCoverImage(base64String);
+        
+        toast.success(`${type === 'profile' ? 'Profile' : 'Cover'} picture updated!`);
+        if (type === 'profile') setUploading(false);
+        else setUploadingCover(false);
+      };
+      reader.onerror = () => {
+        toast.error(`Failed to read ${type} image`);
+        if (type === 'profile') setUploading(false);
+        else setUploadingCover(false);
+      };
+      reader.readAsDataURL(file);
     } catch (error) {
       console.error("Upload error:", error);
       toast.error(`Failed to upload ${type} image`);
-    } finally {
       if (type === 'profile') setUploading(false);
       else setUploadingCover(false);
     }
@@ -316,21 +322,12 @@ const Profile: React.FC = () => {
     else setUploadingCover(true);
 
     try {
-      // Update Firestore first
+      // Update Firestore
       const userDocRef = doc(db, 'users', user.uid);
       await updateDoc(userDocRef, { [type === 'profile' ? 'profileImage' : 'coverImage']: '' });
       
       if (type === 'profile') setNewProfileImage('');
       else setNewCoverImage('');
-
-      // Optionally delete from storage
-      try {
-        const fileName = type === 'profile' ? 'profile.jpg' : 'cover.jpg';
-        const storageRef = ref(storage, `users/${user.uid}/${fileName}`);
-        await deleteObject(storageRef);
-      } catch (e) {
-        // Ignore if file doesn't exist
-      }
       
       toast.success(`${type === 'profile' ? 'Profile' : 'Cover'} picture removed`);
     } catch (error) {
@@ -356,7 +353,7 @@ const Profile: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-4 space-y-8 pb-20 max-w-full overflow-hidden">
+    <div className="max-w-5xl mx-auto space-y-8">
       {/* Cover & Profile Header Section */}
       <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
         <div className="h-56 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 relative">
@@ -784,7 +781,7 @@ const Profile: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-10 space-y-6 overflow-y-auto flex-1 pb-32 md:pb-10 custom-scrollbar">
+            <div className="p-10 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
               {[
                 {
                   q: "How is my net worth calculated?",

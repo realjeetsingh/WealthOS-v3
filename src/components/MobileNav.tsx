@@ -6,7 +6,8 @@ import {
   BrainCircuit, 
   ReceiptText, 
   Wallet,
-  Target
+  Target,
+  Trophy
 } from 'lucide-react';
 
 interface MobileNavProps {
@@ -21,12 +22,13 @@ const MobileNav: React.FC<MobileNavProps> = ({ isVisible = true }) => {
     { to: '/insights', label: 'Insights', icon: BrainCircuit },
     { to: '/transactions', label: 'Transactions', icon: ReceiptText },
     { to: '/budgets', label: 'Budgets', icon: Target },
+    { to: '/goals', label: 'Goals', icon: Trophy },
     { to: '/loans', label: 'Loans', icon: Wallet },
   ];
 
   return (
     <nav 
-      className={`md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 grid grid-cols-5 z-[9999] shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.05)] transition-transform duration-500 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+      className={`md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 grid grid-cols-6 z-[9999] shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.05)] transition-transform duration-500 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
       style={{ 
         height: 'calc(70px + env(safe-area-inset-bottom))',
         paddingBottom: 'env(safe-area-inset-bottom)'

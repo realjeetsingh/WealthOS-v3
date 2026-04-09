@@ -54,7 +54,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-8 overflow-y-auto flex-1 pb-32 md:pb-8 custom-scrollbar">
+        <div className="p-8 overflow-y-auto flex-1 pb-8 custom-scrollbar">
           {children}
         </div>
       </div>

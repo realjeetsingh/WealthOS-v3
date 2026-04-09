@@ -374,7 +374,7 @@ const Loans: React.FC = () => {
   const pressure = getPressureMessage();
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 w-full overflow-x-hidden max-w-full">
+    <div className="max-w-5xl mx-auto w-full overflow-x-hidden max-w-full">
       <div className="space-y-10">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -615,33 +615,33 @@ const Loans: React.FC = () => {
                 return (
                   <div 
                     key={l.id} 
-                    className={`bg-white rounded-3xl p-8 shadow-xl border-2 transition-all group relative overflow-hidden ${
+                    className={`bg-white rounded-3xl p-8 shadow-xl border-2 transition-all group relative overflow-hidden flex flex-col min-h-[420px] ${
                       l.status === 'completed' ? 'border-green-100 opacity-80' : 
                       remainingMonths < 6 ? 'border-amber-200 ring-4 ring-amber-50' : 'border-gray-50 hover:border-indigo-100'
                     }`}
                   >
                     {l.status === 'completed' && (
-                      <div className="absolute top-0 right-0 bg-green-500 text-white px-4 py-1 rounded-bl-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-1">
+                      <div className="absolute top-0 right-0 bg-green-500 text-white px-4 py-1 rounded-bl-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-1 z-10">
                         <CheckCircle className="w-3 h-3" />
                         <span>Completed</span>
                       </div>
                     )}
                     {l.status === 'active' && (
-                      <div className={`absolute top-0 right-0 ${urgencyColor} text-white px-4 py-1 rounded-bl-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-1`}>
+                      <div className={`absolute top-0 right-0 ${urgencyColor} text-white px-4 py-1 rounded-bl-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-1 z-10`}>
                         <Clock className="w-3 h-3" />
                         <span>{urgencyTag}</span>
                       </div>
                     )}
 
                     <div className="flex justify-between items-start mb-8">
-                      <div>
-                        <h3 className="text-2xl font-black text-gray-900 mb-1">{l.name}</h3>
-                        <div className="flex items-center space-x-2 text-gray-400">
-                          <TrendingDown className="w-4 h-4" />
-                          <span className="text-sm font-bold">Total Payable: <CurrencyDisplay value={l.totalAmount} /></span>
+                      <div className="min-w-0">
+                        <h3 className="text-2xl font-black text-gray-900 mb-1 truncate">{l.name}</h3>
+                        <div className="flex items-center space-x-2 text-gray-400 min-w-0">
+                          <TrendingDown className="w-4 h-4 shrink-0" />
+                          <span className="text-sm font-bold truncate">Total: <CurrencyDisplay value={l.totalAmount} /></span>
                         </div>
                       </div>
-                      <div className="flex space-x-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                      <div className="flex space-x-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                         <button
                           onClick={() => handleEdit(l)}
                           className="p-2.5 bg-gray-50 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-[0.98] duration-150"
@@ -660,56 +660,53 @@ const Loans: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-8 mb-8">
-                      <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Monthly EMI</p>
-                        <p className="text-2xl font-black text-indigo-600"><CurrencyDisplay value={l.emi} /></p>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 truncate">Monthly EMI</p>
+                        <p className="text-2xl font-black text-indigo-600 truncate"><CurrencyDisplay value={l.emi} /></p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Remaining</p>
-                        <p className="text-lg font-black text-gray-900">{remainingMonths} Months</p>
-                        {l.status === 'active' && (
-                          <p className="text-[10px] font-bold text-red-500 mt-1 italic">
-                            You will stay in debt for {remainingMonths} more months
+                      <div className="text-right min-w-0">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 truncate">Remaining</p>
+                        <p className="text-lg font-black text-gray-900 truncate">{remainingMonths} Months</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto space-y-6">
+                      {l.status === 'active' && monthsSaved > 0 && (
+                        <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex items-start space-x-3">
+                          <TrendingDown className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
+                          <p className="text-xs font-bold text-indigo-900 leading-relaxed line-clamp-2">
+                            Save <span className="text-indigo-600 underline decoration-2 underline-offset-2">{monthsSaved}m</span> by paying <CurrencyDisplay value={extraPayment} /> extra.
                           </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {l.status === 'active' && monthsSaved > 0 && (
-                      <div className="mb-8 p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex items-start space-x-3">
-                        <TrendingDown className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
-                        <p className="text-xs font-bold text-indigo-900 leading-relaxed">
-                          You can close this loan <span className="text-indigo-600 underline decoration-2 underline-offset-2">{monthsSaved} months earlier</span> by paying <CurrencyDisplay value={extraPayment} /> extra monthly.
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="space-y-3 mb-8">
-                      <div className="flex justify-between items-end">
-                        <div>
-                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Remaining Balance</p>
-                          <p className="text-xl font-black text-gray-900"><CurrencyDisplay value={l.remainingAmount} /></p>
                         </div>
-                        <p className="text-sm font-black text-indigo-600">{Math.round(progress)}% Paid</p>
-                      </div>
-                      <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-indigo-600 rounded-full transition-all duration-1000"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </div>
+                      )}
 
-                    {l.status === 'active' && (
-                      <Button
-                        onClick={() => handleMarkPaid(l)}
-                        variant="secondary"
-                        fullWidth
-                        icon={<CheckCircle className="w-4 h-4" />}
-                      >
-                        Mark EMI Paid
-                      </Button>
-                    )}
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-end">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 truncate">Balance</p>
+                            <p className="text-xl font-black text-gray-900 truncate"><CurrencyDisplay value={l.remainingAmount} /></p>
+                          </div>
+                          <p className="text-sm font-black text-indigo-600 shrink-0">{Math.round(progress)}% Paid</p>
+                        </div>
+                        <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-indigo-600 rounded-full transition-all duration-1000"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {l.status === 'active' && (
+                        <Button
+                          onClick={() => handleMarkPaid(l)}
+                          variant="secondary"
+                          fullWidth
+                          icon={<CheckCircle className="w-4 h-4" />}
+                        >
+                          Mark EMI Paid
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
