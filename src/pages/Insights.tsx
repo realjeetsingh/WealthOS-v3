@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, doc, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, orderBy, getDocs, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Transaction, Asset, Liability, Loan, FinancialSnapshot, PortfolioAsset } from '../types';
@@ -267,37 +267,66 @@ const Insights: React.FC = () => {
     setSmartError(null);
     setIsLowConfidence(false);
 
-    // STEP 1 — CREATE SINGLE SOURCE OF TRUTH
-    const financialData = {
-      income: Number(income) || 0,
-      expenses: Number(expenses) || 0,
-      assets: Number(currentAssets) || 0,
-      liabilities: Number(currentLiabilities) || 0,
-      transactions: transactions || []
-    };
-
-    // STEP 6 — MANDATORY DEBUG LOGGING
-    console.log("FINANCIAL DATA PIPELINE CHECK:", financialData);
-
-    // STEP 5 — REVISED VALIDATION LOGIC
-    // Insights should be generated if ANY of the following are true:
-    // income > 0 OR transactions exist OR assets > 0
-    const hasAnyData = financialData.income > 0 || financialData.transactions.length > 0 || financialData.assets > 0;
-
-    if (!hasAnyData) {
-      setSmartError("Add more financial data to unlock insights");
-      setGeneratingSmart(false);
-      return null;
-    }
-
-    // Ensure transactions are sorted by date descending for the AI
-    const sortedTransactions = [...financialData.transactions].sort((a, b) => {
-      const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
-      const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
-      return dateB - dateA;
-    });
+    if (!user?.uid) return null;
 
     try {
+      // STEP 5 — REVISED FETCH LOGIC: Use getDocs for fresh point-in-time data
+      const transactionsPath = `users/${user.uid}/transactions`;
+      const assetsPath = `users/${user.uid}/assets`;
+      const liabilitiesPath = `users/${user.uid}/liabilities`;
+      const loansPath = `users/${user.uid}/loans`;
+      const portfolioPath = `users/${user.uid}/portfolio`;
+
+      const [tSnap, aSnap, lSnap, loSnap, pSnap] = await Promise.all([
+        getDocs(query(collection(db, transactionsPath), orderBy('timestamp', 'desc'))),
+        getDocs(collection(db, assetsPath)),
+        getDocs(collection(db, liabilitiesPath)),
+        getDocs(collection(db, loansPath)),
+        getDocs(collection(db, portfolioPath))
+      ]);
+
+      const freshTransactions = tSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Transaction[];
+      const freshAssets = aSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Asset[];
+      const freshLiabilities = lSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Liability[];
+      const freshLoans = loSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Loan[];
+      const freshPortfolio = pSnap.docs.map(d => ({ id: d.id, ...d.data() })) as PortfolioAsset[];
+
+      // Recalculate deterministic values with fresh data
+      const freshIncome = calculateMonthlyIncome(freshTransactions) || 0;
+      const freshExpenses = calculateMonthlyExpenses(freshTransactions, freshLoans) || 0;
+      const freshAssetsTotal = freshAssets.reduce((sum, a) => sum + (Number(a.value) || 0), 0) + 
+                               freshPortfolio.reduce((sum, p) => sum + (Number(p.currentValue) || 0), 0);
+      const freshLiabilitiesTotal = freshLiabilities.reduce((sum, l) => sum + (Number(l.remainingBalance) || 0), 0) + 
+                                    freshLoans.reduce((sum, l) => sum + (Number(l.remainingAmount) || 0), 0);
+      const freshNetWorth = freshAssetsTotal - freshLiabilitiesTotal;
+
+      // STEP 1 — CREATE SINGLE SOURCE OF TRUTH
+      const financialData = {
+        income: freshIncome,
+        expenses: freshExpenses,
+        assets: freshAssetsTotal,
+        liabilities: freshLiabilitiesTotal,
+        transactions: freshTransactions
+      };
+
+      // STEP 6 — MANDATORY DEBUG LOGGING
+      console.log("FINANCIAL DATA PIPELINE CHECK (FRESH):", financialData);
+
+      const hasAnyData = financialData.income > 0 || financialData.transactions.length > 0 || financialData.assets > 0;
+
+      if (!hasAnyData) {
+        setSmartError("Add more financial data to unlock insights");
+        setGeneratingSmart(false);
+        return null;
+      }
+
+      // Ensure transactions are sorted by date descending for the AI
+      const sortedTransactions = [...financialData.transactions].sort((a, b) => {
+        const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
+        const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
+        return dateB - dateA;
+      });
+
       const currentNetWorth = financialData.assets - financialData.liabilities;
       
       // PART 2 — BUILD DETERMINISTIC ENGINE
@@ -397,7 +426,6 @@ const Insights: React.FC = () => {
       
       setSmartAnalysis(fallbackAnalysis);
       return fallbackAnalysis;
-      // We don't set setSmartError here to "fail silently" with a fallback UI
     } finally {
       setGeneratingSmart(false);
     }
