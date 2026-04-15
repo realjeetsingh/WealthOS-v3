@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   GraduationCap, 
   Play, 
@@ -10,10 +10,19 @@ import {
   Search,
   ChevronRight,
   Clock,
-  Star
+  Star,
+  Sparkles,
+  ArrowRight,
+  CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
+import { doc, updateDoc, arrayUnion, collection, query, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/ui/Button';
+import { Transaction, Loan } from '../types';
+import { calculateMonthlyIncome, calculateMonthlyExpenses } from '../lib/financialEngine';
 
 const CATEGORIES = [
   { id: 'basics', label: 'Basics', icon: BookOpen, color: 'text-blue-600', bgColor: 'bg-blue-50' },
@@ -33,6 +42,8 @@ interface Lesson {
   duration: string;
   level: 'Beginner' | 'Intermediate' | 'Advanced';
   thumbnail: string;
+  actionLabel: string;
+  actionPath: string;
   videoUrl?: string;
 }
 
@@ -44,7 +55,9 @@ const LESSONS: Lesson[] = [
     category: 'basics',
     duration: '5 min',
     level: 'Beginner',
-    thumbnail: 'https://picsum.photos/seed/finance1/800/450'
+    thumbnail: 'https://picsum.photos/seed/finance1/800/450',
+    actionLabel: 'Set a Goal',
+    actionPath: '/goals'
   },
   {
     id: '2',
@@ -53,7 +66,9 @@ const LESSONS: Lesson[] = [
     category: 'basics',
     duration: '8 min',
     level: 'Beginner',
-    thumbnail: 'https://picsum.photos/seed/finance2/800/450'
+    thumbnail: 'https://picsum.photos/seed/finance2/800/450',
+    actionLabel: 'View Portfolio',
+    actionPath: '/portfolio'
   },
   {
     id: '3',
@@ -62,7 +77,9 @@ const LESSONS: Lesson[] = [
     category: 'investing',
     duration: '12 min',
     level: 'Beginner',
-    thumbnail: 'https://picsum.photos/seed/finance3/800/450'
+    thumbnail: 'https://picsum.photos/seed/finance3/800/450',
+    actionLabel: 'Invest Now',
+    actionPath: '/portfolio'
   },
   {
     id: '4',
@@ -71,7 +88,9 @@ const LESSONS: Lesson[] = [
     category: 'budgeting',
     duration: '6 min',
     level: 'Beginner',
-    thumbnail: 'https://picsum.photos/seed/finance4/800/450'
+    thumbnail: 'https://picsum.photos/seed/finance4/800/450',
+    actionLabel: 'Create Budget',
+    actionPath: '/budgets'
   },
   {
     id: '5',
@@ -80,7 +99,9 @@ const LESSONS: Lesson[] = [
     category: 'debt',
     duration: '10 min',
     level: 'Intermediate',
-    thumbnail: 'https://picsum.photos/seed/finance5/800/450'
+    thumbnail: 'https://picsum.photos/seed/finance5/800/450',
+    actionLabel: 'Manage Loans',
+    actionPath: '/loans'
   },
   {
     id: '6',
@@ -89,13 +110,92 @@ const LESSONS: Lesson[] = [
     category: 'advanced',
     duration: '15 min',
     level: 'Advanced',
-    thumbnail: 'https://picsum.photos/seed/finance6/800/450'
+    thumbnail: 'https://picsum.photos/seed/finance6/800/450',
+    actionLabel: 'Advanced Tools',
+    actionPath: '/portfolio'
   }
 ];
 
 const WealthAcademy: React.FC = () => {
+  const { user, userProfile } = useAuth();
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const fetchData = async () => {
+      try {
+        const tSnap = await getDocs(query(collection(db, `users/${user.uid}/transactions`)));
+        const lSnap = await getDocs(query(collection(db, `users/${user.uid}/loans`)));
+        
+        setTransactions(tSnap.docs.map(d => d.data() as Transaction));
+        setLoans(lSnap.docs.map(d => d.data() as Loan));
+      } catch (err) {
+        console.error("Error fetching academy data:", err);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.uid]);
+
+  const recommendations = useMemo(() => {
+    if (loadingData) return [];
+
+    const income = calculateMonthlyIncome(transactions);
+    const expenses = calculateMonthlyExpenses(transactions, loans);
+    const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0;
+    const hasActiveLoans = loans.some(l => l.status === 'active');
+
+    const recommended: Lesson[] = [];
+
+    // Logic for overspending
+    if (expenses > income * 0.8) {
+      const budgetingLesson = LESSONS.find(l => l.category === 'budgeting');
+      if (budgetingLesson) recommended.push(budgetingLesson);
+    }
+
+    // Logic for loans
+    if (hasActiveLoans) {
+      const debtLesson = LESSONS.find(l => l.category === 'debt');
+      if (debtLesson) recommended.push(debtLesson);
+    }
+
+    // Logic for low savings
+    if (savingsRate < 20) {
+      const basicsLesson = LESSONS.find(l => l.id === '2'); // Compounding
+      if (basicsLesson) recommended.push(basicsLesson);
+    }
+
+    // Default if no specific triggers
+    if (recommended.length === 0) {
+      recommended.push(LESSONS[0]); // Financial Freedom 101
+    }
+
+    return recommended;
+  }, [transactions, loans, loadingData]);
+
+  const handleStartLesson = async (lesson: Lesson) => {
+    if (!user?.uid) return;
+
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        viewedLessons: arrayUnion(lesson.id),
+        lastAcademyTopic: lesson.category
+      });
+      // In a real app, this would open a video player or lesson page
+      // For now, we'll just navigate to the action path to show "Apply Now"
+      navigate(lesson.actionPath);
+    } catch (err) {
+      console.error("Error tracking lesson:", err);
+    }
+  };
 
   const filteredLessons = LESSONS.filter(lesson => {
     const matchesCategory = selectedCategory === 'all' || lesson.category === selectedCategory;
@@ -105,7 +205,7 @@ const WealthAcademy: React.FC = () => {
   });
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-10">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center space-x-5">
@@ -129,6 +229,53 @@ const WealthAcademy: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* RECOMMENDED SECTION */}
+      {!loadingData && recommendations.length > 0 && searchQuery === '' && selectedCategory === 'all' && (
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-orange-600 fill-orange-600" />
+            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Recommended for you</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {recommendations.map((lesson) => (
+              <motion.div
+                key={`rec-${lesson.id}`}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-orange-50 border border-orange-100 rounded-[2.5rem] p-6 flex flex-col md:flex-row gap-6 items-center shadow-sm hover:shadow-md transition-all"
+              >
+                <div className="w-full md:w-40 aspect-video rounded-2xl overflow-hidden shrink-0 relative">
+                  <img src={lesson.thumbnail} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                    <Play className="w-8 h-8 text-white fill-white" />
+                  </div>
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1 block">Based on your activity</span>
+                  <h3 className="text-lg font-black text-gray-900 mb-2">{lesson.title}</h3>
+                  <p className="text-xs text-gray-600 mb-4 line-clamp-2">{lesson.description}</p>
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                    <button 
+                      onClick={() => handleStartLesson(lesson)}
+                      className="px-5 py-2 bg-orange-600 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-orange-700 transition-all active:scale-95"
+                    >
+                      Watch Now
+                    </button>
+                    <button 
+                      onClick={() => navigate(lesson.actionPath)}
+                      className="px-5 py-2 bg-white text-orange-600 border border-orange-200 rounded-full text-xs font-black uppercase tracking-widest hover:bg-orange-50 transition-all active:scale-95 flex items-center gap-1"
+                    >
+                      {lesson.actionLabel}
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* CATEGORIES */}
       <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
@@ -161,62 +308,77 @@ const WealthAcademy: React.FC = () => {
       {/* LESSONS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence mode="popLayout">
-          {filteredLessons.map((lesson, idx) => (
-            <motion.div
-              layout
-              key={lesson.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3, delay: idx * 0.05 }}
-              className="group bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full"
-            >
-              <div className="relative aspect-video overflow-hidden">
-                <img 
-                  src={lesson.thumbnail} 
-                  alt={lesson.title}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                  <div className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform duration-300">
-                    <Play className="w-6 h-6 text-orange-600 fill-orange-600 ml-1" />
+          {filteredLessons.map((lesson, idx) => {
+            const isViewed = userProfile?.viewedLessons?.includes(lesson.id);
+            return (
+              <motion.div
+                layout
+                key={lesson.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3, delay: idx * 0.05 }}
+                className="group bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full"
+              >
+                <div className="relative aspect-video overflow-hidden">
+                  <img 
+                    src={lesson.thumbnail} 
+                    alt={lesson.title}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                    <button 
+                      onClick={() => handleStartLesson(lesson)}
+                      className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform duration-300"
+                    >
+                      <Play className="w-6 h-6 text-orange-600 fill-orange-600 ml-1" />
+                    </button>
+                  </div>
+                  <div className="absolute top-4 left-4 flex gap-2">
+                    <span className="px-3 py-1 bg-white/90 backdrop-blur rounded-full text-[10px] font-black uppercase tracking-widest text-gray-900">
+                      {lesson.level}
+                    </span>
+                    {isViewed && (
+                      <span className="px-3 py-1 bg-green-500/90 backdrop-blur rounded-full text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Completed
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="absolute top-4 left-4 flex gap-2">
-                  <span className="px-3 py-1 bg-white/90 backdrop-blur rounded-full text-[10px] font-black uppercase tracking-widest text-gray-900">
-                    {lesson.level}
-                  </span>
-                </div>
-              </div>
 
-              <div className="p-6 flex flex-col flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <Clock className="w-3 h-3 text-gray-400" />
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{lesson.duration}</span>
-                </div>
-                
-                <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-1">
-                  {lesson.title}
-                </h3>
-                <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-6">
-                  {lesson.description}
-                </p>
-
-                <div className="mt-auto flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} className="w-3 h-3 text-amber-400 fill-amber-400" />
-                    ))}
+                <div className="p-6 flex flex-col flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="w-3 h-3 text-gray-400" />
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{lesson.duration}</span>
                   </div>
-                  <button className="flex items-center gap-1 text-xs font-black text-orange-600 uppercase tracking-widest group/btn">
-                    Start Learning
-                    <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                  </button>
+                  
+                  <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-1">
+                    {lesson.title}
+                  </h3>
+                  <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-6">
+                    {lesson.description}
+                  </p>
+
+                  <div className="mt-auto flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star key={s} className="w-3 h-3 text-amber-400 fill-amber-400" />
+                      ))}
+                    </div>
+                    <button 
+                      onClick={() => navigate(lesson.actionPath)}
+                      className="flex items-center gap-1 text-xs font-black text-orange-600 uppercase tracking-widest group/btn"
+                    >
+                      {lesson.actionLabel}
+                      <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       </div>
 
@@ -265,3 +427,4 @@ const WealthAcademy: React.FC = () => {
 };
 
 export default WealthAcademy;
+

@@ -13,6 +13,11 @@ export interface SmartFinancialAnalysis {
     optimistic: string;
     conservative: string;
   };
+  suggestedModule: {
+    name: string;
+    path: string;
+    label: string;
+  };
 }
 
 export type SmartFinancialAnalysisResponse = 
@@ -76,12 +81,17 @@ export const getSmartFinancialAnalysis = async (data: {
     3. Identify risks in their current financial behavior based on their transactions.
     4. Suggest specific strategies to maximize their wealth.
     
+    TEXT STRUCTURE FOR KEY INSIGHTS:
+    Each insight in the 'keyInsights' array MUST follow this exact structure:
+    "PROBLEM: [The issue found] | INSIGHT: [Why it matters] | RECOMMENDATION: [What to do]"
+    
     CRITICAL INSTRUCTIONS:
     - DO NOT perform any new financial calculations. Use the provided projections.
     - DO NOT hallucinate numbers. Stick to the deterministic projections provided.
     - All currency values MUST be in Indian Rupees (INR).
     - Output MUST be a valid JSON object matching the requested schema.
     - Focus on explaining the "Impact" which is the difference between the Optimized and Base projections.
+    - Ensure each key insight is actionable and follows the PROBLEM | INSIGHT | RECOMMENDATION format.
   `;
 
   try {
@@ -141,8 +151,17 @@ export const getSmartFinancialAnalysis = async (data: {
               },
               required: ["optimistic", "conservative"],
             },
+            suggestedModule: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING, description: "The name of the module (e.g., Budgets, Portfolio, Goals)." },
+                path: { type: Type.STRING, description: "The app path (e.g., /budgets, /portfolio, /goals)." },
+                label: { type: Type.STRING, description: "A short label for the action button (e.g., Manage Budgets)." },
+              },
+              required: ["name", "path", "label"],
+            },
           },
-          required: ["projectedNetWorth", "confidenceScore", "keyInsights", "strategicPlan", "riskAssessment", "futureScenarios"],
+          required: ["projectedNetWorth", "confidenceScore", "keyInsights", "strategicPlan", "riskAssessment", "futureScenarios", "suggestedModule"],
         },
       },
     });

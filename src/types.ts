@@ -20,6 +20,8 @@ export interface UserProfile {
   investmentAlerts?: boolean;
   streakCount?: number;
   lastActiveDate?: Timestamp;
+  viewedLessons?: string[];
+  lastAcademyTopic?: string;
   createdAt: Timestamp;
 }
 
