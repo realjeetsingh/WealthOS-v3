@@ -1,9 +1,21 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 
+export interface SmartFinancialInsight {
+  type: "risk" | "warning" | "optimization";
+  problem: string;
+  impact: string;
+  fix: string;
+  action: {
+    label: string;
+    path: string;
+  };
+}
+
 export interface SmartFinancialAnalysis {
   projectedNetWorth: number;
   confidenceScore: number;
-  keyInsights: string[];
+  confidenceReason: string;
+  keyInsights: SmartFinancialInsight[];
   strategicPlan: {
     shortTerm: string[];
     longTerm: string[];
@@ -76,22 +88,33 @@ export const getSmartFinancialAnalysis = async (data: {
     - Potential Financial Impact of Optimization: ${data.systemCalculations.financialImpact} INR
     
     YOUR ROLE:
-    1. Explain the numbers above in simple, human terms.
-    2. Provide insights on how they can achieve the "Optimized Projection".
-    3. Identify risks in their current financial behavior based on their transactions.
-    4. Suggest specific strategies to maximize their wealth.
+    1. Act as a "Decision Engine" for the user's finances.
+    2. Analyze the data to find 3-5 critical insights.
+    3. Every insight MUST include "Data Proof": actual numbers, comparisons, and calculations from the provided data.
     
-    TEXT STRUCTURE FOR KEY INSIGHTS:
-    Each insight in the 'keyInsights' array MUST follow this exact structure:
-    "PROBLEM: [The issue found] | INSIGHT: [Why it matters] | RECOMMENDATION: [What to do]"
-    
+    CONFIDENCE SCORE CALCULATION:
+    - Base: 40%
+    - +20% if monthly income is provided (>0)
+    - +20% if monthly expenses are provided (>0)
+    - +20% if more than 10 transactions are provided.
+    - Max: 100%.
+    - Provide a "confidenceReason" explaining why the score is what it is (e.g., "High score due to complete transaction history and income data").
+
+    INSIGHT STRUCTURE:
+    - type: "risk" (critical/danger), "warning" (caution), or "optimization" (growth).
+    - problem: A clear statement of the issue with data proof (e.g., "Expenses ₹43K > Income ₹40K").
+    - impact: The financial consequence (e.g., "₹3K monthly deficit leads to ₹3.6L debt in 10 years").
+    - fix: A concrete, actionable step to resolve it.
+    - action: A button label (e.g., "Fix this now") and the app path (e.g., "/budgets").
+
+    PRIORITIZATION:
+    - Sort keyInsights by: 1. Risk, 2. Warning, 3. Optimization.
+
     CRITICAL INSTRUCTIONS:
-    - DO NOT perform any new financial calculations. Use the provided projections.
-    - DO NOT hallucinate numbers. Stick to the deterministic projections provided.
+    - DO NOT perform any new financial calculations for projections. Use the provided ones.
+    - DO NOT hallucinate numbers. Use the exact numbers from the prompt.
     - All currency values MUST be in Indian Rupees (INR).
     - Output MUST be a valid JSON object matching the requested schema.
-    - Focus on explaining the "Impact" which is the difference between the Optimized and Base projections.
-    - Ensure each key insight is actionable and follows the PROBLEM | INSIGHT | RECOMMENDATION format.
   `;
 
   try {
@@ -106,16 +129,37 @@ export const getSmartFinancialAnalysis = async (data: {
           properties: {
             projectedNetWorth: {
               type: Type.NUMBER,
-              description: "The 10-year base projection provided in the prompt. Do not recalculate."
+              description: "The 10-year base projection provided in the prompt."
             },
             confidenceScore: { 
               type: Type.NUMBER, 
-              description: "Confidence in the provided data and analysis from 0 to 100."
+              description: "Confidence score from 0 to 100 based on data quality."
+            },
+            confidenceReason: {
+              type: Type.STRING,
+              description: "Reasoning for the confidence score."
             },
             keyInsights: { 
               type: Type.ARRAY, 
-              items: { type: Type.STRING },
-              description: "Top 3-5 critical observations about their current financial health."
+              items: { 
+                type: Type.OBJECT,
+                properties: {
+                  type: { type: Type.STRING, enum: ["risk", "warning", "optimization"] },
+                  problem: { type: Type.STRING },
+                  impact: { type: Type.STRING },
+                  fix: { type: Type.STRING },
+                  action: {
+                    type: Type.OBJECT,
+                    properties: {
+                      label: { type: Type.STRING },
+                      path: { type: Type.STRING }
+                    },
+                    required: ["label", "path"]
+                  }
+                },
+                required: ["type", "problem", "impact", "fix", "action"]
+              },
+              description: "3-5 prioritized insights with data proof."
             },
             strategicPlan: {
               type: Type.OBJECT,

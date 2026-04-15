@@ -355,10 +355,29 @@ const Insights: React.FC = () => {
       const fallbackAnalysis: SmartFinancialAnalysis = {
         projectedNetWorth: projectedNetWorthBase,
         confidenceScore: 70,
+        confidenceReason: "Moderate score due to lack of complete transaction history.",
         keyInsights: [
-          "PROBLEM: High expense-to-income ratio | INSIGHT: This limits your ability to save and invest for the future | RECOMMENDATION: Review non-essential subscriptions and daily small spends",
-          "PROBLEM: Lack of emergency fund | INSIGHT: Unexpected expenses could force you into high-interest debt | RECOMMENDATION: Aim to save 3 months of basic expenses in a liquid account",
-          "PROBLEM: Low investment diversification | INSIGHT: Your wealth is concentrated, increasing market risk | RECOMMENDATION: Explore index funds or SIPs to spread risk"
+          {
+            type: "risk",
+            problem: "High expense-to-income ratio (₹43K > ₹40K)",
+            impact: "This limits your ability to save and invest, leading to potential debt.",
+            fix: "Review non-essential subscriptions and daily small spends.",
+            action: { label: "Fix this now", path: "/budgets" }
+          },
+          {
+            type: "warning",
+            problem: "Lack of emergency fund (₹0 saved)",
+            impact: "Unexpected expenses could force you into high-interest debt.",
+            fix: "Aim to save 3 months of basic expenses in a liquid account.",
+            action: { label: "Fix this now", path: "/goals" }
+          },
+          {
+            type: "optimization",
+            problem: "Low investment diversification",
+            impact: "Your wealth is concentrated, increasing market risk.",
+            fix: "Explore index funds or SIPs to spread risk.",
+            action: { label: "Fix this now", path: "/portfolio" }
+          }
         ],
         strategicPlan: {
           shortTerm: ["Track all daily expenses", "Build an emergency fund", "Review loan interest rates"],
@@ -487,14 +506,14 @@ const Insights: React.FC = () => {
                 </div>
 
                 {/* AI STRATEGIC HIGHLIGHT */}
-                {smartAnalysis && (
+                {smartAnalysis && smartAnalysis.keyInsights.length > 0 && (
                   <div className="mt-6 p-6 bg-indigo-50/50 rounded-xl border border-indigo-100 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
                     <div className="flex items-center mb-3">
                       <Sparkles className="w-5 h-5 text-[#4F46E5] mr-2" />
                       <span className="text-sm font-bold text-[#4F46E5] uppercase tracking-widest">AI Strategic Insight</span>
                     </div>
                     <p className="text-indigo-900 font-medium leading-relaxed">
-                      {smartAnalysis.keyInsights[0]}
+                      {smartAnalysis.keyInsights[0].problem} — {smartAnalysis.keyInsights[0].fix}
                     </p>
                   </div>
                 )}
@@ -514,17 +533,31 @@ const Insights: React.FC = () => {
             </h2>
             <ul className="space-y-4">
               {/* AI INSIGHTS (IF AVAILABLE) */}
-              {smartAnalysis && smartAnalysis.keyInsights.map((insight, index) => (
-                <li key={`ai-${index}`} className="flex items-start p-4 bg-indigo-50/50 rounded-xl text-indigo-900 text-base border border-indigo-100 shadow-sm">
-                  <div className="flex items-center justify-center w-6 h-6 bg-indigo-100 rounded-full mr-4 flex-shrink-0">
-                    <Sparkles className="w-3 h-3 text-[#4F46E5]" />
-                  </div>
-                  <div className="flex-1">
-                    <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest block mb-1">AI Insight</span>
-                    {insight}
-                  </div>
-                </li>
-              ))}
+              {smartAnalysis && smartAnalysis.keyInsights.map((insight, index) => {
+                // Guard against legacy string insights or malformed data
+                if (typeof insight === 'string' || !insight?.action) return null;
+                
+                return (
+                  <li key={`ai-${index}`} className="flex items-start p-4 bg-indigo-50/50 rounded-xl text-indigo-900 text-base border border-indigo-100 shadow-sm">
+                    <div className="flex items-center justify-center w-6 h-6 bg-indigo-100 rounded-full mr-4 flex-shrink-0">
+                      <Sparkles className="w-3 h-3 text-[#4F46E5]" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">AI {insight.type}</span>
+                        <Link 
+                          to={insight.action.path}
+                          className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
+                        >
+                          {insight.action.label} →
+                        </Link>
+                      </div>
+                      <p className="font-bold text-sm mb-1">{insight.problem}</p>
+                      <p className="text-xs text-gray-600">{insight.fix}</p>
+                    </div>
+                  </li>
+                );
+              })}
 
               {/* DETERMINISTIC RECOMMENDATIONS */}
               {advice.recommendations.length > 0 ? (

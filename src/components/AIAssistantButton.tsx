@@ -14,9 +14,10 @@ import {
   Zap
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { SmartFinancialAnalysis } from '../services/geminiService';
+import { SmartFinancialAnalysis, SmartFinancialInsight } from '../services/geminiService';
 import { formatCurrency } from '../lib/formatCurrency';
 import Button from './ui/Button';
+import ConfidenceCircle from './ConfidenceCircle';
 
 interface AIAssistantButtonProps {
   onGenerate: () => Promise<SmartFinancialAnalysis | null>;
@@ -181,26 +182,10 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
                           {formatCurrency(analysis.projectedNetWorth, currency)}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm">
-                        <div className="w-10 h-10 rounded-full border-4 border-indigo-100 flex items-center justify-center relative">
-                          <svg className="w-full h-full -rotate-90">
-                            <circle
-                              cx="20"
-                              cy="20"
-                              r="16"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                              strokeDasharray={100.53}
-                              strokeDashoffset={100.53 - (100.53 * analysis.confidenceScore / 100)}
-                              className="text-indigo-600"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                          <span className="absolute text-[10px] font-black">{analysis.confidenceScore}%</span>
-                        </div>
-                        <span className="text-xs font-bold text-gray-500">Confidence Score</span>
-                      </div>
+                      <ConfidenceCircle 
+                        confidence={analysis.confidenceScore} 
+                        reason={analysis.confidenceReason}
+                      />
                     </div>
                   </div>
                 </section>
@@ -211,45 +196,82 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
                     <Zap className="w-5 h-5 text-amber-500" />
                     <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Key Insights</h3>
                   </div>
-                  <div className="grid grid-cols-1 gap-3">
-                    {analysis.keyInsights.map((insight, i) => (
-                      <motion.div 
-                        key={i}
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: i * 0.1 }}
-                        className="flex items-start gap-4 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
-                      >
-                        <div className="w-6 h-6 bg-indigo-50 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
-                        </div>
-                        <div className="flex-1 space-y-2">
-                          {insight.includes('|') ? (
-                            insight.split('|').map((part, index) => {
-                              const [label, content] = part.split(':').map(s => s.trim());
-                              if (!content) return <p key={index} className="text-sm text-gray-700 leading-relaxed font-medium">{part}</p>;
-                              
-                              const colors: Record<string, string> = {
-                                'PROBLEM': 'text-rose-600',
-                                'INSIGHT': 'text-indigo-600',
-                                'RECOMMENDATION': 'text-emerald-600'
-                              };
+                  <div className="grid grid-cols-1 gap-4">
+                    {analysis.keyInsights.map((insight, i) => {
+                      // Guard against legacy string insights or malformed data
+                      if (typeof insight === 'string' || !insight?.type || !insight?.action) return null;
 
-                              return (
-                                <div key={index} className="text-sm">
-                                  <span className={`font-black text-[10px] uppercase tracking-widest mr-2 ${colors[label] || 'text-gray-400'}`}>
-                                    {label}
-                                  </span>
-                                  <span className="text-gray-700 font-medium leading-relaxed">{content}</span>
-                                </div>
-                              );
-                            })
-                          ) : (
-                            <p className="text-sm text-gray-700 leading-relaxed font-medium">{insight}</p>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))}
+                      const typeColors = {
+                        risk: {
+                          bg: 'bg-rose-50',
+                          border: 'border-rose-100',
+                          text: 'text-rose-900',
+                          icon: 'text-rose-600',
+                          label: 'bg-rose-600'
+                        },
+                        warning: {
+                          bg: 'bg-amber-50',
+                          border: 'border-amber-100',
+                          text: 'text-amber-900',
+                          icon: 'text-amber-600',
+                          label: 'bg-amber-600'
+                        },
+                        optimization: {
+                          bg: 'bg-emerald-50',
+                          border: 'border-emerald-100',
+                          text: 'text-emerald-900',
+                          icon: 'text-emerald-600',
+                          label: 'bg-emerald-600'
+                        }
+                      }[insight.type];
+
+                      if (!typeColors) return null;
+
+                      return (
+                        <motion.div 
+                          key={i}
+                          initial={{ x: -20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: i * 0.1 }}
+                          className={`p-6 ${typeColors.bg} border ${typeColors.border} rounded-[2rem] shadow-sm space-y-4`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className={`px-3 py-1 ${typeColors.label} text-white text-[10px] font-black uppercase tracking-widest rounded-full`}>
+                              {insight.type}
+                            </div>
+                            <CheckCircle2 className={`w-5 h-5 ${typeColors.icon}`} />
+                          </div>
+
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Problem</p>
+                              <p className={`text-sm font-black ${typeColors.text}`}>{insight.problem}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Impact</p>
+                              <p className="text-sm text-gray-700 font-medium leading-relaxed">{insight.impact}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Fix</p>
+                              <p className="text-sm text-gray-800 font-bold leading-relaxed">{insight.fix}</p>
+                            </div>
+                          </div>
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            fullWidth
+                            onClick={() => {
+                              setIsOpen(false);
+                              navigate(insight.action.path);
+                            }}
+                            className="bg-white/50 border-white/50 hover:bg-white text-gray-900 font-black text-[10px] uppercase tracking-widest"
+                          >
+                            {insight.action.label}
+                          </Button>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 </section>
 
@@ -288,18 +310,20 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
 
               {/* FOOTER */}
               <div className="p-6 md:p-8 border-t border-gray-100 bg-gray-50/50 shrink-0">
-                <Button
-                  fullWidth
-                  size="lg"
-                  onClick={() => {
-                    setIsOpen(false);
-                    navigate(analysis.suggestedModule.path);
-                  }}
-                  icon={<ArrowRight className="w-5 h-5 ml-2" />}
-                  className="shadow-xl shadow-indigo-100"
-                >
-                  Apply Recommendation: {analysis.suggestedModule.label}
-                </Button>
+                {analysis.suggestedModule?.path && (
+                  <Button
+                    fullWidth
+                    size="lg"
+                    onClick={() => {
+                      setIsOpen(false);
+                      navigate(analysis.suggestedModule.path);
+                    }}
+                    icon={<ArrowRight className="w-5 h-5 ml-2" />}
+                    className="shadow-xl shadow-indigo-100"
+                  >
+                    Apply Recommendation: {analysis.suggestedModule.label}
+                  </Button>
+                )}
                 <p className="text-center text-[10px] text-gray-400 mt-4 font-medium italic">
                   AI insights are advisory. Consult a financial professional for critical decisions.
                 </p>
