@@ -197,7 +197,7 @@ const Signup: React.FC = () => {
       </div>
 
       {/* Right Side — Signup Form */}
-      <div className="flex-1 flex flex-col items-center justify-start p-8 md:p-16 pt-12 bg-gray-50 relative overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-start p-8 md:p-16 pt-12 pb-10 bg-gray-50 relative min-h-screen overflow-y-auto">
         {/* Subtle background noise/gradient */}
         <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20"></div>
         
@@ -219,7 +219,7 @@ const Signup: React.FC = () => {
               Create account
             </h2>
             <p className="text-gray-600">
-              Join thousands of users growing their wealth.
+              Welcome to the future of your finances
             </p>
           </div>
 

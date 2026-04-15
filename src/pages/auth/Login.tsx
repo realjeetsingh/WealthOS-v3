@@ -173,7 +173,7 @@ const Login: React.FC = () => {
       </div>
 
       {/* Right Side — Login Form */}
-      <div className="flex-1 flex flex-col items-center justify-start p-8 md:p-16 pt-12 bg-gray-50 relative overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-start p-8 md:p-16 pt-12 pb-10 bg-gray-50 relative min-h-screen overflow-y-auto">
         {/* Subtle background noise/gradient */}
         <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20"></div>
         
@@ -192,10 +192,10 @@ const Login: React.FC = () => {
 
           <div className="mb-10">
             <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-2">
-              Welcome back
+              Welcome
             </h2>
             <p className="text-gray-600">
-              Access your personalized financial dashboard.
+              Welcome to the future of your finances
             </p>
           </div>
 
@@ -287,18 +287,23 @@ const Login: React.FC = () => {
             </div>
           </form>
 
+          <div className="mt-8 text-center">
+            <p className="text-gray-600">
+              Don't have an account?{' '}
+              <Link to="/auth/signup" className="font-bold text-indigo-600 hover:text-indigo-500 transition-colors">
+                Create one for free
+              </Link>
+            </p>
+          </div>
+
           <div className="mt-8">
             <div className="relative mb-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase tracking-widest">
-                <span className="px-4 bg-gray-50 text-gray-400 font-bold">or continue with</span>
+                <span className="px-4 bg-gray-50 text-gray-400 font-bold">OR</span>
               </div>
-            </div>
-
-            <div className="text-center mb-4">
-              <p className="text-sm font-bold text-gray-700">Login with Google</p>
             </div>
 
             <Button
@@ -311,15 +316,6 @@ const Login: React.FC = () => {
             >
               Continue with Google
             </Button>
-          </div>
-
-          <div className="mt-8 text-center">
-            <p className="text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/auth/signup" className="font-bold text-indigo-600 hover:text-indigo-500 transition-colors">
-                Create one for free
-              </Link>
-            </p>
           </div>
 
           {/* Trust Signals */}
