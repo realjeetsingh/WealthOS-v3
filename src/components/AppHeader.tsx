@@ -11,6 +11,7 @@ import {
 import { auth } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import PricingModal from './PricingModal';
+import Logo from './ui/Logo';
 
 interface AppHeaderProps {
   isVisible?: boolean;
@@ -45,28 +46,28 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
   }, []);
 
   return (
-    <header className={`bg-white border-b border-gray-100 fixed top-0 left-0 w-full z-[1100] transition-transform duration-500 ease-in-out ${isVisible ? 'translate-y-0' : 'md:translate-y-0 -translate-y-full'}`}>
+    <header className={`bg-gradient-to-r from-[#6B66FE] to-[#6334FD] border-b border-white/10 fixed top-0 left-0 w-full z-[1100] transition-transform duration-500 ease-in-out ${isVisible ? 'translate-y-0' : 'md:translate-y-0 -translate-y-full'}`}>
       <div className="px-3 sm:px-6 lg:px-8 max-w-full">
         <div className="flex justify-between h-[70px] items-center">
           <div className="flex items-center">
             <Link to="/dashboard" className="flex items-center space-x-2 group">
-              <div className="w-9 h-9 bg-[#4F46E5] rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform shrink-0">
-                <span className="text-white font-bold text-xl font-display">W</span>
+              <div className="group-hover:scale-105 transition-transform shrink-0 bg-white p-1 rounded-lg">
+                <Logo size={28} />
               </div>
-              <span className="hidden sm:block text-xl font-bold text-gray-900 tracking-tight font-display">WealthOS</span>
+              <span className="hidden sm:block text-xl font-bold text-white tracking-tight font-display">WealthOS</span>
             </Link>
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
             {isPremium ? (
-              <div className="flex items-center space-x-1 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-bold border border-amber-100">
+              <div className="flex items-center space-x-1 bg-white/20 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/20 backdrop-blur-sm">
                 <Crown className="w-3 h-3" />
                 <span>PRO</span>
               </div>
             ) : (
               <button
                 onClick={() => setShowPricing(true)}
-                className="flex items-center space-x-1.5 bg-indigo-600 text-white px-4 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 active:scale-[0.98] duration-150"
+                className="flex items-center space-x-1.5 bg-white text-[#6334FD] px-4 py-1.5 rounded-full text-xs font-bold hover:bg-white/90 transition-all shadow-lg active:scale-[0.98] duration-150"
               >
                 <Crown className="w-3.5 h-3.5" />
                 <span>Upgrade</span>
@@ -77,9 +78,9 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-gray-50 transition-all group active:scale-[0.98] duration-150"
+                className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-white/10 transition-all group active:scale-[0.98] duration-150"
               >
-                <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-100 transition-colors overflow-hidden">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center border border-white/20 group-hover:bg-white/30 transition-colors overflow-hidden">
                   {userProfile?.profileImage ? (
                     <img 
                       src={userProfile.profileImage} 
@@ -88,15 +89,15 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <UserIcon className="w-4 h-4 text-indigo-600" />
+                    <UserIcon className="w-4 h-4 text-white" />
                   )}
                 </div>
                 <div className="hidden sm:block text-left">
-                  <p className="text-xs font-bold text-gray-900 truncate max-w-[100px]">
+                  <p className="text-xs font-bold text-white truncate max-w-[100px]">
                     {userProfile?.name?.split(' ')[0] || 'User'}
                   </p>
                 </div>
-                <ChevronDown className={`hidden sm:block w-4 h-4 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`hidden sm:block w-4 h-4 text-white/70 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence>

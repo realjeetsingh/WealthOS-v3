@@ -116,7 +116,7 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
               disabled={loading}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl shadow-indigo-200 flex items-center justify-center group overflow-hidden relative"
+              className="w-16 h-16 bg-gradient-to-r from-[#6B66FE] to-[#6334FD] text-white rounded-full shadow-2xl shadow-indigo-200 flex items-center justify-center group overflow-hidden relative"
             >
               <motion.div
                 key="icon"
@@ -163,14 +163,14 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
               className="relative w-full max-w-2xl bg-white rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
               {/* HEADER */}
-              <div className="p-6 md:p-8 border-b border-gray-100 flex items-center justify-between bg-indigo-50/30 shrink-0">
+              <div className="p-6 md:p-8 border-b border-gray-100 flex items-center justify-between bg-[#6334FD]/5 shrink-0">
                 <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-100">
+                  <div className="p-3 bg-[#6334FD] rounded-2xl shadow-lg shadow-indigo-100">
                     <BrainCircuit className="w-6 h-6 text-white" />
                   </div>
                   <div>
                     <h2 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">AI Financial Assistant</h2>
-                    <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Intelligent Wealth Analysis</p>
+                    <p className="text-xs font-bold text-[#6334FD] uppercase tracking-widest">Intelligent Wealth Analysis</p>
                   </div>
                 </div>
                 <button 
@@ -212,14 +212,14 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
                     {/* CURRENT STATUS */}
                     <section>
                       <div className="flex items-center gap-2 mb-4">
-                        <TrendingUp className="w-5 h-5 text-indigo-600" />
+                        <TrendingUp className="w-5 h-5 text-[#6334FD]" />
                         <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Current Status</h3>
                       </div>
                       <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">10-Year Projected Net Worth</p>
-                            <p className="text-3xl font-black text-gray-900 tracking-tighter">
+                            <p className="text-3xl font-black text-[#6334FD] tracking-tighter">
                               {formatCurrency(analysis.projectedNetWorth, currency)}
                             </p>
                           </div>
@@ -234,7 +234,7 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
                     {/* KEY INSIGHTS */}
                     <section>
                       <div className="flex items-center gap-2 mb-4">
-                        <Zap className="w-5 h-5 text-amber-500" />
+                        <Zap className="w-5 h-5 text-[#6334FD]" />
                         <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Key Insights</h3>
                       </div>
                       <div className="grid grid-cols-1 gap-4">
@@ -251,11 +251,11 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
                               label: 'bg-rose-600'
                             },
                             warning: {
-                              bg: 'bg-amber-50',
-                              border: 'border-amber-100',
-                              text: 'text-amber-900',
-                              icon: 'text-amber-600',
-                              label: 'bg-amber-600'
+                              bg: 'bg-[#6334FD]/5',
+                              border: 'border-[#6334FD]/10',
+                              text: 'text-[#6334FD]',
+                              icon: 'text-[#6334FD]',
+                              label: 'bg-[#6334FD]'
                             },
                             optimization: {
                               bg: 'bg-emerald-50',
@@ -335,14 +335,14 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
                     {/* RECOMMENDATIONS */}
                     <section>
                       <div className="flex items-center gap-2 mb-4">
-                        <Target className="w-5 h-5 text-emerald-600" />
+                        <Target className="w-5 h-5 text-[#6334FD]" />
                         <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Strategic Recommendation</h3>
                       </div>
                       <div className="space-y-3">
                         {analysis.strategicPlan.shortTerm.map((step, i) => (
-                          <div key={i} className="flex items-center gap-4 p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
-                            <ArrowRight className="w-4 h-4 text-emerald-600 shrink-0" />
-                            <p className="text-sm text-emerald-900 font-bold">{step}</p>
+                          <div key={i} className="flex items-center gap-4 p-4 bg-[#6334FD]/5 border border-[#6334FD]/10 rounded-2xl">
+                            <ArrowRight className="w-4 h-4 text-[#6334FD] shrink-0" />
+                            <p className="text-sm text-[#6334FD] font-bold">{step}</p>
                           </div>
                         ))}
                       </div>

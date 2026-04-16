@@ -37,7 +37,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
           className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden relative"
         >
           {/* Header with Gradient */}
-          <div className="h-32 bg-gradient-to-br from-indigo-600 to-violet-700 relative flex items-center justify-center">
+          <div className="h-32 bg-gradient-to-br from-[#6B66FE] to-[#6334FD] relative flex items-center justify-center">
             <div className="absolute top-4 right-4">
               <button 
                 onClick={onClose}
@@ -47,7 +47,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
               </button>
             </div>
             <div className="bg-white/20 backdrop-blur-md p-3 rounded-2xl border border-white/30">
-              <Crown className="w-8 h-8 text-amber-300" />
+              <Crown className="w-8 h-8 text-white" />
             </div>
           </div>
 
@@ -58,7 +58,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
             <div className="space-y-4 mb-10 text-left">
               {features.map((f, i) => (
                 <div key={i} className="flex items-start space-x-4 p-3 rounded-2xl hover:bg-gray-50 transition-colors">
-                  <div className="mt-1 p-2 bg-indigo-50 rounded-xl text-indigo-600">
+                  <div className="mt-1 p-2 bg-[#6334FD]/5 rounded-xl text-[#6334FD]">
                     <f.icon className="w-5 h-5" />
                   </div>
                   <div>
@@ -69,20 +69,20 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
               ))}
             </div>
 
-            <div className="bg-indigo-50 rounded-3xl p-6 mb-8 border border-indigo-100">
+            <div className="bg-[#6334FD]/5 rounded-3xl p-6 mb-8 border border-[#6334FD]/10">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-indigo-900 font-bold">Lifetime Access</span>
+                <span className="text-[#6334FD] font-bold">Lifetime Access</span>
                 <div className="flex items-center">
                   <span className="text-gray-400 line-through text-sm mr-2">{formatCurrency(999)}</span>
-                  <span className="text-2xl font-black text-indigo-600">{formatCurrency(299)}</span>
+                  <span className="text-2xl font-black text-[#6334FD]">{formatCurrency(299)}</span>
                 </div>
               </div>
-              <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest text-left">Limited time offer • One-time payment</p>
+              <p className="text-[10px] text-[#6334FD]/60 font-bold uppercase tracking-widest text-left">Limited time offer • One-time payment</p>
             </div>
 
             <button 
               onClick={onUpgrade}
-              className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center group active:scale-[0.98]"
+              className="w-full py-4 bg-gradient-to-r from-[#6B66FE] to-[#6334FD] text-white rounded-2xl font-bold text-lg hover:opacity-90 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center group active:scale-[0.98]"
             >
               Upgrade Now
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />

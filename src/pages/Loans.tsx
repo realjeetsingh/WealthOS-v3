@@ -355,10 +355,10 @@ const Loans: React.FC = () => {
     } else if (emiRatio >= 20) {
       return {
         text: `${formatCurrencyShort(totalEMI)}/month in EMIs is reducing your savings potential`,
-        color: 'text-amber-600',
-        bgColor: 'bg-amber-50',
-        borderColor: 'border-amber-100',
-        icon: <AlertCircle className="w-6 h-6 text-amber-600" />
+        color: 'text-[#6334FD]',
+        bgColor: 'bg-[#6334FD]/5',
+        borderColor: 'border-[#6334FD]/10',
+        icon: <AlertCircle className="w-6 h-6 text-[#6334FD]" />
       };
     } else {
       return {
@@ -413,7 +413,7 @@ const Loans: React.FC = () => {
           <div className="flex-shrink-0">
             <div className="text-center md:text-right">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Debt Freedom Score</p>
-              <p className={`text-3xl font-black ${emiRatio > 40 ? 'text-red-600' : emiRatio > 20 ? 'text-amber-600' : 'text-green-600'}`}>
+              <p className={`text-3xl font-black ${emiRatio > 40 ? 'text-red-600' : emiRatio > 20 ? 'text-[#6334FD]' : 'text-green-600'}`}>
                 {Math.max(0, 100 - Math.round(emiRatio))}%
               </p>
             </div>
@@ -606,7 +606,7 @@ const Loans: React.FC = () => {
                 let urgencyColor = "bg-gray-500";
                 if (remainingMonths < 6) {
                   urgencyTag = "Ending soon";
-                  urgencyColor = "bg-amber-500";
+                  urgencyColor = "bg-[#6334FD]";
                 } else if (remainingMonths < 18) {
                   urgencyTag = "Midway";
                   urgencyColor = "bg-indigo-500";
@@ -617,7 +617,7 @@ const Loans: React.FC = () => {
                     key={l.id} 
                     className={`bg-white rounded-3xl p-8 shadow-xl border-2 transition-all group relative overflow-hidden flex flex-col min-h-[420px] ${
                       l.status === 'completed' ? 'border-green-100 opacity-80' : 
-                      remainingMonths < 6 ? 'border-amber-200 ring-4 ring-amber-50' : 'border-gray-50 hover:border-indigo-100'
+                      remainingMonths < 6 ? 'border-[#6334FD]/20 ring-4 ring-[#6334FD]/5' : 'border-gray-50 hover:border-indigo-100'
                     }`}
                   >
                     {l.status === 'completed' && (

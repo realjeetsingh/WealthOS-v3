@@ -36,6 +36,7 @@ import { updateFinancialSnapshot, getFinancialSnapshot } from '../services/snaps
 import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
 import { toast } from 'sonner';
 import Button from '../components/ui/Button';
+import Logo from '../components/ui/Logo';
 
 const STEPS = [
   { id: 'income', title: 'Monthly Income', icon: TrendingUp, description: 'How much do you earn each month?' },
@@ -801,9 +802,7 @@ const Onboarding: React.FC = () => {
       <div className="max-w-2xl w-full mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
-              <span className="text-white font-black text-xl">W</span>
-            </div>
+            <Logo size={40} />
             <span className="font-black text-gray-900 tracking-tighter text-xl">WealthOS Onboarding</span>
           </div>
           <span className="text-sm font-bold text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-100">

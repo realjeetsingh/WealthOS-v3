@@ -345,7 +345,7 @@ const Dashboard: React.FC = () => {
           </Link>
           <Link 
             to="/transactions" 
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-all active:scale-[0.98] duration-150 shadow-md whitespace-nowrap"
+            className="flex items-center gap-2 bg-[#6334FD] text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-all active:scale-[0.98] duration-150 shadow-md whitespace-nowrap"
           >
             <TrendingUp className="w-4 h-4" />
             Manage Data
@@ -382,37 +382,37 @@ const Dashboard: React.FC = () => {
 
       {/* Primary Net Worth Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-        <div className="lg:col-span-2 bg-indigo-600 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="lg:col-span-2 bg-white rounded-2xl p-8 text-gray-900 shadow-sm border border-gray-100 relative overflow-hidden">
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <p className="text-indigo-100 font-medium mb-1">Total Net Worth</p>
-                <h2 className="text-5xl font-black tracking-tighter">
+                <p className="text-gray-500 font-medium mb-1">Total Net Worth</p>
+                <h2 className="text-5xl font-black tracking-tighter text-[#6334FD]">
                   <CurrencyDisplay value={netWorth} currency={userCurrency} />
                 </h2>
               </div>
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${isIncreasing ? 'bg-green-400/20 text-green-300' : 'bg-red-400/20 text-red-300'}`}>
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${isIncreasing ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                 {isIncreasing ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                 {isIncreasing ? 'Increasing' : 'Decreasing'}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 pt-8 border-t border-indigo-500/50">
+            <div className="grid grid-cols-3 gap-4 pt-8 border-t border-gray-50">
               <div>
-                <p className="text-indigo-200 text-xs uppercase tracking-wider font-bold mb-1">Cash</p>
-                <div className="text-xl font-bold">
+                <p className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-1">Cash</p>
+                <div className="text-xl font-bold text-gray-900">
                   <CurrencyDisplay value={cashBalance} currency={userCurrency} />
                 </div>
               </div>
               <div>
-                <p className="text-indigo-200 text-xs uppercase tracking-wider font-bold mb-1">Portfolio</p>
-                <div className="text-xl font-bold">
+                <p className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-1">Portfolio</p>
+                <div className="text-xl font-bold text-gray-900">
                   <CurrencyDisplay value={portfolioValue} currency={userCurrency} />
                 </div>
               </div>
               <div>
-                <p className="text-indigo-200 text-xs uppercase tracking-wider font-bold mb-1">Loans</p>
-                <div className="text-xl font-bold text-red-300">
+                <p className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-1">Loans</p>
+                <div className="text-xl font-bold text-red-500">
                   -<CurrencyDisplay value={loanBalance} currency={userCurrency} />
                 </div>
               </div>
@@ -420,15 +420,15 @@ const Dashboard: React.FC = () => {
           </div>
           
           {/* Decorative Elements */}
-          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-indigo-500 rounded-full opacity-20 blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-60 h-60 bg-indigo-400 rounded-full opacity-10 blur-3xl"></div>
+          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-[#6334FD] rounded-full opacity-[0.03] blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-60 h-60 bg-[#6B66FE] rounded-full opacity-[0.03] blur-3xl"></div>
         </div>
 
         <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <History className="w-5 h-5 text-indigo-600" />
+                <History className="w-5 h-5 text-[#6334FD]" />
                 Net Worth Trend
               </h3>
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Last 30 Days</span>
@@ -439,11 +439,11 @@ const Dashboard: React.FC = () => {
                   <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#6334FD" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#6334FD" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <Area type="monotone" dataKey="value" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                    <Area type="monotone" dataKey="value" stroke="#6334FD" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                     <RechartsTooltip 
                       formatter={(value: number) => [formatCurrencyShort(value, userCurrency), 'Net Worth']}
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
@@ -499,11 +499,11 @@ const Dashboard: React.FC = () => {
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Monthly Cashflow</p>
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 shrink-0">
+            <div className="p-2 bg-[#6334FD]/5 rounded-lg text-[#6334FD] shrink-0">
               <BarChart3 className="w-4 h-4" />
             </div>
           </div>
-          <h3 className={`text-3xl font-black tracking-tighter truncate ${cashflow >= 0 ? 'text-indigo-600' : 'text-orange-600'}`}>
+          <h3 className={`text-3xl font-black tracking-tighter truncate ${cashflow >= 0 ? 'text-[#6334FD]' : 'text-orange-600'}`}>
             <CurrencyDisplay value={cashflow} currency={userCurrency} />
           </h3>
           <p className="text-xs text-gray-400 mt-auto line-clamp-2">Net savings after all expenses.</p>
@@ -514,8 +514,8 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[220px]">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-indigo-50 rounded-lg shrink-0">
-              <Activity className="w-6 h-6 text-[#4F46E5]" />
+            <div className="p-2.5 bg-[#6334FD]/5 rounded-lg shrink-0">
+              <Activity className="w-6 h-6 text-[#6334FD]" />
             </div>
             <h3 className="font-bold text-gray-900 text-lg truncate">Monthly Status</h3>
           </div>
@@ -524,8 +524,8 @@ const Dashboard: React.FC = () => {
 
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[220px]">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-indigo-50 rounded-lg shrink-0">
-              <Calendar className="w-6 h-6 text-[#4F46E5]" />
+            <div className="p-2.5 bg-[#6334FD]/5 rounded-lg shrink-0">
+              <Calendar className="w-6 h-6 text-[#6334FD]" />
             </div>
             <h3 className="font-bold text-gray-900 text-lg truncate">Weekly Summary</h3>
           </div>
@@ -548,8 +548,8 @@ const Dashboard: React.FC = () => {
 
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[220px]">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-indigo-50 rounded-lg shrink-0">
-              <Zap className="w-6 h-6 text-[#4F46E5]" />
+            <div className="p-2.5 bg-[#6334FD]/5 rounded-lg shrink-0">
+              <Zap className="w-6 h-6 text-[#6334FD]" />
             </div>
             <h3 className="font-bold text-gray-900 text-lg truncate">Smart Insights</h3>
           </div>
@@ -559,7 +559,7 @@ const Dashboard: React.FC = () => {
                 {upgradedInsights.slice(0, 2).map((insight, i) => (
                   <div key={i} className="space-y-1">
                     <p className="text-sm font-bold text-gray-900 truncate">{insight.title}</p>
-                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest truncate">Action: {insight.action}</p>
+                    <p className="text-[10px] font-black text-[#6334FD] uppercase tracking-widest truncate">Action: {insight.action}</p>
                   </div>
                 ))}
               </div>
@@ -576,10 +576,10 @@ const Dashboard: React.FC = () => {
             const emiRatio = monthlyIncome > 0 ? (totalEMI / monthlyIncome) * 100 : 0;
             let pressure = {
               text: "Your EMI load is manageable, but can still be optimized",
-              color: 'text-indigo-600',
-              bgColor: 'bg-indigo-50',
-              borderColor: 'border-indigo-100',
-              icon: <Zap className="w-6 h-6 text-indigo-600" />
+              color: 'text-[#6334FD]',
+              bgColor: 'bg-[#6334FD]/5',
+              borderColor: 'border-[#6334FD]/10',
+              icon: <Zap className="w-6 h-6 text-[#6334FD]" />
             };
 
             if (emiRatio > 40) {

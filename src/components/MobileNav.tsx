@@ -39,14 +39,14 @@ const MobileNav: React.FC<MobileNavProps> = ({ isVisible = true }) => {
             to={link.to}
             className={`relative flex flex-col items-center justify-center w-full h-full transition-all active:scale-[0.98] duration-150 ${
               isActive 
-                ? 'text-[#4F46E5]' 
+                ? 'text-[#6334FD]' 
                 : 'text-gray-400'
             }`}
           >
             {isActive && (
               <motion.div
                 layoutId="mobile-nav-active"
-                className="absolute inset-0 bg-indigo-50/30"
+                className="absolute inset-0 bg-[#6334FD]/5"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}
@@ -62,7 +62,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ isVisible = true }) => {
             {isActive && (
               <motion.div 
                 layoutId="mobile-nav-dot"
-                className="absolute bottom-2 w-1 h-1 bg-[#4F46E5] rounded-full"
+                className="absolute bottom-2 w-1 h-1 bg-[#6334FD] rounded-full"
               />
             )}
           </Link>

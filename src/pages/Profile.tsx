@@ -55,6 +55,7 @@ import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
 
 import { handleUpgrade } from '../lib/paymentService';
 import Button from '../components/ui/Button';
+import Logo from '../components/ui/Logo';
 
 const Profile: React.FC = () => {
   const { user, userProfile, isPremium } = useAuth();
@@ -170,8 +171,8 @@ const Profile: React.FC = () => {
       title: 'Active Transactor',
       description: `Logged ${transactions.length} transactions`,
       icon: Zap,
-      color: 'text-amber-500',
-      bgColor: 'bg-amber-50',
+      color: 'text-[#6334FD]',
+      bgColor: 'bg-[#6334FD]/5',
       unlocked: transactions.length >= 10
     },
     {
@@ -370,7 +371,7 @@ const Profile: React.FC = () => {
           <div className="absolute top-6 right-6">
             {isPremium ? (
               <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-2 rounded-full text-white font-bold text-xs">
-                <Crown className="w-4 h-4 text-amber-300" />
+                <Crown className="w-4 h-4 text-white" />
                 <span>PRO MEMBER</span>
               </div>
             ) : (
@@ -394,7 +395,7 @@ const Profile: React.FC = () => {
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <UserIcon className="w-16 h-16 text-indigo-600" />
+                    <Logo size={64} />
                   )}
                   
                   {/* Overlay for Change Photo */}
@@ -433,7 +434,7 @@ const Profile: React.FC = () => {
                 <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mb-2">
                   <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{userProfile?.name || 'WealthOS User'}</h1>
                   {isPremium && (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100 mt-2 md:mt-0 w-fit">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#6334FD]/5 text-[#6334FD] border border-[#6334FD]/10 mt-2 md:mt-0 w-fit">
                       Pro
                     </span>
                   )}
@@ -489,10 +490,10 @@ const Profile: React.FC = () => {
 
       {/* High Visibility Upgrade CTA */}
       {!isPremium && (
-        <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl border border-white/10">
+        <div className="bg-gradient-to-br from-[#6B66FE] via-[#6334FD] to-[#5a2ed4] rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl border border-white/10">
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex-1 text-center md:text-left">
-              <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full text-amber-300 font-black text-[10px] uppercase tracking-[0.2em] mb-6">
+              <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full text-white font-black text-[10px] uppercase tracking-[0.2em] mb-6">
                 <Crown className="w-4 h-4" />
                 <span>Limited Time Offer</span>
               </div>
@@ -500,14 +501,14 @@ const Profile: React.FC = () => {
                 Unlock full financial control
               </h2>
               <p className="text-indigo-100 text-lg font-medium max-w-xl leading-relaxed">
-                You're currently using <span className="text-amber-300 font-black">40% of your potential</span>. Upgrade to Pro to access advanced AI insights and unlimited tracking.
+                You're currently using <span className="text-white font-black">40% of your potential</span>. Upgrade to Pro to access advanced AI insights and unlimited tracking.
               </p>
             </div>
             <div className="shrink-0 w-full md:w-auto">
               <Button 
                 onClick={() => setShowPricing(true)}
                 size="lg"
-                className="w-full md:w-auto px-10 py-5 bg-amber-400 text-amber-950 rounded-[1.5rem] text-xl font-black hover:bg-amber-300 transition-all active:scale-[0.98] duration-150 shadow-xl shadow-amber-900/40 flex items-center justify-center group"
+                className="w-full md:w-auto px-10 py-5 bg-white text-[#6334FD] rounded-[1.5rem] text-xl font-black hover:bg-gray-50 transition-all active:scale-[0.98] duration-150 shadow-xl shadow-black/10 flex items-center justify-center group"
                 icon={<Zap className="w-6 h-6 fill-current group-hover:scale-110 transition-transform" />}
               >
                 Go Pro Now
@@ -516,7 +517,7 @@ const Profile: React.FC = () => {
           </div>
           
           {/* Decorative Elements */}
-          <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-amber-400 rounded-full blur-[120px] opacity-20"></div>
+          <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-white rounded-full blur-[120px] opacity-10"></div>
           <div className="absolute -left-20 -top-20 w-60 h-60 bg-indigo-400 rounded-full blur-[100px] opacity-20"></div>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
         </div>
@@ -529,8 +530,8 @@ const Profile: React.FC = () => {
             label: 'Achievements', 
             value: `${achievements.filter(a => a.unlocked).length}/${achievements.length}`, 
             icon: Trophy, 
-            color: 'text-amber-600', 
-            bgColor: 'bg-amber-50' 
+            color: 'text-[#6334FD]', 
+            bgColor: 'bg-[#6334FD]/5' 
           },
           { 
             label: 'Progress Metrics', 
@@ -621,7 +622,7 @@ const Profile: React.FC = () => {
                       <p className="text-sm text-gray-400 italic blur-[2px] select-none">
                         This advanced insight is reserved for premium members.
                       </p>
-                      <span className="flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wider">
+                      <span className="flex items-center px-2 py-0.5 rounded-full bg-[#6334FD]/5 text-[#6334FD] text-[10px] font-bold uppercase tracking-wider">
                         <Crown className="w-3 h-3 mr-1" />
                         Pro
                       </span>
@@ -726,7 +727,7 @@ const Profile: React.FC = () => {
         {/* Pro Status Card (if premium) */}
         {isPremium && (
           <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 flex flex-col items-center justify-center text-center space-y-4">
-            <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600">
+            <div className="w-16 h-16 bg-[#6334FD]/5 rounded-2xl flex items-center justify-center text-[#6334FD]">
               <Crown className="w-8 h-8" />
             </div>
             <div>
@@ -901,7 +902,7 @@ const Profile: React.FC = () => {
                         {newProfileImage ? (
                           <img src={newProfileImage} alt="Profile Preview" className="w-full h-full object-cover" />
                         ) : (
-                          <UserIcon className="w-10 h-10 text-indigo-600" />
+                          <Logo size={40} />
                         )}
                         
                         <button

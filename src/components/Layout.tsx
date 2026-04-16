@@ -49,7 +49,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isFormPage = ['/transactions', '/budgets', '/loans', '/settings', '/profile'].includes(location.pathname);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 w-full max-w-full overflow-x-hidden relative">
+    <div className="min-h-screen flex flex-col bg-[var(--color-bg-main)] w-full max-w-full overflow-x-hidden relative">
       <AppHeader isVisible={isVisible} />
       
       <div className="flex flex-1 w-full relative">

@@ -55,7 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isHovered, setIsHovered }) => {
     <aside 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`hidden md:flex flex-col bg-white border-r border-gray-100 transition-[width] duration-200 ease-in-out fixed top-0 md:top-16 left-0 h-[100dvh] md:h-[calc(100dvh-64px)] overflow-hidden z-[1000] ${
+      className={`hidden md:flex flex-col bg-white border-r border-gray-100 transition-[width] duration-200 ease-in-out fixed top-0 md:top-[70px] left-0 h-[100dvh] md:h-[calc(100dvh-70px)] overflow-hidden z-[1000] ${
         isExpanded ? 'w-[240px]' : 'w-[70px]'
       }`}
     >
@@ -72,14 +72,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isHovered, setIsHovered }) => {
                 isExpanded ? 'px-4 py-3' : 'p-3 justify-center'
               } ${
                 isActive 
-                  ? 'text-[#4F46E5]' 
+                  ? 'text-[#6334FD]' 
                   : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
               {isActive && (
                 <motion.div
                   layoutId="sidebar-active-pill"
-                  className="absolute inset-0 bg-indigo-50 rounded-xl shadow-[0_0_15px_rgba(79,70,229,0.1)]"
+                  className="absolute inset-0 bg-[#6334FD]/5 rounded-xl border border-[#6334FD]/10"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
@@ -87,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isHovered, setIsHovered }) => {
                 animate={isActive ? { scale: 1.1 } : { scale: 1 }}
                 className="relative z-10"
               >
-                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[#4F46E5]' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[#6334FD]' : 'text-gray-400 group-hover:text-gray-600'}`} />
               </motion.div>
               {isExpanded && (
                 <div className="ml-3 relative z-10 animate-in fade-in slide-in-from-left-2 duration-200">
@@ -102,7 +102,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isHovered, setIsHovered }) => {
       {/* Bottom Section */}
       <div className={`border-t border-gray-50 space-y-2 transition-all duration-200 ${isExpanded ? 'p-4' : 'p-2'}`}>
         {isPremium && (
-          <div className={`flex items-center bg-amber-50 text-amber-700 rounded-xl text-xs font-bold border border-amber-100 mb-2 transition-all duration-200 overflow-hidden ${
+          <div className={`flex items-center bg-[#6334FD]/5 text-[#6334FD] rounded-xl text-xs font-bold border border-[#6334FD]/10 mb-2 transition-all duration-200 overflow-hidden ${
             isExpanded ? 'px-4 py-2' : 'p-3 justify-center border-none bg-transparent'
           }`}>
             <Crown className="w-4 h-4 shrink-0" />

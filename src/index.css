@@ -5,10 +5,14 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-brand-start: #6B66FE;
+  --color-brand-end: #6334FD;
+  --color-bg-main: #F5F6FA;
 }
 
 html, body {
-  @apply font-sans antialiased bg-gray-50 text-gray-900;
+  @apply font-sans antialiased bg-[var(--color-bg-main)] text-gray-900;
   width: 100%;
   max-width: 100%;
   min-height: 100%;

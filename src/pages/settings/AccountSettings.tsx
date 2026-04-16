@@ -19,6 +19,7 @@ import { CURRENCIES } from '../../lib/currency';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../components/ui/Button';
+import Logo from '../../components/ui/Logo';
 
 const AccountSettings: React.FC = () => {
   const { user, userProfile } = useAuth();
@@ -133,7 +134,7 @@ const AccountSettings: React.FC = () => {
                 <img src={userProfile.profileImage} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-600">
-                  <UserIcon className="w-12 h-12" />
+                  <Logo size={48} />
                 </div>
               )}
               {uploading && (

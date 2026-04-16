@@ -7,6 +7,7 @@ import { handleFirestoreError, OperationType } from '../../lib/firestore-errors'
 import { AlertCircle, Lock, Mail, User as UserIcon, CheckCircle2, TrendingUp, BrainCircuit, ShieldCheck, Sparkles, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import Button from '../../components/ui/Button';
+import Logo from '../../components/ui/Logo';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -152,9 +153,7 @@ const Signup: React.FC = () => {
         
         <div className="relative z-10">
           <div className="flex items-center space-x-3 mb-12">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-indigo-600 font-black text-2xl">W</span>
-            </div>
+            <Logo size={40} />
             <span className="text-white font-black text-2xl tracking-tighter">WealthOS</span>
           </div>
 
@@ -208,9 +207,7 @@ const Signup: React.FC = () => {
           className="max-w-md w-full relative z-10 my-auto"
         >
           <div className="md:hidden flex items-center space-x-2 mb-8 justify-center">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-black text-lg">W</span>
-            </div>
+            <Logo size={32} />
             <span className="text-gray-900 font-black text-xl tracking-tighter">WealthOS</span>
           </div>
 
