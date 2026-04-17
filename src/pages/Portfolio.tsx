@@ -371,7 +371,7 @@ export default function Portfolio() {
       {/* Dashboard Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {/* Invested */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Invested</p>
             <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
@@ -384,7 +384,7 @@ export default function Portfolio() {
         </div>
 
         {/* Current Value */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Current Value</p>
             <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
@@ -397,7 +397,7 @@ export default function Portfolio() {
         </div>
 
         {/* Profit/Loss */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-emerald-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Profit/Loss</p>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
@@ -410,7 +410,7 @@ export default function Portfolio() {
         </div>
 
         {/* Return % */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[140px]">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Return %</p>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${totalGainLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
@@ -430,7 +430,7 @@ export default function Portfolio() {
       {/* Allocation & Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Asset Allocation Visualization */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-gray-900">Asset Allocation</h2>
             <div className="p-2 bg-gray-50 rounded-lg">
@@ -457,13 +457,13 @@ export default function Portfolio() {
                   </Pie>
                   <RechartsTooltip 
                     formatter={(value: number) => formatCurrencyShort(value)}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
                   />
                   <Legend 
                     verticalAlign="bottom" 
                     height={36}
                     iconType="circle"
-                    formatter={(value) => <span className="text-xs font-medium text-gray-600">{value}</span>}
+                    formatter={(value) => <span className="text-xs font-bold text-gray-600">{value}</span>}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -500,7 +500,7 @@ export default function Portfolio() {
         </div>
 
         {/* Portfolio Smart Insights */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-gray-900">Portfolio Insights</h2>
             <div className="p-2 bg-indigo-50 rounded-lg">
@@ -523,7 +523,7 @@ export default function Portfolio() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.1 }}
-                    className={`p-4 rounded-2xl border ${insight.color} flex gap-4`}
+                    className={`p-4 rounded-2xl border ${insight.color} flex gap-4 shadow-sm`}
                   >
                     <div className="shrink-0">
                       <div className="w-10 h-10 rounded-xl bg-white/50 flex items-center justify-center">
@@ -532,7 +532,7 @@ export default function Portfolio() {
                     </div>
                     <div>
                       <h4 className="font-bold text-sm mb-1">{insight.title}</h4>
-                      <p className="text-xs opacity-80 leading-relaxed">{insight.message}</p>
+                      <p className="text-xs opacity-90 font-medium leading-relaxed">{insight.message}</p>
                     </div>
                   </motion.div>
                 );
@@ -554,7 +554,7 @@ export default function Portfolio() {
       </div>
 
       {/* Asset List */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-visible">
+      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 overflow-visible">
         <div className="p-6 border-b border-gray-50 flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900">Asset List</h2>
           <div className="flex items-center gap-2">

@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
+import FloatingAlerts, { Alert as FloatingAlert } from '../components/FloatingAlerts';
 import { 
   LineChart, 
   Line, 
@@ -266,6 +267,15 @@ const Dashboard: React.FC = () => {
     checkAndSaveSnapshot();
   }, [user?.uid, netWorth, loading]);
 
+  // Convert alerts to floating alert format
+  const floatingAlerts: FloatingAlert[] = alerts.map((alert, i) => ({
+    id: `alert-${i}-${Date.now()}`,
+    type: alert.type === 'info' ? 'info' : 
+          alert.type === 'danger' ? 'danger' : 'warning',
+    title: alert.title,
+    message: alert.message
+  }));
+
   // Trend Calculation
   const lastSnapshot = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
   const netWorthTrend = lastSnapshot ? netWorth - lastSnapshot.netWorth : 0;
@@ -313,6 +323,8 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="w-full max-w-full">
+      <FloatingAlerts initialAlerts={floatingAlerts} />
+
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-2">
@@ -353,66 +365,41 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Alerts Section */}
-      {alerts.length > 0 && (
-        <div className="mb-8 space-y-3">
-          {alerts.map((alert, i) => (
-            <motion.div 
-              key={i}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`flex items-center justify-between p-4 rounded-xl border ${
-                alert.type === 'danger' ? 'bg-red-50 border-red-100 text-red-700' :
-                alert.type === 'warning' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                'bg-blue-50 border-blue-100 text-blue-700'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 shrink-0" />
-                <div>
-                  <p className="font-bold text-sm">{alert.title}</p>
-                  <p className="text-xs opacity-90">{alert.message}</p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
+    
 
       {/* Primary Net Worth Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-        <div className="lg:col-span-2 bg-white rounded-2xl p-8 text-gray-900 shadow-sm border border-gray-100 relative overflow-hidden">
+        <div className="lg:col-span-2 bg-gradient-to-br from-[#6B66FE] to-[#6334FD] rounded-[2.5rem] p-10 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden">
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <p className="text-gray-500 font-medium mb-1">Total Net Worth</p>
-                <h2 className="text-5xl font-black tracking-tighter text-[#6334FD]">
+                <p className="text-white/80 font-medium mb-1">Total Net Worth</p>
+                <h2 className="text-5xl font-black tracking-tighter">
                   <CurrencyDisplay value={netWorth} currency={userCurrency} />
                 </h2>
               </div>
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${isIncreasing ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest ${isIncreasing ? 'bg-white/20' : 'bg-red-500/20'} backdrop-blur-md border border-white/10`}>
                 {isIncreasing ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                 {isIncreasing ? 'Increasing' : 'Decreasing'}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 pt-8 border-t border-gray-50">
+            <div className="grid grid-cols-3 gap-6 pt-10 border-t border-white/10">
               <div>
-                <p className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-1">Cash</p>
-                <div className="text-xl font-bold text-gray-900">
+                <p className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-black mb-1">Cash</p>
+                <div className="text-2xl font-black">
                   <CurrencyDisplay value={cashBalance} currency={userCurrency} />
                 </div>
               </div>
               <div>
-                <p className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-1">Portfolio</p>
-                <div className="text-xl font-bold text-gray-900">
+                <p className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-black mb-1">Portfolio</p>
+                <div className="text-2xl font-black">
                   <CurrencyDisplay value={portfolioValue} currency={userCurrency} />
                 </div>
               </div>
               <div>
-                <p className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-1">Loans</p>
-                <div className="text-xl font-bold text-red-500">
+                <p className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-black mb-1">Loans</p>
+                <div className="text-2xl font-black opacity-80">
                   -<CurrencyDisplay value={loanBalance} currency={userCurrency} />
                 </div>
               </div>
@@ -420,11 +407,12 @@ const Dashboard: React.FC = () => {
           </div>
           
           {/* Decorative Elements */}
-          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-[#6334FD] rounded-full opacity-[0.03] blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-60 h-60 bg-[#6B66FE] rounded-full opacity-[0.03] blur-3xl"></div>
+          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-60 h-60 bg-indigo-400/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
         </div>
 
-        <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm flex flex-col justify-between">
+        <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-xl shadow-black/5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-bold text-gray-900 flex items-center gap-2">
@@ -472,7 +460,7 @@ const Dashboard: React.FC = () => {
 
       {/* Secondary Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Monthly Income</p>
             <div className="p-2 bg-green-50 rounded-lg text-green-600 shrink-0">
@@ -484,7 +472,7 @@ const Dashboard: React.FC = () => {
           </h3>
           <p className="text-xs text-gray-400 mt-auto line-clamp-2">Total earnings from all sources this month.</p>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Monthly Expenses</p>
             <div className="p-2 bg-red-50 rounded-lg text-red-600 shrink-0">
@@ -496,7 +484,7 @@ const Dashboard: React.FC = () => {
           </h3>
           <p className="text-xs text-gray-400 mt-auto line-clamp-2">Total spending including EMIs and bills.</p>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Monthly Cashflow</p>
             <div className="p-2 bg-[#6334FD]/5 rounded-lg text-[#6334FD] shrink-0">
@@ -512,9 +500,9 @@ const Dashboard: React.FC = () => {
 
       {/* Retention Engine Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[220px]">
+        <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-black/5 border border-gray-100 flex flex-col min-h-[220px]">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-[#6334FD]/5 rounded-lg shrink-0">
+            <div className="p-2.5 bg-[#6334FD]/5 rounded-xl shrink-0">
               <Activity className="w-6 h-6 text-[#6334FD]" />
             </div>
             <h3 className="font-bold text-gray-900 text-lg truncate">Monthly Status</h3>
@@ -522,9 +510,9 @@ const Dashboard: React.FC = () => {
           <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">{monthlyStatus}</p>
         </div>
 
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[220px]">
+        <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-black/5 border border-gray-100 flex flex-col min-h-[220px]">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-[#6334FD]/5 rounded-lg shrink-0">
+            <div className="p-2.5 bg-[#6334FD]/5 rounded-xl shrink-0">
               <Calendar className="w-6 h-6 text-[#6334FD]" />
             </div>
             <h3 className="font-bold text-gray-900 text-lg truncate">Weekly Summary</h3>
@@ -546,9 +534,9 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[220px]">
+        <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-black/5 border border-gray-100 flex flex-col min-h-[220px]">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-[#6334FD]/5 rounded-lg shrink-0">
+            <div className="p-2.5 bg-[#6334FD]/5 rounded-xl shrink-0">
               <Zap className="w-6 h-6 text-[#6334FD]" />
             </div>
             <h3 className="font-bold text-gray-900 text-lg truncate">Smart Insights</h3>

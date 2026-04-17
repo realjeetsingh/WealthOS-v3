@@ -209,7 +209,7 @@ const WealthAcademy: React.FC = () => {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center space-x-5">
-          <div className="w-14 h-14 bg-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-100">
+          <div className="w-14 h-14 bg-gradient-to-br from-[#6B66FE] to-[#6334FD] rounded-2xl flex items-center justify-center shadow-lg shadow-[#6B66FE]/20">
             <GraduationCap className="w-7 h-7 text-white" />
           </div>
           <div>
@@ -219,13 +219,13 @@ const WealthAcademy: React.FC = () => {
         </div>
 
         <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-orange-600 transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#6334FD] transition-colors" />
           <input 
             type="text"
             placeholder="Search lessons..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full md:w-64 pl-12 pr-4 py-3 bg-white border border-gray-100 rounded-2xl focus:ring-4 focus:ring-orange-50 focus:border-orange-200 transition-all outline-none font-medium"
+            className="w-full md:w-64 pl-12 pr-4 py-3 bg-white border border-gray-100 rounded-2xl focus:ring-4 focus:ring-[#6334FD]/5 focus:border-[#6334FD]/20 transition-all outline-none font-medium"
           />
         </div>
       </div>
@@ -234,8 +234,8 @@ const WealthAcademy: React.FC = () => {
       {!loadingData && recommendations.length > 0 && searchQuery === '' && selectedCategory === 'all' && (
         <section className="space-y-6">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-orange-600 fill-orange-600" />
-            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Recommended for you</h2>
+            <Sparkles className="w-5 h-5 text-[#6334FD] fill-[#6334FD]" />
+            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Recommended for You</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {recommendations.map((lesson) => (
@@ -243,7 +243,7 @@ const WealthAcademy: React.FC = () => {
                 key={`rec-${lesson.id}`}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-orange-50 border border-orange-100 rounded-[2.5rem] p-6 flex flex-col md:flex-row gap-6 items-center shadow-sm hover:shadow-md transition-all"
+                className="bg-white border border-gray-100 rounded-[2rem] p-6 flex flex-col md:flex-row gap-6 items-center shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all"
               >
                 <div className="w-full md:w-40 aspect-video rounded-2xl overflow-hidden shrink-0 relative">
                   <img src={lesson.thumbnail} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -252,22 +252,15 @@ const WealthAcademy: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex-1 text-center md:text-left">
-                  <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1 block">Based on your activity</span>
+                  <span className="text-[10px] font-black text-[#6334FD] uppercase tracking-widest mb-1 block">Recommended for You</span>
                   <h3 className="text-lg font-black text-gray-900 mb-2">{lesson.title}</h3>
                   <p className="text-xs text-gray-600 mb-4 line-clamp-2">{lesson.description}</p>
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                     <button 
                       onClick={() => handleStartLesson(lesson)}
-                      className="px-5 py-2 bg-orange-600 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-orange-700 transition-all active:scale-95"
+                      className="px-6 py-2.5 bg-gradient-to-r from-[#6B66FE] to-[#6334FD] text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100 hover:shadow-indigo-200 transition-all active:scale-95"
                     >
-                      Watch Now
-                    </button>
-                    <button 
-                      onClick={() => navigate(lesson.actionPath)}
-                      className="px-5 py-2 bg-white text-orange-600 border border-orange-200 rounded-full text-xs font-black uppercase tracking-widest hover:bg-orange-50 transition-all active:scale-95 flex items-center gap-1"
-                    >
-                      {lesson.actionLabel}
-                      <ArrowRight className="w-3 h-3" />
+                      Start Lesson
                     </button>
                   </div>
                 </div>
@@ -295,7 +288,7 @@ const WealthAcademy: React.FC = () => {
             onClick={() => setSelectedCategory(cat.id)}
             className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm whitespace-nowrap transition-all active:scale-[0.98] duration-150 ${
               selectedCategory === cat.id 
-                ? 'bg-orange-600 text-white shadow-lg shadow-orange-100' 
+                ? 'bg-gradient-to-r from-[#6B66FE] to-[#6334FD] text-white shadow-lg shadow-indigo-100' 
                 : 'bg-white text-gray-500 border border-gray-100 hover:border-gray-200'
             }`}
           >
@@ -332,7 +325,7 @@ const WealthAcademy: React.FC = () => {
                       onClick={() => handleStartLesson(lesson)}
                       className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform duration-300"
                     >
-                      <Play className="w-6 h-6 text-orange-600 fill-orange-600 ml-1" />
+                      <Play className="w-6 h-6 text-[#6334FD] fill-[#6334FD] ml-1" />
                     </button>
                   </div>
                   <div className="absolute top-4 left-4 flex gap-2">
@@ -354,25 +347,19 @@ const WealthAcademy: React.FC = () => {
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{lesson.duration}</span>
                   </div>
                   
-                  <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-1">
+                  <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-[#6334FD] transition-colors line-clamp-1">
                     {lesson.title}
                   </h3>
                   <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-6">
                     {lesson.description}
                   </p>
 
-                  <div className="mt-auto flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} className="w-3 h-3 text-amber-400 fill-amber-400" />
-                      ))}
-                    </div>
+                  <div className="mt-auto pt-4 border-t border-gray-50">
                     <button 
-                      onClick={() => navigate(lesson.actionPath)}
-                      className="flex items-center gap-1 text-xs font-black text-orange-600 uppercase tracking-widest group/btn"
+                      onClick={() => handleStartLesson(lesson)}
+                      className="w-full py-3 bg-gradient-to-r from-[#6B66FE] to-[#6334FD] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
                     >
-                      {lesson.actionLabel}
-                      <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                      Start Lesson
                     </button>
                   </div>
                 </div>
@@ -401,7 +388,7 @@ const WealthAcademy: React.FC = () => {
       )}
 
       {/* UPGRADE SECTION */}
-      <div className="bg-gradient-to-br from-orange-600 to-orange-500 rounded-[3rem] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-orange-100">
+      <div className="bg-gradient-to-br from-[#6B66FE] to-[#6334FD] rounded-[3rem] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-indigo-100">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
         <div className="relative z-10 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur rounded-full text-[10px] font-black uppercase tracking-widest mb-6">
@@ -411,11 +398,11 @@ const WealthAcademy: React.FC = () => {
           <h2 className="text-3xl md:text-4xl font-black mb-4 leading-tight">
             Learn based on your <br /> spending habits.
           </h2>
-          <p className="text-orange-50 font-medium mb-8 leading-relaxed">
+          <p className="text-indigo-50 font-medium mb-8 leading-relaxed">
             Our AI analyzes your transactions to recommend lessons that will help you save more and invest smarter. Upgrade to Pro for a tailored curriculum.
           </p>
           <Button 
-            className="bg-white text-orange-600 hover:bg-orange-50 border-none px-10"
+            className="bg-white text-[#6334FD] hover:bg-gray-50 border-none px-10"
             icon={<TrendingUp className="w-5 h-5" />}
           >
             Get Personalized Plan

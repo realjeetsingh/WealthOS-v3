@@ -394,9 +394,9 @@ const Loans: React.FC = () => {
         </div>
 
         {/* Loan Pressure Trigger System */}
-        <div className={`${pressure.bgColor} ${pressure.borderColor} border-2 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm`}>
+        <div className={`${pressure.bgColor} ${pressure.borderColor} border p-8 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-black/5`}>
           <div className="flex items-center space-x-4">
-            <div className={`p-3 rounded-2xl bg-white shadow-sm`}>
+            <div className={`p-3 rounded-2xl bg-white shadow-sm ring-1 ring-gray-100`}>
               {pressure.icon}
             </div>
             <div>
@@ -421,7 +421,7 @@ const Loans: React.FC = () => {
         </div>
 
         {/* Add Loan Form */}
-        <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 relative overflow-hidden">
+        <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-black/5 border border-gray-100 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 opacity-50" />
           
           <h2 className="text-2xl font-black text-gray-900 mb-8 flex items-center relative z-10">
@@ -615,7 +615,7 @@ const Loans: React.FC = () => {
                 return (
                   <div 
                     key={l.id} 
-                    className={`bg-white rounded-3xl p-8 shadow-xl border-2 transition-all group relative overflow-hidden flex flex-col min-h-[420px] ${
+                    className={`bg-white rounded-[2rem] p-8 shadow-xl shadow-black/5 border transition-all group relative overflow-hidden flex flex-col min-h-[420px] ${
                       l.status === 'completed' ? 'border-green-100 opacity-80' : 
                       remainingMonths < 6 ? 'border-[#6334FD]/20 ring-4 ring-[#6334FD]/5' : 'border-gray-50 hover:border-indigo-100'
                     }`}

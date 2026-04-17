@@ -254,7 +254,7 @@ const Budgets: React.FC = () => {
       </div>
 
       {budgets.length === 0 ? (
-        <div className="bg-white rounded-[2.5rem] border-2 border-dashed border-gray-200 p-20 text-center flex flex-col items-center justify-center space-y-6">
+        <div className="bg-white rounded-[2.5rem] shadow-xl shadow-black/5 border border-gray-100 p-20 text-center flex flex-col items-center justify-center space-y-6">
           <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center">
             <Target className="w-10 h-10 text-indigo-400" />
           </div>
@@ -275,7 +275,7 @@ const Budgets: React.FC = () => {
       ) : (
         <>
           {/* Monthly Budget Overview Card */}
-          <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-10 relative overflow-hidden group">
+          <div className="bg-white rounded-[2.5rem] shadow-xl shadow-black/5 border border-gray-100 p-10 relative overflow-hidden group">
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-10">
                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
@@ -358,7 +358,7 @@ const Budgets: React.FC = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col min-h-[180px]"
+                      className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all group flex flex-col min-h-[180px]"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4 min-w-0">
@@ -419,10 +419,10 @@ const Budgets: React.FC = () => {
             {/* Insights Card */}
             <div className="space-y-6">
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 px-2">
-                <Zap className="w-5 h-5 text-amber-500" />
+                <Zap className="w-5 h-5 text-[#6334FD]" />
                 Smart Insights
               </h3>
-              <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-[2rem] p-8 text-white shadow-xl shadow-indigo-100 relative overflow-hidden">
+              <div className="bg-gradient-to-br from-[#6B66FE] to-[#6334FD] rounded-[2rem] p-8 text-white shadow-2xl shadow-indigo-100 relative overflow-hidden">
                 <div className="relative z-10 space-y-6">
                   {insights.length > 0 ? (
                     insights.map((insight, idx) => (
@@ -438,7 +438,7 @@ const Budgets: React.FC = () => {
                   ) : (
                     <div className="text-center py-10">
                       <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle2 className="w-8 h-8 text-green-300" />
+                        <CheckCircle2 className="w-8 h-8 text-emerald-300" />
                       </div>
                       <p className="text-sm font-bold">You're doing great! No budget alerts at the moment.</p>
                     </div>
@@ -451,14 +451,14 @@ const Budgets: React.FC = () => {
               </div>
 
               {/* Tips Card */}
-              <div className="bg-amber-50 border border-amber-100 rounded-[2rem] p-8">
+              <div className="bg-[#6334FD]/5 border border-[#6334FD]/10 rounded-[2rem] p-8">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-amber-100 rounded-xl">
-                    <Info className="w-5 h-5 text-amber-600" />
+                  <div className="p-2 bg-[#6334FD]/10 rounded-xl">
+                    <Info className="w-5 h-5 text-[#6334FD]" />
                   </div>
-                  <h4 className="font-bold text-amber-900">Budgeting Tip</h4>
+                  <h4 className="font-bold text-[#6334FD]">Budgeting Tip</h4>
                 </div>
-                <p className="text-sm text-amber-800 leading-relaxed">
+                <p className="text-sm text-[#6334FD]/80 leading-relaxed font-bold">
                   The 50/30/20 rule is a great starting point: 50% for needs, 30% for wants, and 20% for savings or debt repayment.
                 </p>
               </div>
