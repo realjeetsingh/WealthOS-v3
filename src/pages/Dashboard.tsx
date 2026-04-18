@@ -46,6 +46,7 @@ import {
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import FloatingAlerts, { Alert as FloatingAlert } from '../components/FloatingAlerts';
+import EmiReminder from '../components/EmiReminder';
 import { 
   LineChart, 
   Line, 
@@ -322,13 +323,14 @@ const Dashboard: React.FC = () => {
   }));
 
   return (
-    <div className="w-full max-w-full">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
       <FloatingAlerts initialAlerts={floatingAlerts} />
+      <EmiReminder loans={loans} userId={user?.uid || ''} currency={userCurrency} />
 
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight truncate">Financial Dashboard</h1>
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <h1 className="text-[clamp(1.5rem,5vw,2.5rem)] font-black text-gray-900 tracking-tighter leading-tight break-words">Financial Dashboard</h1>
             {userProfile?.streakCount && (
               <div className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-sm font-black border border-orange-100 animate-pulse">
                 <Zap className="w-4 h-4 fill-orange-600" />
@@ -368,38 +370,38 @@ const Dashboard: React.FC = () => {
     
 
       {/* Primary Net Worth Card */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-        <div className="lg:col-span-2 bg-gradient-to-br from-[#6B66FE] to-[#6334FD] rounded-[2.5rem] p-10 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mb-12">
+        <div className="lg:col-span-2 bg-gradient-to-br from-[#6B66FE] to-[#6334FD] rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden">
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
               <div>
                 <p className="text-white/80 font-medium mb-1">Total Net Worth</p>
-                <h2 className="text-5xl font-black tracking-tighter">
+                <h2 className="text-[clamp(2rem,6vw,3.5rem)] font-black tracking-tighter leading-none break-words">
                   <CurrencyDisplay value={netWorth} currency={userCurrency} />
                 </h2>
               </div>
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest ${isIncreasing ? 'bg-white/20' : 'bg-red-500/20'} backdrop-blur-md border border-white/10`}>
+              <div className={`self-start sm:self-auto flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest ${isIncreasing ? 'bg-white/20' : 'bg-red-500/20'} backdrop-blur-md border border-white/10`}>
                 {isIncreasing ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                 {isIncreasing ? 'Increasing' : 'Decreasing'}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-6 pt-10 border-t border-white/10">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-10 border-t border-white/10">
               <div>
                 <p className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-black mb-1">Cash</p>
-                <div className="text-2xl font-black">
+                <div className="text-xl sm:text-2xl font-black truncate">
                   <CurrencyDisplay value={cashBalance} currency={userCurrency} />
                 </div>
               </div>
               <div>
                 <p className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-black mb-1">Portfolio</p>
-                <div className="text-2xl font-black">
+                <div className="text-xl sm:text-2xl font-black truncate">
                   <CurrencyDisplay value={portfolioValue} currency={userCurrency} />
                 </div>
               </div>
               <div>
                 <p className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-black mb-1">Loans</p>
-                <div className="text-2xl font-black opacity-80">
+                <div className="text-xl sm:text-2xl font-black opacity-80 truncate">
                   -<CurrencyDisplay value={loanBalance} currency={userCurrency} />
                 </div>
               </div>
@@ -459,55 +461,55 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
           <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Monthly Income</p>
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Income</p>
             <div className="p-2 bg-green-50 rounded-lg text-green-600 shrink-0">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <h3 className="text-3xl font-black text-gray-900 tracking-tighter truncate">
+          <h3 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tighter break-words">
             <CurrencyDisplay value={monthlyIncome} currency={userCurrency} />
           </h3>
-          <p className="text-xs text-gray-400 mt-auto line-clamp-2">Total earnings from all sources this month.</p>
+          <p className="text-xs text-gray-400 mt-auto">Total earnings from all sources this month.</p>
         </div>
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
           <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Monthly Expenses</p>
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Expenses</p>
             <div className="p-2 bg-red-50 rounded-lg text-red-600 shrink-0">
               <TrendingDown className="w-4 h-4" />
             </div>
           </div>
-          <h3 className="text-3xl font-black text-gray-900 tracking-tighter truncate">
+          <h3 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tighter break-words">
             <CurrencyDisplay value={monthlyExpenses} currency={userCurrency} />
           </h3>
-          <p className="text-xs text-gray-400 mt-auto line-clamp-2">Total spending including EMIs and bills.</p>
+          <p className="text-xs text-gray-400 mt-auto">Total spending including EMIs and bills.</p>
         </div>
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
           <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider truncate">Monthly Cashflow</p>
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Cashflow</p>
             <div className="p-2 bg-[#6334FD]/5 rounded-lg text-[#6334FD] shrink-0">
               <BarChart3 className="w-4 h-4" />
             </div>
           </div>
-          <h3 className={`text-3xl font-black tracking-tighter truncate ${cashflow >= 0 ? 'text-[#6334FD]' : 'text-orange-600'}`}>
+          <h3 className={`text-2xl sm:text-3xl font-black tracking-tighter break-words ${cashflow >= 0 ? 'text-[#6334FD]' : 'text-orange-600'}`}>
             <CurrencyDisplay value={cashflow} currency={userCurrency} />
           </h3>
-          <p className="text-xs text-gray-400 mt-auto line-clamp-2">Net savings after all expenses.</p>
+          <p className="text-xs text-gray-400 mt-auto">Net savings after all expenses.</p>
         </div>
       </div>
 
       {/* Retention Engine Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
         <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-black/5 border border-gray-100 flex flex-col min-h-[220px]">
           <div className="flex items-center space-x-3 mb-6">
             <div className="p-2.5 bg-[#6334FD]/5 rounded-xl shrink-0">
               <Activity className="w-6 h-6 text-[#6334FD]" />
             </div>
-            <h3 className="font-bold text-gray-900 text-lg truncate">Monthly Status</h3>
+            <h3 className="font-bold text-gray-900 text-lg">Monthly Status</h3>
           </div>
-          <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">{monthlyStatus}</p>
+          <p className="text-gray-600 text-sm leading-relaxed">{monthlyStatus}</p>
         </div>
 
         <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-black/5 border border-gray-100 flex flex-col min-h-[220px]">
@@ -515,7 +517,7 @@ const Dashboard: React.FC = () => {
             <div className="p-2.5 bg-[#6334FD]/5 rounded-xl shrink-0">
               <Calendar className="w-6 h-6 text-[#6334FD]" />
             </div>
-            <h3 className="font-bold text-gray-900 text-lg truncate">Weekly Summary</h3>
+            <h3 className="font-bold text-gray-900 text-lg">Weekly Summary</h3>
           </div>
           <div className="space-y-2 flex-1">
             <div className="flex justify-between text-sm">
@@ -527,32 +529,32 @@ const Dashboard: React.FC = () => {
               <span className="font-bold text-gray-900"><CurrencyDisplay value={weeklySummary.lastWeek.savings} currency={userCurrency} /></span>
             </div>
           </div>
-          <p className="text-xs text-gray-400 mt-4 line-clamp-2">
+          <p className="text-xs text-gray-400 mt-4">
             {weeklySummary.thisWeek.savings > weeklySummary.lastWeek.savings 
               ? "Great! You've saved more than last week." 
               : "Try to reduce expenses to beat last week's savings."}
           </p>
         </div>
 
-        <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-black/5 border border-gray-100 flex flex-col min-h-[220px]">
+        <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-black/5 border border-gray-100 flex flex-col md:col-span-2 lg:col-span-1 min-h-[220px]">
           <div className="flex items-center space-x-3 mb-6">
             <div className="p-2.5 bg-[#6334FD]/5 rounded-xl shrink-0">
               <Zap className="w-6 h-6 text-[#6334FD]" />
             </div>
-            <h3 className="font-bold text-gray-900 text-lg truncate">Smart Insights</h3>
+            <h3 className="font-bold text-gray-900 text-lg">Smart Insights</h3>
           </div>
-          <div className="space-y-4 flex-1 overflow-hidden">
+          <div className="space-y-4 flex-1">
             {upgradedInsights.length > 0 ? (
               <div className="space-y-3">
                 {upgradedInsights.slice(0, 2).map((insight, i) => (
                   <div key={i} className="space-y-1">
-                    <p className="text-sm font-bold text-gray-900 truncate">{insight.title}</p>
-                    <p className="text-[10px] font-black text-[#6334FD] uppercase tracking-widest truncate">Action: {insight.action}</p>
+                    <p className="text-sm font-bold text-gray-900">{insight.title}</p>
+                    <p className="text-[10px] font-black text-[#6334FD] uppercase tracking-widest">Action: {insight.action}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">{progressSignal}</p>
+              <p className="text-gray-600 text-sm leading-relaxed">{progressSignal}</p>
             )}
           </div>
         </div>

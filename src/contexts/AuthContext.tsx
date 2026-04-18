@@ -20,7 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isPremium = userProfile?.isPremium ?? false;
+  const isPremium = userProfile?.plan === 'pro' || (userProfile?.isPremium ?? false);
 
   useEffect(() => {
     setGlobalUserProfile(userProfile);

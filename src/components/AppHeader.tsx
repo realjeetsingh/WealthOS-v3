@@ -65,13 +65,29 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
                 <span>PRO</span>
               </div>
             ) : (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
                 onClick={() => setShowPricing(true)}
-                className="flex items-center space-x-1.5 bg-white text-[#6334FD] px-4 py-1.5 rounded-full text-xs font-bold hover:bg-white/90 transition-all shadow-lg active:scale-[0.98] duration-150"
+                className="flex items-center space-x-1.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg shadow-orange-500/20 active:scale-[0.98] duration-150 relative overflow-hidden group"
               >
-                <Crown className="w-3.5 h-3.5" />
-                <span>Upgrade</span>
-              </button>
+                <motion.div 
+                  animate={{ 
+                    rotate: [0, 10, -10, 10, 0],
+                  }}
+                  transition={{ 
+                    duration: 2, 
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <Crown className="w-3.5 h-3.5 fill-white" />
+                </motion.div>
+                <span className="relative z-10 tracking-tight">Get Pro</span>
+                <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 ease-in-out" />
+              </motion.button>
             )}
 
             {/* Profile Dropdown */}

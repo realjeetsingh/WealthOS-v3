@@ -13,7 +13,9 @@ import {
   Star,
   Sparkles,
   ArrowRight,
-  CheckCircle2
+  CheckCircle2,
+  Lock,
+  Crown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
@@ -21,6 +23,8 @@ import { doc, updateDoc, arrayUnion, collection, query, getDocs } from 'firebase
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/ui/Button';
+import PricingModal from '../components/PricingModal';
+import { handleUpgrade } from '../lib/paymentService';
 import { Transaction, Loan } from '../types';
 import { calculateMonthlyIncome, calculateMonthlyExpenses } from '../lib/financialEngine';
 
@@ -44,6 +48,7 @@ interface Lesson {
   thumbnail: string;
   actionLabel: string;
   actionPath: string;
+  isPremium: boolean;
   videoUrl?: string;
 }
 
@@ -57,7 +62,8 @@ const LESSONS: Lesson[] = [
     level: 'Beginner',
     thumbnail: 'https://picsum.photos/seed/finance1/800/450',
     actionLabel: 'Set a Goal',
-    actionPath: '/goals'
+    actionPath: '/goals',
+    isPremium: false
   },
   {
     id: '2',
@@ -68,7 +74,8 @@ const LESSONS: Lesson[] = [
     level: 'Beginner',
     thumbnail: 'https://picsum.photos/seed/finance2/800/450',
     actionLabel: 'View Portfolio',
-    actionPath: '/portfolio'
+    actionPath: '/portfolio',
+    isPremium: false
   },
   {
     id: '3',
@@ -79,7 +86,8 @@ const LESSONS: Lesson[] = [
     level: 'Beginner',
     thumbnail: 'https://picsum.photos/seed/finance3/800/450',
     actionLabel: 'Invest Now',
-    actionPath: '/portfolio'
+    actionPath: '/portfolio',
+    isPremium: true
   },
   {
     id: '4',
@@ -90,7 +98,8 @@ const LESSONS: Lesson[] = [
     level: 'Beginner',
     thumbnail: 'https://picsum.photos/seed/finance4/800/450',
     actionLabel: 'Create Budget',
-    actionPath: '/budgets'
+    actionPath: '/budgets',
+    isPremium: true
   },
   {
     id: '5',
@@ -101,7 +110,8 @@ const LESSONS: Lesson[] = [
     level: 'Intermediate',
     thumbnail: 'https://picsum.photos/seed/finance5/800/450',
     actionLabel: 'Manage Loans',
-    actionPath: '/loans'
+    actionPath: '/loans',
+    isPremium: true
   },
   {
     id: '6',
@@ -112,18 +122,24 @@ const LESSONS: Lesson[] = [
     level: 'Advanced',
     thumbnail: 'https://picsum.photos/seed/finance6/800/450',
     actionLabel: 'Advanced Tools',
-    actionPath: '/portfolio'
+    actionPath: '/portfolio',
+    isPremium: true
   }
 ];
 
 const WealthAcademy: React.FC = () => {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, isPremium: isProUser } = useAuth();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
+  const openPaymentGateway = () => {
+    handleUpgrade(user?.uid || '', user?.email || '', userProfile?.name || '');
+  };
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -184,6 +200,11 @@ const WealthAcademy: React.FC = () => {
   const handleStartLesson = async (lesson: Lesson) => {
     if (!user?.uid) return;
 
+    if (lesson.isPremium && !isProUser) {
+      setIsUpgradeModalOpen(true);
+      return;
+    }
+
     try {
       await updateDoc(doc(db, 'users', user.uid), {
         viewedLessons: arrayUnion(lesson.id),
@@ -218,15 +239,35 @@ const WealthAcademy: React.FC = () => {
           </div>
         </div>
 
-        <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#6334FD] transition-colors" />
-          <input 
-            type="text"
-            placeholder="Search lessons..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full md:w-64 pl-12 pr-4 py-3 bg-white border border-gray-100 rounded-2xl focus:ring-4 focus:ring-[#6334FD]/5 focus:border-[#6334FD]/20 transition-all outline-none font-medium"
-          />
+        <div className="flex items-center gap-4">
+          {!isProUser && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsUpgradeModalOpen(true)}
+              className="hidden md:flex items-center space-x-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white px-6 py-2.5 rounded-full text-xs font-black shadow-xl shadow-orange-500/20 relative overflow-hidden group"
+            >
+              <motion.div 
+                animate={{ rotate: [0, 15, -15, 15, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <Crown className="w-4 h-4 fill-white" />
+              </motion.div>
+              <span>👑 Get Pro</span>
+              <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
+            </motion.button>
+          )}
+
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#6334FD] transition-colors" />
+            <input 
+              type="text"
+              placeholder="Search lessons..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full md:w-64 pl-12 pr-4 py-3 bg-white border border-gray-100 rounded-2xl focus:ring-4 focus:ring-[#6334FD]/5 focus:border-[#6334FD]/20 transition-all outline-none font-medium text-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -303,6 +344,8 @@ const WealthAcademy: React.FC = () => {
         <AnimatePresence mode="popLayout">
           {filteredLessons.map((lesson, idx) => {
             const isViewed = userProfile?.viewedLessons?.includes(lesson.id);
+            const isLocked = lesson.isPremium && !isProUser;
+
             return (
               <motion.div
                 layout
@@ -311,23 +354,37 @@ const WealthAcademy: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3, delay: idx * 0.05 }}
-                className="group bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full"
+                className={`group bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full relative ${isLocked ? 'cursor-pointer' : ''}`}
+                onClick={() => isLocked && setIsUpgradeModalOpen(true)}
               >
                 <div className="relative aspect-video overflow-hidden">
                   <img 
                     src={lesson.thumbnail} 
                     alt={lesson.title}
                     referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isLocked ? 'grayscale opacity-60' : ''}`}
                   />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                    <button 
-                      onClick={() => handleStartLesson(lesson)}
-                      className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform duration-300"
-                    >
-                      <Play className="w-6 h-6 text-[#6334FD] fill-[#6334FD] ml-1" />
-                    </button>
-                  </div>
+                  
+                  {isLocked ? (
+                    <div className="absolute inset-0 bg-[#6334FD]/10 backdrop-blur-[2px] flex items-center justify-center">
+                      <div className="w-14 h-14 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-xl">
+                        <Lock className="w-6 h-6 text-[#6334FD]" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartLesson(lesson);
+                        }}
+                        className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform duration-300"
+                      >
+                        <Play className="w-6 h-6 text-[#6334FD] fill-[#6334FD] ml-1" />
+                      </button>
+                    </div>
+                  )}
+
                   <div className="absolute top-4 left-4 flex gap-2">
                     <span className="px-3 py-1 bg-white/90 backdrop-blur rounded-full text-[10px] font-black uppercase tracking-widest text-gray-900">
                       {lesson.level}
@@ -336,6 +393,12 @@ const WealthAcademy: React.FC = () => {
                       <span className="px-3 py-1 bg-green-500/90 backdrop-blur rounded-full text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" />
                         Completed
+                      </span>
+                    )}
+                    {lesson.isPremium && (
+                      <span className="px-3 py-1 bg-[#6334FD] text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-[#6334FD]/20">
+                        <Crown className="w-3 h-3" />
+                        Pro
                       </span>
                     )}
                   </div>
@@ -355,12 +418,28 @@ const WealthAcademy: React.FC = () => {
                   </p>
 
                   <div className="mt-auto pt-4 border-t border-gray-50">
-                    <button 
-                      onClick={() => handleStartLesson(lesson)}
-                      className="w-full py-3 bg-gradient-to-r from-[#6B66FE] to-[#6334FD] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
-                    >
-                      Start Lesson
-                    </button>
+                    {isLocked ? (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsUpgradeModalOpen(true);
+                        }}
+                        className="w-full py-3 bg-white border-2 border-[#6334FD] text-[#6334FD] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#6334FD] hover:text-white transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                      >
+                        <Lock className="w-3 h-3" />
+                        Unlock with Pro
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartLesson(lesson);
+                        }}
+                        className="w-full py-3 bg-gradient-to-r from-[#6B66FE] to-[#6334FD] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
+                      >
+                        Start Lesson
+                      </button>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -368,6 +447,11 @@ const WealthAcademy: React.FC = () => {
           })}
         </AnimatePresence>
       </div>
+
+      <PricingModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+      />
 
       {filteredLessons.length === 0 && (
         <div className="text-center py-20 bg-white rounded-[3rem] border-2 border-dashed border-gray-100">
@@ -404,8 +488,9 @@ const WealthAcademy: React.FC = () => {
           <Button 
             className="bg-white text-[#6334FD] hover:bg-gray-50 border-none px-10"
             icon={<TrendingUp className="w-5 h-5" />}
+            onClick={() => isProUser ? navigate('/portfolio') : setIsUpgradeModalOpen(true)}
           >
-            Get Personalized Plan
+            {isProUser ? 'View Personal Portfolio' : 'Get Personalized Plan'}
           </Button>
         </div>
       </div>

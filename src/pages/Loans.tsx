@@ -46,6 +46,7 @@ const Loans: React.FC = () => {
   const [paidMonths, setPaidMonths] = useState('0');
   const [totalAmount, setTotalAmount] = useState('');
   const [emi, setEmi] = useState('');
+  const [nextEmiDate, setNextEmiDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -58,6 +59,7 @@ const Loans: React.FC = () => {
   const [editPaidMonths, setEditPaidMonths] = useState('0');
   const [editTotalAmount, setEditTotalAmount] = useState('');
   const [editEmi, setEditEmi] = useState('');
+  const [editNextEmiDate, setEditNextEmiDate] = useState('');
   const [editEndDate, setEditEndDate] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -189,6 +191,7 @@ const Loans: React.FC = () => {
         totalInterest: numInterest,
         emi: numEmi,
         remainingAmount: Math.max(0, numRemaining),
+        nextEmiDate,
         endDate,
         status: (numPaid >= numTenure) ? 'completed' : 'active'
       };
@@ -202,6 +205,7 @@ const Loans: React.FC = () => {
       setPaidMonths('0');
       setTotalAmount('');
       setEmi('');
+      setNextEmiDate('');
       setEndDate('');
     } catch (err: any) {
       setError(err.message || "Failed to process loan");
@@ -218,6 +222,7 @@ const Loans: React.FC = () => {
     setEditPaidMonths(l.paidMonths?.toString() || '0');
     setEditTotalAmount(l.totalAmount.toString());
     setEditEmi(l.emi.toString());
+    setEditNextEmiDate(l.nextEmiDate || '');
     setEditEndDate(l.endDate);
     setEditError(null);
     setIsEditModalOpen(true);
@@ -261,6 +266,7 @@ const Loans: React.FC = () => {
         totalInterest: numInterest,
         emi: numEmi,
         remainingAmount: Math.max(0, numRemaining),
+        nextEmiDate: editNextEmiDate,
         endDate: editEndDate,
         status: (numPaid >= numTenure) ? 'completed' : 'active'
       };
@@ -280,13 +286,23 @@ const Loans: React.FC = () => {
     if (l.paidMonths >= l.tenureMonths) return;
 
     try {
+      const today = new Date().toISOString().split('T')[0];
       const newPaidMonths = l.paidMonths + 1;
       const newRemaining = Math.max(0, l.remainingAmount - l.emi);
       const isCompleted = newPaidMonths >= l.tenureMonths;
+      
+      let nextDateStr = l.nextEmiDate;
+      if (l.nextEmiDate) {
+        const nextDate = new Date(l.nextEmiDate);
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        nextDateStr = nextDate.toISOString().split('T')[0];
+      }
 
       await updateLoan(user.uid, l.id, {
         paidMonths: newPaidMonths,
         remainingAmount: newRemaining,
+        nextEmiDate: nextDateStr,
+        lastPaidDate: today,
         status: isCompleted ? 'completed' : 'active'
       });
     } catch (err: any) {
@@ -512,6 +528,19 @@ const Loans: React.FC = () => {
                     if (e.target.value) setEmi('');
                   }}
                   className="block w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Next EMI Date</label>
+              <div className="relative">
+                <Calendar className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+                <input
+                  type="date"
+                  value={nextEmiDate}
+                  onChange={(e) => setNextEmiDate(e.target.value)}
+                  className="block w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
                 />
               </div>
             </div>
@@ -820,6 +849,19 @@ const Loans: React.FC = () => {
                   if (e.target.value) setEditEmi('');
                 }}
                 className="block w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Next EMI Date</label>
+            <div className="relative">
+              <Calendar className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+              <input
+                type="date"
+                value={editNextEmiDate}
+                onChange={(e) => setEditNextEmiDate(e.target.value)}
+                className="block w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 text-base font-bold transition-all"
               />
             </div>
           </div>

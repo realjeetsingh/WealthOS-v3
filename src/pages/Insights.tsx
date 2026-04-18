@@ -45,6 +45,7 @@ import {
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import AIAssistantButton from '../components/AIAssistantButton';
+import PricingModal from '../components/PricingModal';
 
 const Insights: React.FC = () => {
   const { user, userProfile, isPremium } = useAuth();
@@ -60,14 +61,11 @@ const Insights: React.FC = () => {
   const [generatingSmart, setGeneratingSmart] = useState(false);
   const [smartError, setSmartError] = useState<string | null>(null);
   const [isLowConfidence, setIsLowConfidence] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
 
-  const onUpgrade = React.useCallback(async () => {
-    console.log("onUpgrade triggered for user:", user?.uid);
-    if (user?.uid) {
-      await handleUpgrade(user.uid, user.email || undefined, userProfile?.name);
-    }
-  }, [user?.uid, user?.email, userProfile?.name]);
+  const onUpgrade = React.useCallback(() => {
+    setShowPricingModal(true);
+  }, []);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -256,7 +254,7 @@ const Insights: React.FC = () => {
 
   const handleGenerateSmartAnalysis = async (): Promise<SmartFinancialAnalysis | null> => {
     if (!isPremium) {
-      setShowPaywall(true);
+      setShowPricingModal(true);
       return null;
     }
 
@@ -664,6 +662,11 @@ const Insights: React.FC = () => {
           WealthOS Decision Engine v1.0 • Deterministic Analysis
         </p>
       </div>
+
+      <PricingModal 
+        isOpen={showPricingModal} 
+        onClose={() => setShowPricingModal(false)} 
+      />
     </div>
   );
 };

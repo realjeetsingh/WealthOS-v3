@@ -65,6 +65,7 @@ export const handleUpgrade = async (userId: string, userEmail?: string, userName
         console.log("Updating Firestore: isPremium -> true for user:", userId);
         await updateDoc(userDocRef, {
           isPremium: true,
+          plan: 'pro',
           paymentId: paymentId,
           premiumSince: serverTimestamp()
         });

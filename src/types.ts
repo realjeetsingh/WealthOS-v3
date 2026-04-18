@@ -6,6 +6,7 @@ export interface UserProfile {
   phone?: string;
   role: string;
   isPremium: boolean;
+  plan?: 'free' | 'pro';
   onboardingCompleted?: boolean;
   hasSeenIntro?: boolean;
   profileImage?: string;
@@ -60,6 +61,8 @@ export interface Loan {
   totalInterest: number;
   emi: number;
   remainingAmount: number;
+  nextEmiDate?: string;
+  lastPaidDate?: string;
   endDate: string;
   status: 'active' | 'completed';
   timestamp: Timestamp;
