@@ -33,11 +33,13 @@ import Privacy from './pages/Privacy';
 import { Toaster } from 'sonner';
 import { auth } from './firebase';
 import { User as UserIcon } from 'lucide-react';
+import SMSSyncListener from './components/SMSSyncListener';
 
 export default function App() {
   return (
     <AuthProvider>
       <Toaster position="top-right" richColors />
+      <SMSSyncListener />
       <Router>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

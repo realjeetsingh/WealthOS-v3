@@ -11,6 +11,8 @@ import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
 import Modal from '../components/Modal';
 import Button from '../components/ui/Button';
 import Skeleton from '../components/ui/Skeleton';
+import SMSParser from '../components/SMSParser';
+import SmartSyncModal from '../components/SmartSyncModal';
 import { 
   PlusCircle, 
   ArrowUpCircle, 
@@ -24,7 +26,10 @@ import {
   Trash2,
   X,
   CheckCircle,
-  Save
+  Save,
+  Zap,
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -52,6 +57,12 @@ const Transactions: React.FC = () => {
   const [editNotes, setEditNotes] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  const [isSMSModalOpen, setIsSMSModalOpen] = useState(false);
+  const [isSmartSyncOpen, setIsSmartSyncOpen] = useState(false);
+  const [isSmartSyncEnabled, setIsSmartSyncEnabled] = useState(() => {
+    return localStorage.getItem('smartSyncEnabled') === 'true';
+  });
 
   useEffect(() => {
     if (!user?.uid) {
@@ -187,11 +198,57 @@ const Transactions: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
+      <SMSParser 
+        isOpen={isSMSModalOpen}
+        onClose={() => setIsSMSModalOpen(false)}
+        onParse={async (data) => {
+          if (!user?.uid) return;
+          await addTransaction(user.uid, data);
+        }}
+      />
+      
+      <SmartSyncModal 
+        isOpen={isSmartSyncOpen}
+        onClose={() => setIsSmartSyncOpen(false)}
+        onSyncComplete={() => {
+          setIsSmartSyncEnabled(true);
+          localStorage.setItem('smartSyncEnabled', 'true');
+        }}
+      />
+
       <div className="space-y-8">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Transactions</h1>
-          <p className="mt-2 text-gray-600">Manage your income and expenses securely.</p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
+              Transactions
+              {isSmartSyncEnabled && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 text-[10px] font-black uppercase tracking-widest rounded-full border border-green-100 animate-in fade-in zoom-in">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                  Smart Sync Active
+                </span>
+              )}
+            </h1>
+            <p className="mt-2 text-gray-600">Manage your income and expenses securely.</p>
+          </div>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline"
+              onClick={() => setIsSMSModalOpen(true)}
+              icon={<MessageSquare className="w-5 h-5 text-gray-500" />}
+              className="border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+            >
+              Manual Parse
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setIsSmartSyncOpen(true)}
+              icon={<Sparkles className={`w-5 h-5 ${isSmartSyncEnabled ? 'text-green-500' : 'text-[#6334FD]'}`} />}
+              className={`border-[#6334FD]/20 bg-[#6334FD]/5 text-[#6334FD] hover:bg-[#6334FD]/10 ${isSmartSyncEnabled ? 'border-green-200 bg-green-50 text-green-700' : ''}`}
+            >
+              {isSmartSyncEnabled ? 'Sync History' : 'Enable Smart Sync'}
+            </Button>
+          </div>
         </div>
 
         {/* Add Transaction Form */}
@@ -336,7 +393,20 @@ const Transactions: React.FC = () => {
                         {t.type === 'income' ? <ArrowUpCircle className="w-6 h-6" /> : <ArrowDownCircle className="w-6 h-6" />}
                       </div>
                       <div>
-                        <p className="font-bold text-gray-900 text-lg">{t.category}</p>
+                        <p className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                          {t.category}
+                          {t.status === 'review' && (
+                            <span className="p-1 bg-amber-50 rounded-full" title="Incomplete import - Needs review">
+                              <AlertCircle className="w-3 h-3 text-amber-600" />
+                            </span>
+                          )}
+                          {t.source === 'auto' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#6334FD]/10 text-[#6334FD] text-[10px] font-black uppercase tracking-tighter rounded-full border border-[#6334FD]/20 shadow-sm animate-pulse-slow" title="Auto-imported ⚡">
+                              <Zap className="w-2.5 h-2.5" />
+                              Synced
+                            </span>
+                          )}
+                        </p>
                         <p className="text-sm text-gray-500 font-medium">{t.notes || 'No notes'}</p>
                       </div>
                     </div>

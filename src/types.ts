@@ -32,6 +32,8 @@ export interface Transaction {
   amount: number;
   category: string;
   notes?: string;
+  source?: 'manual' | 'auto';
+  status?: 'review' | 'verified';
   timestamp: Timestamp;
 }
 

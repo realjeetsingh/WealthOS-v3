@@ -10,6 +10,13 @@
   --color-brand-end: #6334FD;
   --color-bg-start: #EEF2FF;
   --color-bg-end: #FFFFFF;
+
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  --animate-pulse-slow: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 html, body {
