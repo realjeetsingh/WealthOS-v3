@@ -416,7 +416,7 @@ const Transactions: React.FC = () => {
                           {t.type === 'income' ? '+' : '-'}<CurrencyDisplay value={t.amount} />
                         </p>
                         <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-1">
-                          {t.timestamp?.toDate().toLocaleDateString()}
+                          {(typeof t.timestamp?.toDate === 'function') ? t.timestamp.toDate().toLocaleDateString() : 'Recent'}
                         </p>
                       </div>
                       <div className="flex items-center space-x-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">

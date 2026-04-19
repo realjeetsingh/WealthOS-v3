@@ -74,11 +74,14 @@ export const parseSMS = (rawText: string): ParsedSMS | { error: true; message: s
   }
 
   const status = (!type || !merchant) ? 'review' : 'verified';
+  
+  // High-quality fallback naming
+  const fallbackName = type === 'income' ? 'Bank Transfer' : 'UPI Payment';
 
   return {
     type: type || 'expense',
     amount,
-    merchant: merchant || 'Unknown',
+    merchant: merchant || fallbackName,
     date,
     status,
     source: 'sms'

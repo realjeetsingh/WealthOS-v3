@@ -44,14 +44,14 @@ export const getMonthlyTrend = (transactions: Transaction[] | null | undefined):
 
   const currentMonthExpenses = transactions
     .filter(t => {
-      const d = t.timestamp?.toDate();
+      const d = (typeof t.timestamp?.toDate === 'function') ? t.timestamp.toDate() : null;
       return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'expense';
     })
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
   const prevMonthExpenses = transactions
     .filter(t => {
-      const d = t.timestamp?.toDate();
+      const d = (typeof t.timestamp?.toDate === 'function') ? t.timestamp.toDate() : null;
       return d && d.getMonth() === prevMonth && d.getFullYear() === prevYear && t.type === 'expense';
     })
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
@@ -103,10 +103,10 @@ export const getWeeklySummary = (transactions: Transaction[]) => {
   const startOfLastWeek = new Date(startOfThisWeek);
   startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
-  const thisWeek = transactions.filter(t => t.timestamp.toDate() >= startOfThisWeek);
+  const thisWeek = transactions.filter(t => (typeof t.timestamp?.toDate === 'function') && t.timestamp.toDate() >= startOfThisWeek);
   const lastWeek = transactions.filter(t => {
-    const d = t.timestamp.toDate();
-    return d >= startOfLastWeek && d < startOfThisWeek;
+    const d = (typeof t.timestamp?.toDate === 'function') ? t.timestamp.toDate() : null;
+    return d && d >= startOfLastWeek && d < startOfThisWeek;
   });
 
   const calc = (list: Transaction[]) => ({
@@ -159,7 +159,7 @@ export const getAlerts = (income: number, expenses: number, lastActiveDate?: Tim
     });
   }
 
-  if (lastActiveDate) {
+  if (lastActiveDate && typeof lastActiveDate.toDate === 'function') {
     const lastActive = lastActiveDate.toDate();
     const daysInactive = Math.floor((new Date().getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24));
     if (daysInactive >= 3) {

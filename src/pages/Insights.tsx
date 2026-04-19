@@ -320,8 +320,8 @@ const Insights: React.FC = () => {
 
       // Ensure transactions are sorted by date descending for the AI
       const sortedTransactions = [...financialData.transactions].sort((a, b) => {
-        const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
-        const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
+        const dateA = (typeof a.timestamp?.toDate === 'function') ? a.timestamp.toDate().getTime() : 0;
+        const dateB = (typeof b.timestamp?.toDate === 'function') ? b.timestamp.toDate().getTime() : 0;
         return dateB - dateA;
       });
 

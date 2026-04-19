@@ -31,7 +31,7 @@ export const calculateMonthlyIncome = (transactions: Transaction[] | null | unde
 
   return transactions
     .filter(t => {
-      const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
+      const d = (typeof t.timestamp?.toDate === 'function') ? t.timestamp.toDate() : new Date();
       return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'income';
     })
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
@@ -55,7 +55,7 @@ export const calculateMonthlyExpenses = (
 
   const currentMonthExpenses = transactions
     .filter(t => {
-      const d = t.timestamp?.toDate ? t.timestamp.toDate() : new Date();
+      const d = (typeof t.timestamp?.toDate === 'function') ? t.timestamp.toDate() : new Date();
       return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'expense';
     })
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);

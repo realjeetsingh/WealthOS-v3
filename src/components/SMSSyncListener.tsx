@@ -16,14 +16,20 @@ const SMSSyncListener: React.FC = () => {
     const isEnabled = localStorage.getItem('smartSyncEnabled') === 'true';
     if (!isEnabled || !user?.uid) return;
 
-    // Simulate "Real-time" detection of incoming SMS
-    // In a real mobile app, this would be a Native Event Listener
+    // Simulation frequency: Check every 15 seconds for a "Random Event"
+    // This makes it feel much more like an asynchronous background listener
     const simulationInterval = setInterval(async () => {
-      // 10% chance to "receive" a simulated SMS every 2 minutes for demo purposes
-      if (Math.random() > 0.9) {
+      // 5% chance every 15 seconds = roughly 1 event every 5 minutes on average
+      if (Math.random() > 0.95) {
+        const merchants = ['Amazon', 'Swiggy', 'Zomato', 'Netflix', 'Uber', 'Starbucks', 'Grocery Store'];
+        const bankNames = ['HDFC Bank', 'SBI Bank', 'Axis Bank', 'ICICI Bank'];
+        const selectedMerchant = merchants[Math.floor(Math.random() * merchants.length)];
+        const selectedBank = bankNames[Math.floor(Math.random() * bankNames.length)];
+        const amount = (Math.random() * 800 + 40).toFixed(2);
+        
         const mockNewSMS = {
-          text: `Rs.${(Math.random() * 500 + 50).toFixed(2)} debited from Bank A/c XX1234 to Zomato on ${new Date().toLocaleDateString('en-GB')}`,
-          sender: "BANK-SMS",
+          text: `Rs.${amount} debited from ${selectedBank} A/c XX${Math.floor(Math.random()*9000+1000)} to ${selectedMerchant} on ${new Date().toLocaleDateString('en-GB')}`,
+          sender: `${selectedBank.replace(' ', '')}-SMS`,
           date: new Date().toISOString()
         };
 
@@ -35,21 +41,21 @@ const SMSSyncListener: React.FC = () => {
             type: result.type,
             amount: result.amount,
             category: 'Auto-Imported',
-            notes: `SMS from ${result.merchant} on ${result.date}`,
+            notes: `Auto-Capture: SMS from ${result.merchant}`,
             source: 'auto',
             status: result.status,
             date: result.date
           } as any);
 
           if (success) {
-            toast.success(`₹${result.amount} spent at ${result.merchant} added automatically ⚡`, {
-              duration: 5000,
-              description: 'Smart Sync detected a new bank SMS'
+            toast.success(`₹${result.amount} ${result.type === 'income' ? 'received' : 'spent'} via ${result.merchant} ⚡`, {
+              duration: 6000,
+              description: 'Captured instantly from background SMS sync.'
             });
           }
         }
       }
-    }, 120000); // Check every 2 minutes
+    }, 15000); // Check every 15 seconds
 
     return () => clearInterval(simulationInterval);
   }, [user?.uid]);

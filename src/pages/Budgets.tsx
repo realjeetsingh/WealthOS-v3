@@ -86,7 +86,7 @@ const Budgets: React.FC = () => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     
     const monthTransactions = transactions.filter(t => {
-      const date = t.timestamp?.toDate();
+      const date = (typeof t.timestamp?.toDate === 'function') ? t.timestamp.toDate() : new Date(0);
       return date >= startOfMonth;
     });
 

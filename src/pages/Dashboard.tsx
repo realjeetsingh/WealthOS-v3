@@ -202,7 +202,7 @@ const Dashboard: React.FC = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const lastActive = userProfile.lastActiveDate?.toDate();
+      const lastActive = (typeof userProfile.lastActiveDate?.toDate === 'function') ? userProfile.lastActiveDate.toDate() : null;
       if (lastActive) {
         lastActive.setHours(0, 0, 0, 0);
         
@@ -318,7 +318,7 @@ const Dashboard: React.FC = () => {
   }
 
   const chartData = snapshots.map(s => ({
-    date: s.timestamp?.toDate ? s.timestamp.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '',
+    date: (typeof s.timestamp?.toDate === 'function') ? s.timestamp.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '',
     value: s.netWorth
   }));
 
