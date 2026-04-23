@@ -9,6 +9,9 @@ export interface ParsedSMS {
   date: string;
   status: 'review' | 'verified';
   source: 'sms';
+  confidence: 'high' | 'medium' | 'low';
+  rawSMS?: string;
+  senderId?: string;
 }
 
 export const normalizeSMS = (text: string) => {
@@ -48,18 +51,36 @@ export const extractDate = (text: string) => {
 };
 
 export const extractMerchant = (text: string) => {
-  // Rules: Extract after "to", "from", or "vpa"
-  // Prioritize VPA for more accurate UPI detection
+  // Rules: Extract ONLY after "to", "from", or "vpa"
+  // Do NOT guess brand names from random words
   let match =
     text.match(/vpa\s([a-z0-9@._]+)/i) ||
     text.match(/to\s([a-z0-9@._]+)/i) ||
     text.match(/from\s([a-z0-9@._]+)/i);
 
-  return match ? match[1] : null;
+  if (match) {
+    const merchant = match[1];
+    // Clean UPI noise if it's just a handle
+    if (merchant.includes('@')) {
+      return merchant; // Keep full VPA for now as per instruction
+    }
+    return merchant;
+  }
+
+  return null;
 };
 
-export const parseSMS = (rawText: string): ParsedSMS | { error: true; message: string } => {
+export const parseSMS = (rawText: string, sender: string = ''): ParsedSMS | { error: true; message: string } => {
   const text = normalizeSMS(rawText);
+
+  // 1. HARD VALIDATION LAYER
+  const validation = validateFinancialSMS(text, sender);
+  if (validation.confidence === 'low') {
+    return {
+      error: true,
+      message: validation.reason || "Not a valid bank transaction SMS"
+    };
+  }
 
   const type = detectType(text);
   const amount = extractAmount(text);
@@ -84,32 +105,99 @@ export const parseSMS = (rawText: string): ParsedSMS | { error: true; message: s
     merchant: merchant || fallbackName,
     date,
     status,
-    source: 'sms'
+    source: 'sms',
+    confidence: validation.confidence,
+    rawSMS: rawText,
+    senderId: sender
   };
 };
 
 /**
- * Filter for financial messages only
+ * Hard Validation Layer
  */
-export const isFinancialSMS = (text: string, sender: string = ''): boolean => {
+export const validateFinancialSMS = (text: string, sender: string = ''): { confidence: 'high' | 'medium' | 'low'; reason?: string } => {
   const normalizedText = text.toLowerCase();
   const normalizedSender = sender.toLowerCase();
 
-  // Exclusion patterns
-  const isOTP = normalizedText.includes('otp') || normalizedText.includes('verification code');
-  const isPromo = normalizedText.includes('limited time') || normalizedText.includes('offer');
-  const isRecharge = normalizedText.includes('recharge') || normalizedText.includes('validity');
+  // 0. EXCLUSION PATTERNS (CRITICAL)
+  const exclusions = ['subscription', 'due', 'offer', 'reminder', 'otp', 'verification code', 'limited time'];
+  for (const word of exclusions) {
+    if (normalizedText.includes(word)) {
+      return { confidence: 'low', reason: `Rejected: Contains restricted word '${word}'` };
+    }
+  }
+
+  // 1. AMOUNT CHECK
+  const hasAmount = normalizedText.includes('rs') || normalizedText.includes('₹');
+  if (!hasAmount) return { confidence: 'low', reason: "Rejected: No amount detected" };
+
+  // 2. KEYWORD CHECK
+  const keywords = ['credited', 'debited', 'sent', 'received', 'paid'];
+  const hasKeyword = keywords.some(k => normalizedText.includes(k));
+  if (!hasKeyword) return { confidence: 'low', reason: "Rejected: No transaction keywords" };
+
+  // 3. ACCOUNT REFERENCE CHECK
+  const accountRefs = ['a/c', 'upi', 'ref', 'account', 'vpa'];
+  const hasAccountRef = accountRefs.some(r => normalizedText.includes(r));
+  if (!hasAccountRef) return { confidence: 'low', reason: "Rejected: No bank/account reference" };
+
+  // 4. SENDER PATTERN CHECK
+  const bankPatterns = ['hdfc', 'sbi', 'axis', 'icici', 'fede', 'idfc', 'kotk', 'rbl'];
+  const prefixPatterns = ['vm-', 'vk-', 'ax-', 'bk-', 'bz-'];
   
-  if (isOTP || isPromo || isRecharge) return false;
+  const isBankSender = bankPatterns.some(p => normalizedSender.includes(p));
+  const isStandardPrefix = prefixPatterns.some(p => normalizedSender.startsWith(p));
 
-  // Inclusion patterns
-  const hasKeywords = [
-    'credited', 'debited', 'sent', 'upi', 'txn', 'a/c', 'bank'
-  ].some(k => normalizedText.includes(k));
+  // TASK 5: Consistency Check (Sender vs Content)
+  if (isBankSender) {
+    const senderBank = bankPatterns.find(p => normalizedSender.includes(p));
+    if (senderBank) {
+      const otherBanks = bankPatterns.filter(p => p !== senderBank);
+      const mentionedOtherBank = otherBanks.find(b => normalizedText.includes(b));
+      const mentionsSenderBank = normalizedText.includes(senderBank);
+      
+      if (mentionedOtherBank && !mentionsSenderBank) {
+        return { confidence: 'low', reason: `Rejected: Bank mismatch (Sender: ${senderBank}, Content mentions: ${mentionedOtherBank})` };
+      }
+    }
+  }
 
-  const hasSenderPattern = [
-    'hdfc', 'sbi', 'axis', 'icici', 'vm-', 'vk-', 'ax-', 'bk-'
-  ].some(s => normalizedSender.includes(s));
+  if (!isBankSender && !isStandardPrefix) {
+    return { confidence: 'medium', reason: "Medium: Non-standard bank sender, risky" };
+  }
 
-  return hasKeywords || hasSenderPattern;
+  return { confidence: 'high' };
+};
+
+/**
+ * Task 1: Generate Transaction Fingerprint
+ * amount | date | merchant | last4 (optional)
+ */
+export const generateFingerprint = (data: {
+  amount: number;
+  date: string;
+  merchant: string;
+  senderId?: string;
+  rawSMS?: string;
+}) => {
+  const { amount, date, merchant, senderId, rawSMS } = data;
+  
+  // Extract account/ref if available from rawSMS
+  let ref = 'none';
+  if (rawSMS) {
+    const accMatch = rawSMS.match(/a\/c\s*x*(\d{3,4})/i) || rawSMS.match(/xx(\d{3,4})/i);
+    if (accMatch) ref = accMatch[1];
+  } else if (senderId) {
+    ref = senderId.slice(-4);
+  }
+
+  const cleanMerchant = merchant.toLowerCase().trim().replace(/\s+/g, "");
+  return `${amount.toFixed(2)}|${date}|${cleanMerchant}|${ref}`;
+};
+
+/**
+ * Filter for financial messages only (Legacy - now uses validateFinancialSMS)
+ */
+export const isFinancialSMS = (text: string, sender: string = ''): boolean => {
+  return validateFinancialSMS(text, sender).confidence !== 'low';
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShieldCheck, Zap, Loader2, CheckCircle2, X, Bell, LayoutDashboard } from 'lucide-react';
+import { ShieldCheck, Zap, Loader2, CheckCircle2, X, Bell, LayoutDashboard, AlertTriangle } from 'lucide-react';
 import Button from './ui/Button';
 import { SMSSyncService } from '../services/smsSyncService';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,6 +16,8 @@ const SmartSyncModal: React.FC<SmartSyncModalProps> = ({ isOpen, onClose, onSync
   const { user } = useAuth();
   const [step, setStep] = useState<'intro' | 'syncing' | 'success'>('intro');
   const [syncCount, setSyncCount] = useState(0);
+
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   const handleEnableSync = async () => {
     if (!user?.uid) return;
@@ -76,10 +78,22 @@ const SmartSyncModal: React.FC<SmartSyncModalProps> = ({ isOpen, onClose, onSync
                   <ShieldCheck className="w-12 h-12 text-[#6334FD]" />
                 </div>
                 
-                <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Enable Smart Sync</h2>
-                <p className="text-gray-500 font-medium mb-10 leading-relaxed px-4">
-                  We use SMS to automatically track your bank transactions. Your data stays private and encrypted on your device.
+                <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">
+                  {isIOS ? 'Manual SMS Sync' : 'Enable Smart Sync'}
+                </h2>
+                <p className="text-gray-500 font-medium mb-4 leading-relaxed px-4">
+                  {isIOS 
+                    ? 'Import your bank transactions by syncing your recent SMS alerts. Secure and private.'
+                    : 'We use SMS to automatically track your bank transactions. Your data stays private and encrypted.'
+                  }
                 </p>
+                {isIOS && (
+                  <div className="bg-amber-50 text-amber-700 p-3 rounded-xl border border-amber-100 flex items-center justify-center gap-2 mb-10 mx-4">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Auto sync works only on Android devices</span>
+                  </div>
+                )}
+                {!isIOS && <div className="mb-10" />}
 
                 <div className="space-y-6 mb-10 text-left bg-gray-50 p-6 rounded-2xl border border-gray-100">
                   <div className="flex items-start gap-4">
@@ -87,8 +101,10 @@ const SmartSyncModal: React.FC<SmartSyncModalProps> = ({ isOpen, onClose, onSync
                       <Zap className="w-4 h-4 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-gray-900">Auto-Magic Entry</p>
-                      <p className="text-xs text-gray-500 font-medium mt-0.5">Transactions appear instantly as you spend.</p>
+                      <p className="text-sm font-bold text-gray-900">{isIOS ? 'One-Tap Sync' : 'Auto-Magic Entry'}</p>
+                      <p className="text-xs text-gray-500 font-medium mt-0.5">
+                        {isIOS ? 'Scan and import transactions instantly.' : 'Transactions appear instantly as you spend.'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4">
@@ -103,11 +119,11 @@ const SmartSyncModal: React.FC<SmartSyncModalProps> = ({ isOpen, onClose, onSync
                 </div>
 
                 <Button fullWidth size="lg" onClick={handleEnableSync} className="h-14 text-lg">
-                  Grant SMS Permission
+                  {isIOS ? 'Sync Transactions' : 'Grant SMS Permission'}
                 </Button>
                 
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-6">
-                  WealthOS only reads bank-related messages
+                  {isIOS ? 'WealthOS only scans bank-related messages' : 'WealthOS only reads bank-related messages'}
                 </p>
               </motion.div>
             )}
@@ -132,7 +148,7 @@ const SmartSyncModal: React.FC<SmartSyncModalProps> = ({ isOpen, onClose, onSync
                 </div>
                 
                 <h2 className="text-2xl font-black text-gray-900 mb-2">Syncing History</h2>
-                <p className="text-gray-500 font-medium">Scanning your recent bank messages...</p>
+                <p className="text-gray-500 font-medium">Scanning transactions...</p>
                 
                 <div className="mt-10 flex flex-col gap-2 max-w-xs mx-auto">
                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -161,7 +177,8 @@ const SmartSyncModal: React.FC<SmartSyncModalProps> = ({ isOpen, onClose, onSync
                 
                 <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Sync Complete!</h2>
                 <p className="text-gray-500 font-medium mb-10 leading-relaxed px-4">
-                  We found and added <span className="text-green-600 font-black">{syncCount} transactions</span> from your past week. Future transactions will appear automatically.
+                  <span className="text-green-600 font-black">{syncCount} transactions synced</span>. 
+                  {isIOS ? ' Sync regularly to keep your records updated.' : ' Future transactions will appear automatically.'}
                 </p>
 
                 <Button fullWidth size="lg" onClick={onClose} className="h-14 text-lg">

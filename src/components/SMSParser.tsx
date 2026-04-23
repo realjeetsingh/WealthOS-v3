@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, X, CheckCircle2, ShieldCheck, AlertCircle, ArrowRight, Zap } from 'lucide-react';
+import { MessageSquare, X, CheckCircle2, ShieldCheck, AlertCircle, ArrowRight, Zap, BrainCircuit } from 'lucide-react';
 import Button from './ui/Button';
 import { toast } from 'sonner';
 import { parseSMS, ParsedSMS } from '../lib/smsParser';
@@ -13,6 +13,9 @@ interface SMSParserProps {
     notes: string;
     source: 'auto';
     status?: 'review' | 'verified';
+    rawSMS?: string;
+    senderId?: string;
+    categoryConfidence?: number;
   }) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -43,10 +46,13 @@ const SMSParser: React.FC<SMSParserProps> = ({ onParse, isOpen, onClose }) => {
       onParse({
         type: parsedResult.type,
         amount: parsedResult.amount,
-        category: 'Auto-Imported',
-        notes: `SMS from ${parsedResult.merchant} on ${parsedResult.date}`,
-        source: 'auto',
-        status: parsedResult.status
+        category: 'Other',
+        notes: parsedResult.merchant,
+        source: 'sms',
+        status: parsedResult.status,
+        rawSMS: parsedResult.rawSMS,
+        senderId: parsedResult.senderId,
+        categoryConfidence: parsedResult.confidence === 'high' ? 0.95 : 0.6
       });
       toast.success('Transaction added!');
       onClose();
@@ -149,12 +155,20 @@ const SMSParser: React.FC<SMSParserProps> = ({ onParse, isOpen, onClose }) => {
                 <p className="text-gray-500 font-medium mb-8">Confirm the details before adding to your dashboard.</p>
                 
                 <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-8 text-left">
-                  {parsedResult.status === 'review' && (
-                    <div className="mb-4 flex items-center gap-2 bg-amber-50 text-amber-700 p-3 rounded-xl border border-amber-100">
-                      <AlertCircle className="w-4 h-4 ml-0.5" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Needs Review: Missing Details</span>
-                    </div>
-                  )}
+                  <div className="mb-4 flex flex-col gap-2">
+                    {parsedResult.status === 'review' && (
+                        <div className="flex items-center gap-2 bg-amber-50 text-amber-700 p-3 rounded-xl border border-amber-100">
+                        <AlertCircle className="w-4 h-4 ml-0.5" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Needs Review: Missing Details</span>
+                        </div>
+                    )}
+                    {parsedResult.confidence === 'medium' && (
+                         <div className="flex items-center gap-2 bg-indigo-50 text-indigo-700 p-3 rounded-xl border border-indigo-100">
+                            <BrainCircuit className="w-4 h-4 ml-0.5" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Medium Confidence: Manual Verify</span>
+                         </div>
+                    )}
+                  </div>
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Merchant</span>
                     <span className="text-sm font-bold text-gray-900 truncate ml-4 italic">{parsedResult.merchant === 'Unknown' ? 'Unknown (Check notes)' : parsedResult.merchant}</span>

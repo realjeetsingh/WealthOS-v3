@@ -32,8 +32,15 @@ export interface Transaction {
   amount: number;
   category: string;
   notes?: string;
-  source?: 'manual' | 'auto';
+  source?: 'manual' | 'auto' | 'sms';
   status?: 'review' | 'verified';
+  isCategoryConfirmed?: boolean;
+  categoryConfidence?: number;
+  rawSMS?: string;
+  senderId?: string;
+  merchant?: string;
+  fingerprint?: string;
+  date?: string;
   timestamp: Timestamp;
 }
 

@@ -14,6 +14,7 @@ import {
   Zap
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useLayout } from '../contexts/LayoutContext';
 import { SmartFinancialAnalysis, SmartFinancialInsight } from '../services/geminiService';
 import { formatCurrency } from '../lib/formatCurrency';
 import Button from './ui/Button';
@@ -32,6 +33,7 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
   onUpgrade,
   currency 
 }) => {
+  const { isNavVisible } = useLayout();
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<SmartFinancialAnalysis | null>(null);
@@ -91,9 +93,21 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
         {!isAiModalOpen && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
+            animate={{ 
+              opacity: 1, 
+              scale: 1,
+              bottom: isNavVisible 
+                ? 'calc(90px + env(safe-area-inset-bottom))' 
+                : 'calc(20px + env(safe-area-inset-bottom))'
+            }}
             exit={{ opacity: 0, scale: 0.5 }}
-            className="fixed bottom-[calc(90px+env(safe-area-inset-bottom))] md:bottom-8 right-6 md:right-8 z-[10000] flex flex-col items-end"
+            transition={{ 
+              type: "spring", 
+              stiffness: 260, 
+              damping: 20,
+              opacity: { duration: 0.2 }
+            }}
+            className="fixed right-6 md:right-8 z-[10000] flex flex-col items-end"
           >
             <AnimatePresence>
               {showTooltip && (

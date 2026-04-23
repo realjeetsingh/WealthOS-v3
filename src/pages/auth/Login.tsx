@@ -36,10 +36,21 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = location.state?.from?.pathname || '/dashboard';
+
+  const onEmailChange = (val: string) => {
+    setEmail(val);
+    if (error) setError(null);
+  };
+
+  const onPasswordChange = (val: string) => {
+    setPassword(val);
+    if (error) setError(null);
+  };
 
   const handleGoogleSignIn = async () => {
     setError(null);
@@ -78,21 +89,44 @@ const Login: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // TASK 1: EMPTY FIELDS
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter both email and password.");
+      return;
+    }
+
+    // TASK 6: RATE LIMIT (Local check)
+    if (failedAttempts >= 5) {
+      setError("Too many attempts. Please try again after some time.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      setFailedAttempts(0); // Reset on success
       navigate(from, { replace: true });
     } catch (err: any) {
       console.error("Login error:", err);
-      if (err.code === 'auth/invalid-email') {
+      setFailedAttempts(prev => prev + 1);
+
+      // TASK 1 & 2: Context-aware errors
+      const code = err.code;
+      
+      if (code === 'auth/invalid-email') {
         setError("Invalid email address format.");
-      } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setError("Invalid email or password. If you signed up with Google, please use the Google Sign-In button.");
-      } else if (err.code === 'auth/too-many-requests') {
-        setError("Too many failed attempts. Please try again later.");
+      } else if (code === 'auth/user-not-found') {
+        setError("No account found with this email. Please create an account.");
+      } else if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        setError("Incorrect email or password. Please check and try again.");
+      } else if (code === 'auth/too-many-requests') {
+        setError("Too many attempts. Please try again after some time.");
+      } else if (code === 'auth/network-request-failed') {
+        setError("Network error. Please check your connection and try again.");
       } else {
-        setError("An error occurred. Please try again.");
+        setError("Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -197,9 +231,18 @@ const Login: React.FC = () => {
           </div>
 
           {error && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-md flex items-start space-x-3 animate-in fade-in slide-in-from-top-2">
-              <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-md flex flex-col space-y-2 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+              {error.includes("create an account") && (
+                <div className="ml-8">
+                  <Link to="/auth/signup" className="text-xs font-bold text-red-800 hover:underline flex items-center gap-1">
+                    Join WealthOS now <Sparkles className="w-3 h-3" />
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
@@ -217,10 +260,10 @@ const Login: React.FC = () => {
                     type="email"
                     autoComplete="email"
                     required
-                    className="appearance-none relative block w-full px-10 py-3.5 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:z-10 sm:text-sm transition-all bg-white hover:bg-gray-50/50 hover:border-gray-400 shadow-sm"
+                    className={`appearance-none relative block w-full px-10 py-3.5 border ${error?.toLowerCase().includes("email") ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-300'} placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:z-10 sm:text-sm transition-all bg-white hover:bg-gray-50/50 hover:border-gray-400 shadow-sm`}
                     placeholder="name@company.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => onEmailChange(e.target.value)}
                   />
                 </div>
               </div>
@@ -236,10 +279,10 @@ const Login: React.FC = () => {
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     required
-                    className="appearance-none relative block w-full px-10 py-3.5 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:z-10 sm:text-sm transition-all bg-white hover:bg-gray-50/50 hover:border-gray-400 shadow-sm"
+                    className={`appearance-none relative block w-full px-10 py-3.5 border ${error?.toLowerCase().includes("password") ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-300'} placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:z-10 sm:text-sm transition-all bg-white hover:bg-gray-50/50 hover:border-gray-400 shadow-sm`}
                     placeholder="••••••••"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => onPasswordChange(e.target.value)}
                   />
                   <button
                     type="button"

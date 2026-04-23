@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import AppHeader from './AppHeader';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
+import { LayoutProvider } from '../contexts/LayoutContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -65,18 +66,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         >
           {/* MainContent: ONLY scrollable area with fixed height to prevent overlap */}
           <main className="w-full h-[calc(100vh-140px-env(safe-area-inset-bottom))] md:h-[calc(100vh-70px)] mt-[70px] md:mt-[70px] overflow-y-auto overflow-x-hidden max-w-full pt-4 pb-[90px] md:pb-6 px-6 md:px-8">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                className="w-full h-full"
-              >
-                {children}
-              </motion.div>
-            </AnimatePresence>
+            <LayoutProvider isNavVisible={isVisible}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={location.pathname}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  className="w-full h-full"
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
+            </LayoutProvider>
           </main>
 
           {/* BottomNavbar: outside scroll area, fixed at bottom */}

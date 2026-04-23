@@ -6,13 +6,20 @@ import {
   deleteDoc,
   doc,
   query, 
+  where,
   orderBy, 
   serverTimestamp,
+  getDoc,
+  writeBatch,
+  limit,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { Budget, Transaction, Asset, Liability, Loan } from '../types';
 import { updateFinancialSnapshot } from './snapshotService';
+import { categorizeTransaction } from '../lib/categorizationEngine';
+import { getUserCategoryMappings, updateUserCategoryMapping } from './categorizationService';
+import { generateFingerprint } from '../lib/smsParser';
 
 /**
  * Budgets
@@ -62,19 +69,103 @@ export const addTransaction = async (userId: string | undefined, data: Omit<Tran
   // STEP 1 & 2: Standardize and force lowercase
   const type = data.type.toLowerCase();
   
+  // Force source to 'manual' if not provided explicitly (safety first)
+  const source = data.source || 'manual';
+  
   // STEP 6: Validate before save
   if (type !== 'income' && type !== 'expense') {
     throw new Error(`Invalid transaction type: ${type}. Must be 'income' or 'expense'.`);
   }
 
-  // STEP 4: Safety log
-  console.log("Saving Transaction:", type, data.amount);
+  // AUTO-CATEGORIZATION LOGIC
+  let category = data.category;
+  let isCategoryConfirmed = data.isCategoryConfirmed;
+  let categoryConfidence = data.categoryConfidence;
+  let notes = data.notes;
+  let senderId = data.senderId;
 
+  // TASK 1: Hard Source Separation & TASK 3/4: Validation
+  if (source === 'auto' || source === 'sms') {
+    // If it's pure SMS or AUTO, we must have rawSMS payload else REJECT
+    if (!data.rawSMS) {
+        console.warn("REJECTED: Auto transaction without valid SMS payload");
+        return null; // Block ghost transactions
+    }
+  }
+
+  // If MANUAL source, do NOT run SMS extractor on notes
+  if (source === 'manual') {
+    // Task 3: No fake brand names for manual entries
+    // If merchant/notes is suspiciously like one of our catchwords but it's manual, we keep it as "Manual Entry" if it's default
+    if (!notes || notes === 'Other' || notes === 'Unknown' || notes === 'Other Expense' || notes === 'Other Income') {
+        notes = 'Manual Entry';
+    }
+    // STRICT SOURCE VALIDATION (Task 3): Manual transactions MUST NOT have these
+    senderId = undefined;
+    (data as any).rawSMS = undefined;
+  }
+
+  // Only auto-categorize if notes/description is available AND category is generic or missing
+  if (notes && (category === 'Other' || !category)) {
+    const userMappings = await getUserCategoryMappings(userId);
+    const result = categorizeTransaction(notes, userMappings);
+    
+    if (result.isAutoMatched) {
+      category = result.category;
+      categoryConfidence = result.confidence;
+      isCategoryConfirmed = false; // Mark for user confirmation if it's auto-detected
+    }
+  }
+
+  // STEP 4: Safety log
+  console.log("Saving Transaction:", type, "Source:", source, "Category:", category);
+
+  const txDate = data.date || new Date().toLocaleDateString('en-GB');
+  const fingerprint = generateFingerprint({
+    amount: data.amount,
+    date: txDate,
+    merchant: notes || category || 'Unknown',
+    senderId: senderId,
+    rawSMS: (data as any).rawSMS
+  });
+
+  // TASK 2: DUPLICATE CHECK
   const path = `users/${userId}/transactions`;
+  const duplicateQuery = query(
+    collection(db, path),
+    where('userId', '==', userId),
+    where('fingerprint', '==', fingerprint),
+    limit(1)
+  );
+  const duplicateSnapshot = await getDocs(duplicateQuery);
+  
+  if (!duplicateSnapshot.empty) {
+    console.warn("REJECTED: Duplicate transaction detected via fingerprint:", fingerprint);
+    // For auto-sync, we silently ignore. For manual, the UI will warn (handled in component)
+    if (source === 'auto' || source === 'sms') {
+      return null; 
+    }
+    // If it's manual and reached here, we might want to throw if we didn't handle it in UI
+    // But better to return the existing one or null
+    return null;
+  }
+
   try {
     // Filter out undefined values to prevent Firestore errors
     const cleanData = Object.fromEntries(
-      Object.entries({ ...data, type }).filter(([_, v]) => v !== undefined)
+      Object.entries({ 
+        ...data, 
+        userId, // TASK 1: Every transaction MUST include userId
+        type, 
+        category,
+        notes,
+        source,
+        senderId,
+        date: txDate,
+        fingerprint,
+        isCategoryConfirmed: isCategoryConfirmed ?? (source === 'manual'), // Manual entries are confirmed by default
+        categoryConfidence: categoryConfidence ?? 1.0
+      }).filter(([_, v]) => v !== undefined)
     );
     
     const docRef = await addDoc(collection(db, path), {
@@ -87,12 +178,15 @@ export const addTransaction = async (userId: string | undefined, data: Omit<Tran
     handleFirestoreError(error, OperationType.CREATE, path);
   }
 };
-
 export const getTransactions = async (userId: string | undefined) => {
   if (!userId) return [];
   const path = `users/${userId}/transactions`;
   try {
-    const q = query(collection(db, path), orderBy('timestamp', 'desc'));
+    const q = query(
+      collection(db, path), 
+      where('userId', '==', userId),
+      orderBy('timestamp', 'desc')
+    );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({
       id: doc.id,
@@ -126,6 +220,23 @@ export const updateTransaction = async (userId: string | undefined, transactionI
     );
 
     await updateDoc(docRef, finalData);
+
+    // LEARNING LOGIC: If category was updated manually, learn this mapping
+    if (data.category && userId) {
+      const fetchAndLearn = async () => {
+        try {
+          const currentDoc = await getDoc(docRef);
+          const currentData = currentDoc.data() as Transaction;
+          if (currentData?.notes) {
+            await updateUserCategoryMapping(userId, currentData.notes, data.category!);
+          }
+        } catch (e) {
+          console.error("Learning failed:", e);
+        }
+      };
+      fetchAndLearn();
+    }
+
     updateFinancialSnapshot(userId).catch(console.error);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${path}/${transactionId}`);
@@ -141,6 +252,66 @@ export const deleteTransaction = async (userId: string | undefined, transactionI
     updateFinancialSnapshot(userId).catch(console.error);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `${path}/${transactionId}`);
+  }
+};
+
+export const deleteTransactionsBulk = async (userId: string | undefined, transactionIds: string[]) => {
+  if (!userId) throw new Error('User ID is required for bulk delete');
+  if (transactionIds.length === 0) return;
+  
+  const batch = writeBatch(db);
+  const path = `users/${userId}/transactions`;
+  
+  transactionIds.forEach(id => {
+    const docRef = doc(db, path, id);
+    batch.delete(docRef);
+  });
+  
+  try {
+    await batch.commit();
+    updateFinancialSnapshot(userId).catch(console.error);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+};
+
+export const checkDuplicate = async (userId: string | undefined, fingerprint: string) => {
+  if (!userId) return false;
+  const path = `users/${userId}/transactions`;
+  try {
+    const q = query(
+      collection(db, path),
+      where('userId', '==', userId),
+      where('fingerprint', '==', fingerprint),
+      limit(1)
+    );
+    const snapshot = await getDocs(q);
+    return !snapshot.empty;
+  } catch (error) {
+    console.error("Duplicate check error:", error);
+    return false;
+  }
+};
+
+export const resetTransactions = async (userId: string | undefined) => {
+  if (!userId) return;
+  const path = `users/${userId}/transactions`;
+  try {
+    const q = query(collection(db, path));
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) return;
+    
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
+    updateFinancialSnapshot(userId).catch(console.error);
+    console.log(`Database Reset: Cleared ${snapshot.size} transactions for user ${userId}`);
+  } catch (error) {
+    console.error("Error resetting database:", error);
   }
 };
 

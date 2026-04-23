@@ -670,32 +670,32 @@ const Loans: React.FC = () => {
                           <span className="text-sm font-bold truncate">Total: <CurrencyDisplay value={l.totalAmount} /></span>
                         </div>
                       </div>
-                      <div className="flex space-x-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
+                      <div className="flex space-x-1 sm:space-x-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                         <button
                           onClick={() => handleEdit(l)}
-                          className="p-2.5 bg-gray-50 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-[0.98] duration-150"
+                          className="p-2 md:p-2.5 bg-gray-50 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-[0.98] duration-150"
                           title="Edit"
                         >
-                          <Edit2 className="w-5 h-5" />
+                          <Edit2 className="w-4 h-4 md:w-5 md:h-5" />
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(l.id || null)}
-                          className="p-2.5 bg-gray-50 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-[0.98] duration-150"
+                          className="p-2 md:p-2.5 bg-gray-50 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-[0.98] duration-150"
                           title="Delete"
                         >
-                          <Trash2 className="w-5 h-5" />
+                          <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                         </button>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8 mb-8">
-                      <div className="min-w-0">
+                    <div className="grid grid-cols-2 gap-4 md:gap-8 mb-8">
+                       <div className="min-w-0">
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 truncate">Monthly EMI</p>
-                        <p className="text-2xl font-black text-indigo-600 truncate"><CurrencyDisplay value={l.emi} /></p>
+                        <p className="text-xl md:text-2xl font-black text-indigo-600 truncate"><CurrencyDisplay value={l.emi} /></p>
                       </div>
                       <div className="text-right min-w-0">
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 truncate">Remaining</p>
-                        <p className="text-lg font-black text-gray-900 truncate">{remainingMonths} Months</p>
+                        <p className="text-base md:text-lg font-black text-gray-900 truncate">{remainingMonths} Months</p>
                       </div>
                     </div>
 

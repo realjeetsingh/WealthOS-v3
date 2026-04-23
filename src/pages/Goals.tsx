@@ -168,7 +168,7 @@ const Goals: React.FC = () => {
                   </div>
                   <button 
                     onClick={() => handleDeleteGoal(goal.id!)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100 shrink-0"
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 shrink-0"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
