@@ -17,7 +17,7 @@ import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { Budget, Transaction, Asset, Liability, Loan } from '../types';
 import { updateFinancialSnapshot } from './snapshotService';
-import { categorizeTransaction } from '../lib/categorizationEngine';
+import { categorizeTransaction, CATEGORIES } from '../lib/categorizationEngine';
 import { getUserCategoryMappings, updateUserCategoryMapping } from './categorizationService';
 import { generateFingerprint } from '../lib/smsParser';
 
@@ -75,6 +75,12 @@ export const addTransaction = async (userId: string | undefined, data: Omit<Tran
   // STEP 6: Validate before save
   if (type !== 'income' && type !== 'expense') {
     throw new Error(`Invalid transaction type: ${type}. Must be 'income' or 'expense'.`);
+  }
+
+  // TASK 7: CATEGORY TYPE MISMATCH VALIDATION
+  const matchedCategory = CATEGORIES.find(c => c.name === data.category);
+  if (matchedCategory && matchedCategory.type !== type) {
+    throw new Error(`Category Mismatch: '${data.category}' belongs to ${matchedCategory.type}s, not ${type}s.`);
   }
 
   // AUTO-CATEGORIZATION LOGIC
@@ -172,6 +178,35 @@ export const addTransaction = async (userId: string | undefined, data: Omit<Tran
       ...cleanData,
       timestamp: serverTimestamp()
     });
+
+    // TASK 10: AUTO-LINK EMI TRANSACTIONS
+    if (type === 'expense') {
+      try {
+        const loansPath = `users/${userId}/loans`;
+        const loansSnap = await getDocs(query(collection(db, loansPath), where('status', '==', 'active')));
+        const activeLoans = loansSnap.docs.map(d => ({ id: d.id, ...d.data() } as Loan));
+        
+        const matchedLoan = activeLoans.find(loan => {
+          const amountDiff = Math.abs(loan.emi - data.amount);
+          const isSimilarAmount = amountDiff <= loan.emi * 0.1;
+          const notesLower = (notes || '').toString().toLowerCase();
+          const merchantLower = (cleanData.merchant || '').toString().toLowerCase();
+          const lenderLower = (loan.lenderName || '').toString().toLowerCase();
+          const isLenderMatch = lenderLower.includes(merchantLower) || merchantLower.includes(lenderLower);
+          const isKeywordMatch = notesLower.includes('emi') || notesLower.includes('loan');
+          
+          return isSimilarAmount && (isLenderMatch || isKeywordMatch);
+        });
+
+        if (matchedLoan) {
+          console.log("Auto-linking transaction to loan:", matchedLoan.name);
+          await updateDoc(docRef, { isLoanEMI: true });
+        }
+      } catch (e) {
+        console.error("Auto-linking check failed:", e);
+      }
+    }
+
     updateFinancialSnapshot(userId).catch(console.error);
     return docRef;
   } catch (error) {
@@ -211,7 +246,31 @@ export const updateTransaction = async (userId: string | undefined, transactionI
       if (type !== 'income' && type !== 'expense') {
         throw new Error(`Invalid transaction type: ${type}. Must be 'income' or 'expense'.`);
       }
+      
+      // TASK 7: CATEGORY TYPE MISMATCH VALIDATION (on type update)
+      // If category is also provided, check it. Otherwise check against existing if we had it (complex)
+      // Simplest: If both provided, validate.
+      if (data.category) {
+        const matchedCategory = CATEGORIES.find(c => c.name === data.category);
+        if (matchedCategory && matchedCategory.type !== type) {
+           throw new Error(`Category Mismatch: '${data.category}' belongs to ${matchedCategory.type}s, not ${type}s.`);
+        }
+      }
+      
       cleanData.type = type as 'income' | 'expense';
+    } else if (data.category) {
+      // If only category is provided, check against the CURRENT type of the transaction
+      try {
+        const currentDoc = await getDoc(docRef);
+        const currentData = currentDoc.data() as Transaction;
+        const currentType = currentData.type;
+        const matchedCategory = CATEGORIES.find(c => c.name === data.category);
+        if (matchedCategory && matchedCategory.type !== currentType) {
+           throw new Error(`Category Mismatch: '${data.category}' belongs to ${matchedCategory.type}s, not ${currentType}s.`);
+        }
+      } catch (e) {
+        console.warn("Update validation skipped (could not fetch doc):", e);
+      }
     }
 
     // Filter out undefined values

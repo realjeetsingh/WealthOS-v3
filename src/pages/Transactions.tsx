@@ -65,24 +65,12 @@ const Transactions: React.FC = () => {
   const [skipDuplicateCheck, setSkipDuplicateCheck] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Icons for categories
-  const categories = {
-    'Food': '🍔',
-    'Rent': '🏠',
-    'Shopping': '🛍️',
-    'Transport': '🚗',
-    'Entertainment': '🎬',
-    'Health': '🏥',
-    'Utilities': '💡',
-    'Insurance': '🛡️',
-    'Savings': '💰',
-    'Other': '📦'
-  } as Record<string, string>;
-
   // Form state
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState('Food');
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryName, setCustomCategoryName] = useState('');
   const [notes, setNotes] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -177,6 +165,17 @@ const Transactions: React.FC = () => {
     return () => unsubscribe();
   }, [user?.uid]);
 
+  // TASK 4 & 5: AUTO RESET & SMART DEFAULTS
+  useEffect(() => {
+    if (type === 'income') {
+      setCategory('Salary');
+    } else {
+      setCategory('Food');
+    }
+    setIsCustomCategory(false);
+    setCustomCategoryName('');
+  }, [type]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.uid) return;
@@ -190,9 +189,14 @@ const Transactions: React.FC = () => {
         throw new Error("Please enter a valid amount");
       }
 
+      const finalCategory = isCustomCategory ? customCategoryName.trim() : category;
+      if (!finalCategory) {
+        throw new Error("Please select or enter a category");
+      }
+
       const txDate = new Date().toLocaleDateString('en-GB');
       const txNotes = notes.trim() || null;
-      const txMerchant = txNotes || category || 'Manual Entry';
+      const txMerchant = txNotes || finalCategory || 'Manual Entry';
 
       // TASK 5: MANUAL ENTRY COLLISION
       if (!skipDuplicateCheck) {
@@ -213,7 +217,7 @@ const Transactions: React.FC = () => {
       await addTransaction(user.uid, {
         type,
         amount: numAmount,
-        category,
+        category: finalCategory,
         notes: txNotes,
         source: 'manual',
         date: txDate
@@ -222,8 +226,10 @@ const Transactions: React.FC = () => {
       // Reset form
       setType('expense');
       setAmount('');
-      setCategory('');
+      setCategory('Food');
       setNotes('');
+      setIsCustomCategory(false);
+      setCustomCategoryName('');
       setDuplicateWarning(false);
       setSkipDuplicateCheck(false);
     } catch (err: any) {
@@ -855,8 +861,8 @@ const Transactions: React.FC = () => {
                                 onBlur={() => setIsEditingCategoryQuickly(false)}
                              >
                                 <option value="" disabled>Select Category</option>
-                                {CATEGORIES.map(cat => (
-                                    <option key={cat} value={cat}>{cat}</option>
+                                {CATEGORIES.filter(c => c.type === selectedDetailTransaction.type).map(cat => (
+                                    <option key={cat.name} value={cat.name}>{cat.name}</option>
                                 ))}
                              </select>
                         </div>
@@ -1096,19 +1102,48 @@ const Transactions: React.FC = () => {
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Category</label>
-              <div className="relative">
-                <Tag className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                <select
-                  required
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="block w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-50 focus:border-[#4F46E5] text-base transition-all bg-white"
-                >
-                  <option value="" disabled>Select Category</option>
-                  {CATEGORIES.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+              <div className="space-y-4">
+                <div className="relative">
+                  <Tag className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+                  <select
+                    required={!isCustomCategory}
+                    value={isCustomCategory ? 'custom' : category}
+                    onChange={(e) => {
+                      if (e.target.value === 'custom') {
+                        setIsCustomCategory(true);
+                        setCategory('');
+                      } else {
+                        setIsCustomCategory(false);
+                        setCategory(e.target.value);
+                      }
+                    }}
+                    className="block w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-50 focus:border-[#4F46E5] text-base transition-all bg-white"
+                  >
+                    <option value="" disabled>Select Category</option>
+                    {CATEGORIES.filter(c => c.type === type).map(cat => (
+                        <option key={cat.name} value={cat.name}>{cat.name}</option>
+                    ))}
+                    <option value="custom">+ Add Custom Category</option>
+                  </select>
+                </div>
+
+                {isCustomCategory && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative"
+                  >
+                    <PlusCircle className="absolute left-4 top-3.5 h-5 w-5 text-[#6334FD]" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter custom category name"
+                      value={customCategoryName}
+                      onChange={(e) => setCustomCategoryName(e.target.value)}
+                      className="block w-full pl-12 pr-4 py-3 border-2 border-indigo-100 rounded-xl focus:ring-4 focus:ring-indigo-50 focus:border-[#6334FD] text-base transition-all"
+                    />
+                  </motion.div>
+                )}
               </div>
             </div>
 
@@ -1214,9 +1249,12 @@ const Transactions: React.FC = () => {
                     onChange={(e) => setEditCategory(e.target.value)}
                     className="block w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-50 focus:border-[#4F46E5] text-base transition-all bg-white"
                   >
-                    {CATEGORIES.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
+                    {CATEGORIES.filter(c => c.type === editType).map(cat => (
+                        <option key={cat.name} value={cat.name}>{cat.name}</option>
                     ))}
+                    {!CATEGORIES.find(c => c.name === editCategory) && (
+                       <option value={editCategory}>{editCategory} (Custom)</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -1333,19 +1371,45 @@ const Transactions: React.FC = () => {
                 <div className="p-2 bg-gray-100 rounded-lg"><LayoutDashboard className="w-5 h-5" /></div>
                 <span className="font-bold text-gray-900">All Transactions</span>
             </button>
-            {CATEGORIES.map(cat => (
-                <button 
-                    key={cat}
-                    onClick={() => {
-                        setFilterCategory(cat);
-                        setIsFilterModalOpen(false);
-                    }}
-                    className={`flex items-center gap-3 p-4 rounded-2xl transition-all ${filterCategory === cat ? 'bg-indigo-50 border-2 border-indigo-200' : 'hover:bg-gray-50'}`}
-                >
-                    <div className="p-2 bg-gray-50 rounded-lg text-xl leading-none">{getCategoryEmoji(cat)}</div>
-                    <span className="font-bold text-gray-900">{cat}</span>
-                </button>
-            ))}
+            <div className="space-y-4">
+              <div>
+                <p className="px-4 text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-2">Income Categories</p>
+                <div className="space-y-1">
+                  {CATEGORIES.filter(c => c.type === 'income').map(cat => (
+                      <button 
+                          key={cat.name}
+                          onClick={() => {
+                              setFilterCategory(cat.name);
+                              setIsFilterModalOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all ${filterCategory === cat.name ? 'bg-indigo-50 border-2 border-indigo-200' : 'hover:bg-gray-50'}`}
+                      >
+                          <div className="p-2 bg-gray-50 rounded-lg text-xl leading-none">{getCategoryEmoji(cat.name)}</div>
+                          <span className="font-bold text-gray-900">{cat.name}</span>
+                      </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="px-4 text-[10px] font-black text-red-600 uppercase tracking-[0.2em] mb-2">Expense Categories</p>
+                <div className="space-y-1">
+                  {CATEGORIES.filter(c => c.type === 'expense').map(cat => (
+                      <button 
+                          key={cat.name}
+                          onClick={() => {
+                              setFilterCategory(cat.name);
+                              setIsFilterModalOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all ${filterCategory === cat.name ? 'bg-indigo-50 border-2 border-indigo-200' : 'hover:bg-gray-50'}`}
+                      >
+                          <div className="p-2 bg-gray-50 rounded-lg text-xl leading-none">{getCategoryEmoji(cat.name)}</div>
+                          <span className="font-bold text-gray-900">{cat.name}</span>
+                      </button>
+                  ))}
+                </div>
+              </div>
+            </div>
         </div>
       </Modal>
     </div>

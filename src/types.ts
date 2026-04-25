@@ -28,11 +28,12 @@ export interface UserProfile {
 
 export interface Transaction {
   id?: string;
+  userId?: string;
   type: 'income' | 'expense';
   amount: number;
   category: string;
   notes?: string;
-  source?: 'manual' | 'auto' | 'sms';
+  source?: 'manual' | 'auto' | 'sms' | 'aa';
   status?: 'review' | 'verified';
   isCategoryConfirmed?: boolean;
   categoryConfidence?: number;
@@ -42,6 +43,7 @@ export interface Transaction {
   fingerprint?: string;
   date?: string;
   timestamp: Timestamp;
+  isLoanEMI?: boolean;
 }
 
 export interface Asset {
@@ -62,19 +64,36 @@ export interface Liability {
 
 export interface Loan {
   id?: string;
+  userId?: string;
   name: string;
+  lenderName: string;
   principalAmount: number;
+  interestRate: number;
   tenureMonths: number;
   paidMonths: number;
   totalAmount: number;
   totalInterest: number;
   emi: number;
   remainingAmount: number;
+  startDate: string;
   nextEmiDate?: string;
   lastPaidDate?: string;
   endDate: string;
-  status: 'active' | 'completed';
+  status: 'active' | 'completed' | 'closed';
   timestamp: Timestamp;
+  dataSource?: 'manual' | 'sms' | 'aa';
+}
+
+export interface LoanSuggestion {
+  id: string;
+  merchant: string;
+  lender?: string;
+  amount: number;
+  date: string;
+  frequency: number; // number of occurrences
+  confidence: 'high' | 'medium' | 'low';
+  score: number;
+  transactionIds: string[];
 }
 
 export interface FinancialSnapshot {
@@ -92,20 +111,23 @@ export interface PortfolioAsset {
   userId: string;
   category: 'Stocks' | 'Crypto' | 'Real Estate' | 'Bonds' | 'Gold';
   assetName: string;
+  symbol: string; // Standard symbol (REQUIRED for stocks/crypto)
+  assetType: 'stock' | 'crypto' | 'mf' | 'other';
+  quantity: number;
+  avgBuyPrice: number;
+  lastPrice: number;
   investedAmount: number;
   currentValue: number;
+  lastUpdatedAt?: Timestamp;
   metadata: {
-    quantity?: number;
-    buyPrice?: number;
     investmentDate?: string;
-    coinName?: string;
     propertyName?: string;
     rentalIncome?: number;
     bondName?: string;
     interestRate?: number;
     maturityDate?: string;
-    assetType?: string;
     weight?: number;
+    coinName?: string;
   };
   timestamp: Timestamp;
 }

@@ -234,13 +234,16 @@ const Onboarding: React.FC = () => {
           
           await addLoan(user?.uid, {
             name: loan.name,
+            lenderName: 'Bank', // Default for onboarding
             principalAmount: principal,
+            interestRate: 10, // Default for onboarding
             tenureMonths: tenure,
             paidMonths: paid,
             totalAmount,
             totalInterest,
             emi,
             remainingAmount,
+            startDate: new Date().toISOString().split('T')[0],
             endDate: new Date(Date.now() + (tenure - paid) * 30 * 24 * 60 * 60 * 1000).toISOString(),
             status: 'active'
           });

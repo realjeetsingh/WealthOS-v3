@@ -17,6 +17,7 @@ import {
   FileText,
   Gem,
   AlertCircle,
+  Wallet,
   ShieldCheck,
   Info,
   BrainCircuit,
@@ -54,13 +55,16 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import Button from '../components/ui/Button';
 import Skeleton from '../components/ui/Skeleton';
+import { fetchMarketPrice, normalizeSymbol, searchSymbols, SymbolResult, fetchBatchPrices } from '../services/marketDataService';
+import { Loader2, RefreshCw, Clock } from 'lucide-react';
 
 const CATEGORIES = [
-  { id: 'Stocks', label: 'Stocks / Shares', icon: Activity },
-  { id: 'Crypto', label: 'Crypto', icon: Coins },
-  { id: 'Real Estate', label: 'Real Estate', icon: Home },
-  { id: 'Bonds', label: 'Bonds', icon: FileText },
-  { id: 'Gold', label: 'Gold / Physical', icon: Gem },
+  { id: 'Stocks', label: 'Stocks', icon: Activity, type: 'stock' },
+  { id: 'Crypto', label: 'Crypto', icon: Coins, type: 'crypto' },
+  { id: 'MF', label: 'Mutual Funds', icon: FileText, type: 'mf' },
+  { id: 'Real Estate', label: 'Real Estate', icon: Home, type: 'other' },
+  { id: 'Gold', label: 'Gold / Physical', icon: Gem, type: 'other' },
+  { id: 'Bonds', label: 'Bonds / Debt', icon: Wallet, type: 'other' },
 ] as const;
 
 type Category = typeof CATEGORIES[number]['id'];
@@ -71,20 +75,28 @@ export default function Portfolio() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFetchingPrice, setIsFetchingPrice] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<SymbolResult[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category>('Stocks');
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  
+
   // Form State
   const [formData, setFormData] = useState({
     assetName: '',
+    symbol: '',
+    assetType: 'stock' as 'stock' | 'crypto' | 'mf' | 'other',
+    quantity: '',
+    avgBuyPrice: '',
+    lastPrice: '',
     investedAmount: '',
     currentValue: '',
-    quantity: '',
-    buyPrice: '',
     investmentDate: new Date().toISOString().split('T')[0],
     coinName: '',
     propertyName: '',
@@ -92,9 +104,125 @@ export default function Portfolio() {
     bondName: '',
     interestRate: '',
     maturityDate: '',
-    assetType: '',
     weight: ''
   });
+  
+  const handleSyncPrice = async () => {
+    const symbolToFetch = formData.symbol;
+    if (!symbolToFetch) {
+      toast.error('Please select or enter a symbol');
+      return;
+    }
+
+    setIsFetchingPrice(true);
+    setPriceError(null);
+    try {
+      const price = await fetchMarketPrice(symbolToFetch);
+      if (price !== null) {
+        const qty = Number(formData.quantity) || 1;
+        setFormData(prev => ({
+          ...prev,
+          lastPrice: price.toString(),
+          currentValue: (price * qty).toString()
+        }));
+        toast.success(`Latest price fetched for ${symbolToFetch}`);
+      } else {
+        setPriceError('Live price unavailable at the moment.');
+      }
+    } catch (error) {
+      console.error('Error syncing price:', error);
+      setPriceError('Network error. Check connection.');
+    } finally {
+      setIsFetchingPrice(false);
+    }
+  };
+
+  const handleSymbolSearch = async (query: string) => {
+    setFormData(prev => ({ ...prev, assetName: query }));
+    if (query.length < 1) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await searchSymbols(query);
+      // Filter for stocks/crypto/mf based on category if needed, otherwise show all
+      setSearchResults(results.slice(0, 10));
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSymbolSelect = async (result: SymbolResult) => {
+    setSearchResults([]);
+    setIsFetchingPrice(true);
+    try {
+      const price = await fetchMarketPrice(result.symbol);
+      setFormData(prev => ({
+        ...prev,
+        assetName: result.description || result.symbol,
+        symbol: result.symbol,
+        lastPrice: price?.toString() || '0',
+        currentValue: price ? (price * (Number(prev.quantity) || 1)).toString() : prev.currentValue
+      }));
+    } catch (error) {
+      console.error('Error fetching price for selection:', error);
+    } finally {
+      setIsFetchingPrice(false);
+    }
+  };
+
+  const refreshAllPrices = async (assetsToRefresh = assets, isManual = false) => {
+    if (!user || assetsToRefresh.length === 0) return;
+    
+    setIsRefreshing(true);
+    let successCount = 0;
+    
+    try {
+      const symbolsToFetch = assetsToRefresh
+        .filter(a => a.category === 'Stocks' || a.category === 'Crypto' || a.category === 'MF')
+        .map(a => a.symbol)
+        .filter(Boolean);
+
+      if (symbolsToFetch.length === 0) {
+        setIsRefreshing(false);
+        return;
+      }
+
+      const priceData = await fetchBatchPrices(symbolsToFetch, isManual);
+      
+      for (const asset of assetsToRefresh) {
+        const symbol = asset.symbol;
+        if (!symbol) continue;
+
+          const newPrice = priceData[symbol];
+        if (newPrice !== null && newPrice !== undefined) {
+          const qty = asset.quantity || 1;
+          const newCurrentValue = newPrice * qty;
+          
+          if (Math.abs(newCurrentValue - asset.currentValue) > 0.01 || !asset.lastUpdatedAt) {
+            await updateDoc(doc(db, `users/${user.uid}/portfolio`, asset.id!), {
+              lastPrice: newPrice,
+              currentValue: newCurrentValue,
+              lastUpdatedAt: Timestamp.now()
+            });
+            successCount++;
+          }
+        }
+      }
+      
+      if (successCount > 0 && isManual) {
+        toast.success(`Refreshed ${successCount} assets with latest prices`);
+      }
+    } catch (error) {
+      console.error('Error refreshing all prices:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -111,6 +239,11 @@ export default function Portfolio() {
       })) as PortfolioAsset[];
       setAssets(assetsData);
       setIsLoading(false);
+      
+      // Auto-refresh prices on load (TASK 4)
+      if (assetsData.length > 0) {
+        refreshAllPrices(assetsData);
+      }
     }, (error) => {
       console.error('Portfolio fetch error:', error);
       setIsLoading(false);
@@ -125,34 +258,42 @@ export default function Portfolio() {
 
     setIsSubmitting(true);
     try {
-      const metadata: any = {};
+      const metadata: any = {
+        symbol: formData.symbol
+      };
       
+      const currentCategory = CATEGORIES.find(c => c.id === selectedCategory);
+      const assetType = currentCategory?.type || 'other';
+
       if (selectedCategory === 'Stocks') {
-        metadata.quantity = Number(formData.quantity);
-        metadata.buyPrice = Number(formData.buyPrice);
         metadata.investmentDate = formData.investmentDate;
       } else if (selectedCategory === 'Crypto') {
-        metadata.coinName = formData.coinName;
-        metadata.quantity = Number(formData.quantity);
-        metadata.buyPrice = Number(formData.buyPrice);
+        metadata.symbol = formData.symbol;
+      } else if (selectedCategory === 'MF') {
+        metadata.symbol = formData.symbol;
       } else if (selectedCategory === 'Real Estate') {
         metadata.propertyName = formData.propertyName;
         metadata.rentalIncome = Number(formData.rentalIncome);
-      } else if (selectedCategory === 'Bonds') {
-        metadata.bondName = formData.bondName;
-        metadata.interestRate = Number(formData.interestRate);
-        metadata.maturityDate = formData.maturityDate;
       } else if (selectedCategory === 'Gold') {
-        metadata.assetType = formData.assetType;
         metadata.weight = Number(formData.weight);
       }
+
+      const qty = Number(formData.quantity) || 1;
+      const avgPrice = Number(formData.avgBuyPrice) || Number(formData.investedAmount) / qty;
+      const lastP = Number(formData.lastPrice) || avgPrice;
 
       const assetData: Omit<PortfolioAsset, 'id'> = {
         userId: user.uid,
         category: selectedCategory,
-        assetName: formData.assetName || formData.coinName || formData.propertyName || formData.bondName || formData.assetType,
-        investedAmount: Number(formData.investedAmount),
-        currentValue: Number(formData.currentValue) || Number(formData.investedAmount),
+        assetName: formData.assetName || formData.coinName || formData.propertyName || formData.bondName || formData.symbol,
+        symbol: formData.symbol || '',
+        assetType: assetType as any,
+        quantity: qty,
+        avgBuyPrice: avgPrice,
+        lastPrice: lastP,
+        investedAmount: Number(formData.investedAmount) || (qty * avgPrice),
+        currentValue: qty * lastP,
+        lastUpdatedAt: Timestamp.now(),
         metadata,
         timestamp: Timestamp.now()
       };
@@ -183,10 +324,13 @@ export default function Portfolio() {
     setSelectedCategory(asset.category);
     setFormData({
       assetName: asset.assetName,
+      symbol: asset.symbol || '',
+      assetType: asset.assetType,
+      quantity: asset.quantity?.toString() || '',
+      avgBuyPrice: asset.avgBuyPrice?.toString() || '',
+      lastPrice: asset.lastPrice?.toString() || '',
       investedAmount: asset.investedAmount.toString(),
       currentValue: asset.currentValue.toString(),
-      quantity: asset.metadata.quantity?.toString() || '',
-      buyPrice: asset.metadata.buyPrice?.toString() || '',
       investmentDate: asset.metadata.investmentDate || new Date().toISOString().split('T')[0],
       coinName: asset.metadata.coinName || '',
       propertyName: asset.metadata.propertyName || '',
@@ -194,7 +338,6 @@ export default function Portfolio() {
       bondName: asset.metadata.bondName || '',
       interestRate: asset.metadata.interestRate?.toString() || '',
       maturityDate: asset.metadata.maturityDate || '',
-      assetType: asset.metadata.assetType || '',
       weight: asset.metadata.weight?.toString() || ''
     });
     setIsModalOpen(true);
@@ -227,13 +370,29 @@ export default function Portfolio() {
     }
   };
 
+  const formatLastUpdated = (timestamp?: Timestamp) => {
+    if (!timestamp) return 'Never';
+    const now = Date.now();
+    const date = timestamp.toDate().getTime();
+    const diffInMinutes = Math.floor((now - date) / 60000);
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    return timestamp.toDate().toLocaleDateString();
+  };
+
   const resetForm = () => {
     setFormData({
       assetName: '',
+      symbol: '',
+      assetType: 'stock',
+      quantity: '',
+      avgBuyPrice: '',
+      lastPrice: '',
       investedAmount: '',
       currentValue: '',
-      quantity: '',
-      buyPrice: '',
       investmentDate: new Date().toISOString().split('T')[0],
       coinName: '',
       propertyName: '',
@@ -241,7 +400,6 @@ export default function Portfolio() {
       bondName: '',
       interestRate: '',
       maturityDate: '',
-      assetType: '',
       weight: ''
     });
     setSelectedCategory('Stocks');
@@ -351,22 +509,33 @@ export default function Portfolio() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Your Portfolio</h1>
-          <p className="text-gray-500 mt-1">Track and manage your diverse investments in one place.</p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Your Portfolio</h1>
+            <p className="text-gray-500 mt-1">Track and manage your diverse investments in one place.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => refreshAllPrices()}
+              loading={isRefreshing}
+              icon={<Activity className="w-5 h-5 text-indigo-600" />}
+              size="lg"
+            >
+              Refresh Prices
+            </Button>
+            <Button
+              onClick={() => {
+                resetForm();
+                setIsModalOpen(true);
+              }}
+              icon={<Plus className="w-5 h-5" />}
+              size="lg"
+            >
+              Add Asset
+            </Button>
+          </div>
         </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setIsModalOpen(true);
-          }}
-          icon={<Plus className="w-5 h-5" />}
-          size="lg"
-        >
-          Add Asset
-        </Button>
-      </div>
 
       {/* Dashboard Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
@@ -561,98 +730,98 @@ export default function Portfolio() {
             <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all active:scale-[0.98] duration-150">
               <Search className="w-5 h-5" />
             </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all active:scale-[0.98] duration-150">
-              <Filter className="w-5 h-5" />
+            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all active:scale-[0.98] duration-150" onClick={() => refreshAllPrices(assets, true)}>
+              <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
 
-        <div className="overflow-visible hidden md:block">
-          <table className="w-full text-left">
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full">
             <thead>
-              <tr className="bg-gray-50/50">
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Asset</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Invested</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Current Value</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Profit / Loss</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+              <tr className="text-left border-b border-gray-50">
+                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider pl-4">Asset Detail</th>
+                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Market Price</th>
+                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Invested</th>
+                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Current Value</th>
+                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Profit / Loss</th>
+                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider pr-4"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {assets.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-20 text-center">
+                  <td colSpan={6} className="py-24 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <div className="p-4 bg-gray-50 rounded-full">
                         <Briefcase className="w-12 h-12 text-gray-300" />
                       </div>
                       <div>
-                        <p className="text-gray-900 font-bold text-xl">No assets in your portfolio yet</p>
-                        <p className="text-gray-500 font-medium mt-1">Start tracking your diverse investments to see them here.</p>
+                        <p className="text-gray-900 font-bold text-xl">No assets in portfolio</p>
+                        <p className="text-gray-500 font-medium">Start tracking your wealth by adding your first investment.</p>
                       </div>
-                      <Button 
-                        variant="outline"
-                        onClick={() => {
-                          resetForm();
-                          setIsModalOpen(true);
-                        }}
-                        icon={<Plus className="w-5 h-5" />}
-                      >
-                        Add your first asset
-                      </Button>
                     </div>
                   </td>
                 </tr>
               ) : (
                 assets.map((asset) => {
+                  const CategoryIcon = CATEGORIES.find(c => c.id === asset.category)?.icon || Activity;
                   const profit = asset.currentValue - asset.investedAmount;
                   const profitPercentage = asset.investedAmount > 0 ? (profit / asset.investedAmount) * 100 : 0;
-                  const CategoryIcon = CATEGORIES.find(c => c.id === asset.category)?.icon || Activity;
-
+                  
                   return (
-                    <tr key={asset.id} className="hover:bg-gray-50/50 transition-colors group">
-                      <td className="px-6 py-4">
+                    <tr key={asset.id} className="group hover:bg-gray-50/50 transition-colors">
+                      <td className="py-5 pl-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center group-hover:bg-white transition-colors">
-                            <CategoryIcon className="w-5 h-5 text-gray-400" />
+                          <div className="w-10 h-10 bg-white shadow-sm border border-gray-100 rounded-xl flex items-center justify-center">
+                            <CategoryIcon className="w-5 h-5 text-gray-600" />
                           </div>
                           <div>
-                            <p className="font-bold text-gray-900 truncate max-w-[150px] lg:max-w-[200px]">{asset.assetName}</p>
-                            <p className="text-xs text-gray-500 truncate">
-                              {asset.category === 'Stocks' && `${asset.metadata.quantity} shares`}
-                              {asset.category === 'Crypto' && `${asset.metadata.quantity} units`}
-                              {asset.category === 'Gold' && `${asset.metadata.weight}g`}
-                            </p>
+                            <p className="font-bold text-gray-900">{asset.assetName}</p>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{asset.symbol || asset.category}</span>
+                              {asset.lastUpdatedAt && (
+                                <>
+                                  <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                                  <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                                    <Clock className="w-2.5 h-2.5" />
+                                    {formatLastUpdated(asset.lastUpdatedAt)}
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          {asset.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        <CurrencyDisplay value={asset.investedAmount} />
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        <CurrencyDisplay value={asset.currentValue} />
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className={`text-sm font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {profit >= 0 ? '+' : ''}<CurrencyDisplay value={profit} />
-                          <Tooltip content={`${profit >= 0 ? '+' : ''}${profitPercentage.toFixed(4)}%`}>
-                            <span className="text-[10px] opacity-70 border-b border-dotted border-gray-300 inline-block">
-                              {profitPercentage.toFixed(2)}%
-                            </span>
-                          </Tooltip>
+                      <td className="py-5 text-right">
+                        <div className="space-y-0.5">
+                          <p className="text-sm font-bold text-gray-900">
+                            {asset.lastPrice ? <CurrencyDisplay value={asset.lastPrice} /> : '—'}
+                          </p>
+                          <p className="text-[10px] text-gray-500 font-medium">{asset.quantity} units</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="relative inline-block text-left">
+                      <td className="py-5 text-right">
+                        <p className="text-sm font-bold text-gray-900 whitespace-nowrap">
+                          <CurrencyDisplay value={asset.investedAmount} />
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-medium">Avg. <CurrencyDisplay value={asset.avgBuyPrice} /></p>
+                      </td>
+                      <td className="py-5 text-right">
+                        <p className="text-sm font-bold text-gray-900">
+                          <CurrencyDisplay value={asset.currentValue} />
+                        </p>
+                      </td>
+                      <td className="py-5 text-right font-mono">
+                        <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-sm font-bold ${profit >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                          {profit >= 0 ? '+' : ''}{profitPercentage.toFixed(2)}%
+                        </div>
+                      </td>
+                      <td className="py-5 pr-4 text-right">
+                         <div className="relative inline-block text-left">
                           <button
                             onClick={() => setActiveMenuId(activeMenuId === asset.id ? null : asset.id)}
-                            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all active:scale-[0.98] duration-150"
+                            className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all active:scale-[0.98] duration-150"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
@@ -668,7 +837,7 @@ export default function Portfolio() {
                                   initial={{ opacity: 0, scale: 0.95, y: 10 }}
                                   animate={{ opacity: 1, scale: 1, y: 0 }}
                                   exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                  className="absolute right-0 bottom-full mb-2 w-36 bg-white rounded-xl shadow-xl border border-gray-100 z-[110] overflow-hidden"
+                                  className="absolute right-0 top-full mt-2 w-36 bg-white rounded-xl shadow-xl border border-gray-100 z-[110] overflow-hidden"
                                 >
                                   <button
                                     onClick={() => handleEdit(asset)}
@@ -730,14 +899,22 @@ export default function Portfolio() {
                 <div key={asset.id} className="p-4 space-y-4 relative flex flex-col min-h-[220px]">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
-                        <CategoryIcon className="w-5 h-5 text-gray-400" />
+                      <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center shrink-0">
+                        <CategoryIcon className="w-5 h-5 text-gray-500" />
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-gray-900 truncate">{asset.assetName}</p>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 uppercase tracking-wider truncate">
-                          {asset.category}
-                        </span>
+                        <div className="flex items-center gap-2">
+                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">
+                             {asset.symbol || asset.category}
+                           </p>
+                           {asset.lastUpdatedAt && (
+                             <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                               <Clock className="w-2.5 h-2.5" />
+                               {formatLastUpdated(asset.lastUpdatedAt)}
+                             </span>
+                           )}
+                        </div>
                       </div>
                     </div>
                     
@@ -748,64 +925,58 @@ export default function Portfolio() {
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
-                      
-                      <AnimatePresence>
-                        {activeMenuId === asset.id && (
-                          <>
-                            <div 
-                              className="fixed inset-0 z-[100]" 
-                              onClick={() => setActiveMenuId(null)}
-                            />
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                              className="absolute right-0 bottom-full mb-2 w-36 bg-white rounded-xl shadow-xl border border-gray-100 z-[110] overflow-hidden"
-                            >
-                              <button
-                                onClick={() => handleEdit(asset)}
-                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-all active:scale-[0.98] duration-150"
-                              >
-                                <Edit2 className="w-4 h-4 text-indigo-600" />
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(asset)}
-                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all active:scale-[0.98] duration-150"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Delete
-                              </button>
-                            </motion.div>
-                          </>
-                        )}
-                      </AnimatePresence>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 pt-2 mt-auto">
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0">Invested</p>
-                      <p className="text-sm font-bold text-gray-900 truncate">
-                        <CurrencyDisplay value={asset.investedAmount} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Current Val</p>
+                      <p className="text-sm font-bold text-gray-900"><CurrencyDisplay value={asset.currentValue} /></p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Invested</p>
+                      <p className="text-sm font-bold text-gray-900"><CurrencyDisplay value={asset.investedAmount} /></p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">P/L</p>
+                      <p className={`text-sm font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {profit >= 0 ? '+' : ''}{profitPercentage.toFixed(2)}%
                       </p>
                     </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0">Current Value</p>
-                      <p className="text-sm font-bold text-gray-900 truncate">
-                        <CurrencyDisplay value={asset.currentValue} />
+                    <div className="space-y-1 text-right">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Last Price</p>
+                      <p className="text-sm font-bold text-gray-900 italic text-gray-400">
+                        {asset.lastPrice ? <CurrencyDisplay value={asset.lastPrice} /> : '—'}
                       </p>
-                    </div>
-                    <div className="pt-2 border-t border-gray-50 flex justify-between items-center gap-4">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0">Profit / Loss</p>
-                      <div className={`text-sm font-bold truncate ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {profit >= 0 ? '+' : ''}<CurrencyDisplay value={profit} />
-                        <span className="text-[10px] opacity-70 ml-1">
-                          ({profitPercentage.toFixed(2)}%)
-                        </span>
-                      </div>
                     </div>
                   </div>
+                  
+                  <AnimatePresence>
+                    {activeMenuId === asset.id && (
+                      <>
+                        <div className="fixed inset-0 z-[100]" onClick={() => setActiveMenuId(null)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          className="bg-gray-50 rounded-xl p-2 grid grid-cols-2 gap-2 relative z-[110]"
+                        >
+                          <button
+                            onClick={() => handleEdit(asset)}
+                            className="bg-white p-3 rounded-lg text-sm font-bold text-gray-700 shadow-sm flex items-center justify-center gap-2"
+                          >
+                            <Edit2 className="w-4 h-4" /> Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(asset)}
+                            className="bg-white p-3 rounded-lg text-sm font-bold text-rose-600 shadow-sm flex items-center justify-center gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" /> Delete
+                          </button>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })
@@ -843,8 +1014,19 @@ export default function Portfolio() {
                 </button>
               </div>
 
-              <form onSubmit={handleAddAsset} className="p-6 space-y-6 overflow-y-auto flex-1 pb-32 md:pb-6 custom-scrollbar">
-                {/* Category Selector */}
+                <form onSubmit={handleAddAsset} className="p-6 space-y-6 overflow-y-auto flex-1 pb-32 md:pb-6 custom-scrollbar">
+                  {priceError && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-2 text-[10px] font-bold text-amber-700"
+                    >
+                      <AlertCircle className="w-4 h-4" />
+                      {priceError}
+                    </motion.div>
+                  )}
+
+                  {/* Category Selector */}
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-gray-700">Asset Category</label>
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
@@ -872,57 +1054,58 @@ export default function Portfolio() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Dynamic Fields based on Category */}
-                  {selectedCategory === 'Stocks' && (
+                  {(selectedCategory === 'Stocks' || selectedCategory === 'Crypto' || selectedCategory === 'MF') && (
                     <>
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-bold text-gray-700">Stock Name / Symbol</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. Reliance, AAPL"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.assetName}
-                          onChange={(e) => setFormData({ ...formData, assetName: e.target.value })}
-                        />
+                      <div className="space-y-2 md:col-span-2 relative">
+                        <label className="text-sm font-bold text-gray-700 flex justify-between items-center">
+                          Search Symbol / Asset Name
+                          {isSearching && <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />}
+                        </label>
+                        <div className="relative group">
+                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors">
+                            <Search className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Reliance, Apple, Bitcoin"
+                            className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                            value={formData.assetName}
+                            onChange={(e) => handleSymbolSearch(e.target.value)}
+                          />
+                        </div>
+                        
+                        {/* Search Results Dropdown */}
+                        <AnimatePresence>
+                          {formData.assetName.length >= 2 && searchResults.length > 0 && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 5 }}
+                              className="absolute z-[300] left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
+                            >
+                              {searchResults.map((result, idx) => (
+                                <button
+                                  key={`${result.symbol}-${idx}`}
+                                  type="button"
+                                  onClick={() => handleSymbolSelect(result)}
+                                  className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors"
+                                >
+                                  <div className="min-w-0 pr-4">
+                                    <p className="font-bold text-gray-900 truncate">{result.description}</p>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded uppercase tracking-wider">{result.symbol}</span>
+                                      <span className="text-[10px] text-gray-400 font-medium">{result.type}</span>
+                                    </div>
+                                  </div>
+                                  <Plus className="w-4 h-4 text-gray-300 shrink-0" />
+                                </button>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Quantity</label>
-                        <input
-                          type="number"
-                          required
-                          step="any"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.quantity}
-                          onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Buy Price</label>
-                        <input
-                          type="number"
-                          required
-                          step="any"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.buyPrice}
-                          onChange={(e) => setFormData({ ...formData, buyPrice: e.target.value })}
-                        />
-                      </div>
-                    </>
-                  )}
 
-                  {selectedCategory === 'Crypto' && (
-                    <>
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-bold text-gray-700">Coin Name / Symbol</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. BTC, ETH"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.coinName}
-                          onChange={(e) => setFormData({ ...formData, coinName: e.target.value })}
-                        />
-                      </div>
                       <div className="space-y-2">
                         <label className="text-sm font-bold text-gray-700">Quantity</label>
                         <input
@@ -935,14 +1118,14 @@ export default function Portfolio() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Buy Price</label>
+                        <label className="text-sm font-bold text-gray-700">Avg Buy Price</label>
                         <input
                           type="number"
                           required
                           step="any"
                           className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.buyPrice}
-                          onChange={(e) => setFormData({ ...formData, buyPrice: e.target.value })}
+                          value={formData.avgBuyPrice}
+                          onChange={(e) => setFormData({ ...formData, avgBuyPrice: e.target.value })}
                         />
                       </div>
                     </>

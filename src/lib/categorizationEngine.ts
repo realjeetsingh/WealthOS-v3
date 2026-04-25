@@ -13,10 +13,14 @@ const CATEGORY_RULES: Record<string, string[]> = {
   'Food': ['zomato', 'swiggy', 'restaurant', 'cafe', 'starbucks', 'domino', 'mcdonald', 'kfc', 'burger', 'pizza', 'dine', 'food', 'bakery', 'swiggy_instamart'],
   'Travel': ['uber', 'ola', 'rapido', 'fuel', 'petrol', 'diesel', 'shell', 'hpcl', 'bpcl', 'flight', 'indigo', 'airindia', 'railway', 'irctc', 'bus', 'travel', 'taxi'],
   'Shopping': ['amazon', 'flipkart', 'myntra', 'ajio', 'zivame', 'nykaa', 'supermarket', 'retail', 'store', 'mart', 'mall', 'blinkit', 'zepto', 'dmart', 'reliance'],
-  'Bills': ['electricity', 'water', 'recharge', 'broadband', 'rent', 'jio', 'airtel', 'vi', 'bsnl', 'gas', 'insurance', 'policy', 'subscription', 'mobile', 'utility'],
-  'Income': ['salary', 'credited', 'refund', 'bonus', 'dividend', 'interest', 'cashback', 'referral', 'settlement'],
+  'Bills': ['electricity', 'water', 'recharge', 'broadband', 'jio', 'airtel', 'vi', 'bsnl', 'gas', 'insurance', 'policy', 'subscription', 'mobile', 'utility'],
+  'Salary': ['salary', 'credited', 'bonus'],
+  'Investment Returns': ['dividend', 'interest', 'settlement'],
+  'Other Income': ['refund', 'cashback', 'referral'],
   'Health': ['pharmacy', 'hospital', 'doctor', 'apollo', 'netmeds', 'medplus', 'clinic', 'dentist', 'gym', 'fitness'],
   'Entertainment': ['netflix', 'hotstar', 'prime video', 'cinema', 'theatre', 'gaming', 'spotify', 'itunes', 'apple.com', 'google play'],
+  'Rent': ['rent house', 'house rent'],
+  'EMI': ['emi', 'loan repayment'],
 };
 
 /**
@@ -87,21 +91,38 @@ export const categorizeTransaction = (
   };
 };
 
-export const CATEGORIES = ['Food', 'Travel', 'Shopping', 'Bills', 'Income', 'Health', 'Entertainment', 'Other'];
+export interface Category {
+  name: string;
+  type: 'income' | 'expense';
+  emoji: string;
+}
+
+export const CATEGORIES: Category[] = [
+  // INCOME CATEGORIES
+  { name: 'Salary', type: 'income', emoji: '💰' },
+  { name: 'Business', type: 'income', emoji: '🏢' },
+  { name: 'Freelance', type: 'income', emoji: '👨‍💻' },
+  { name: 'Investment Returns', type: 'income', emoji: '📈' },
+  { name: 'Rental Income', type: 'income', emoji: '🏠' },
+  { name: 'Other Income', type: 'income', emoji: '💵' },
+  
+  // EXPENSE CATEGORIES
+  { name: 'Food', type: 'expense', emoji: '🍔' },
+  { name: 'Rent', type: 'expense', emoji: '🏠' },
+  { name: 'Travel', type: 'expense', emoji: '🚗' },
+  { name: 'Bills', type: 'expense', emoji: '💡' },
+  { name: 'Shopping', type: 'expense', emoji: '🛍️' },
+  { name: 'Entertainment', type: 'expense', emoji: '🎬' },
+  { name: 'Health', type: 'expense', emoji: '🏥' },
+  { name: 'Education', type: 'expense', emoji: '📚' },
+  { name: 'EMI', type: 'expense', emoji: '💳' },
+  { name: 'Other Expense', type: 'expense', emoji: '📦' }
+];
 
 /**
  * Get emoji for a category
  */
-export const getCategoryEmoji = (category: string): string => {
-  const emojis: Record<string, string> = {
-    'Food': '🍔',
-    'Travel': '🚗',
-    'Shopping': '🛍️',
-    'Bills': '💡',
-    'Income': '💰',
-    'Health': '🏥',
-    'Entertainment': '🎬',
-    'Other': '📦'
-  };
-  return emojis[category] || emojis['Other'];
+export const getCategoryEmoji = (categoryName: string): string => {
+  const category = CATEGORIES.find(c => c.name === categoryName);
+  return category?.emoji || '📦';
 };

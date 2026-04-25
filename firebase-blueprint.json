@@ -128,12 +128,18 @@
         "userId": { "type": "string" },
         "category": { "type": "string", "enum": ["Stocks", "Crypto", "Real Estate", "Bonds", "Gold"] },
         "assetName": { "type": "string" },
+        "symbol": { "type": "string" },
+        "assetType": { "type": "string", "enum": ["stock", "crypto", "mf", "other"] },
+        "quantity": { "type": "number" },
+        "avgBuyPrice": { "type": "number" },
+        "lastPrice": { "type": "number" },
         "investedAmount": { "type": "number" },
         "currentValue": { "type": "number" },
+        "lastUpdatedAt": { "type": "string", "format": "date-time" },
         "metadata": { "type": "object" },
         "timestamp": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "category", "assetName", "investedAmount", "currentValue", "timestamp"]
+      "required": ["userId", "category", "assetName", "symbol", "assetType", "quantity", "avgBuyPrice", "lastPrice", "investedAmount", "currentValue", "timestamp"]
     },
     "NetWorthSnapshot": {
       "title": "Net Worth Snapshot",
