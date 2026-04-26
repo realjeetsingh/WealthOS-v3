@@ -124,7 +124,7 @@ export const addTransaction = async (userId: string | undefined, data: Omit<Tran
   }
 
   // STEP 4: Safety log
-  console.log("Saving Transaction:", type, "Source:", source, "Category:", category);
+  console.log(`[DEBUG] ATTEMPTING WRITE: ${type} | Source: ${source} | Category: ${category} | Amount: ${data.amount}`);
 
   const txDate = data.date || new Date().toLocaleDateString('en-GB');
   const fingerprint = generateFingerprint({
@@ -146,7 +146,7 @@ export const addTransaction = async (userId: string | undefined, data: Omit<Tran
   const duplicateSnapshot = await getDocs(duplicateQuery);
   
   if (!duplicateSnapshot.empty) {
-    console.warn("REJECTED: Duplicate transaction detected via fingerprint:", fingerprint);
+    console.warn(`[DEBUG] WRITE REJECTED (Duplicate): Fingerprint ${fingerprint}`);
     // For auto-sync, we silently ignore. For manual, the UI will warn (handled in component)
     if (source === 'auto' || source === 'sms') {
       return null; 
@@ -178,6 +178,8 @@ export const addTransaction = async (userId: string | undefined, data: Omit<Tran
       ...cleanData,
       timestamp: serverTimestamp()
     });
+
+    console.log(`[DEBUG] WRITE SUCCESS: Doc ID ${docRef.id} | Total count check needed`);
 
     // TASK 10: AUTO-LINK EMI TRANSACTIONS
     if (type === 'expense') {
@@ -520,6 +522,25 @@ export const deleteLoan = async (userId: string | undefined, loanId: string) => 
 /**
  * Portfolio Assets
  */
+export const addPortfolioAsset = async (userId: string | undefined, data: any) => {
+  if (!userId) throw new Error('User ID is required for addPortfolioAsset');
+  const path = `users/${userId}/portfolio`;
+  try {
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== undefined)
+    );
+
+    const docRef = await addDoc(collection(db, path), {
+      ...cleanData,
+      timestamp: serverTimestamp()
+    });
+    updateFinancialSnapshot(userId).catch(console.error);
+    return docRef;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+};
+
 export const getPortfolioAssets = async (userId: string | undefined) => {
   if (!userId) return [];
   const path = `users/${userId}/portfolio`;

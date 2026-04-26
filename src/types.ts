@@ -76,9 +76,10 @@ export interface Loan {
   emi: number;
   remainingAmount: number;
   startDate: string;
+  emiDueDate?: number;
   nextEmiDate?: string;
   lastPaidDate?: string;
-  endDate: string;
+  endDate?: string;
   status: 'active' | 'completed' | 'closed';
   timestamp: Timestamp;
   dataSource?: 'manual' | 'sms' | 'aa';

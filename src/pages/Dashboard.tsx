@@ -41,12 +41,14 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   PieChart as PieChartIcon,
-  History
+  History,
+  X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import FloatingAlerts, { Alert as FloatingAlert } from '../components/FloatingAlerts';
 import EmiReminder from '../components/EmiReminder';
+import AIChatAssistant from '../components/AIChatAssistant';
 import { 
   LineChart, 
   Line, 
@@ -64,10 +66,12 @@ const Dashboard: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [portfolioAssets, setPortfolioAssets] = useState<PortfolioAsset[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [goals, setGoals] = useState<any[]>([]);
   const [snapshots, setSnapshots] = useState<NetWorthSnapshot[]>([]);
   const [financialSnapshot, setFinancialSnapshot] = useState<FinancialSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isProModalOpen, setIsProModalOpen] = useState(false);
 
   const fetchRawData = async () => {
     if (!user?.uid) return;
@@ -96,6 +100,7 @@ const Dashboard: React.FC = () => {
     const transactionsPath = `users/${user.uid}/transactions`;
     const portfolioPath = `users/${user.uid}/portfolio`;
     const loansPath = `users/${user.uid}/loans`;
+    const goalsPath = `users/${user.uid}/goals`;
     const snapshotsPath = `users/${user.uid}/netWorthSnapshots`;
 
     // 1. Optimization Layer: Listen to Financial Snapshot
@@ -139,6 +144,15 @@ const Dashboard: React.FC = () => {
       (err) => handleFirestoreError(err, OperationType.LIST, loansPath)
     );
 
+    const unsubGoals = onSnapshot(
+      query(collection(db, goalsPath)),
+      (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+        setGoals(docs);
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, goalsPath)
+    );
+
     const unsubSnapshots = onSnapshot(
       query(collection(db, snapshotsPath), orderBy('timestamp', 'asc'), limit(30)),
       (snapshot) => {
@@ -157,6 +171,7 @@ const Dashboard: React.FC = () => {
       unsubTransactions();
       unsubPortfolio();
       unsubLoans();
+      unsubGoals();
       unsubSnapshots();
     };
   }, [user?.uid]);
@@ -626,6 +641,89 @@ const Dashboard: React.FC = () => {
           })()}
         </div>
       )}
+      {/* AI Assistant FAB */}
+      <AIChatAssistant 
+        context={{
+          income: monthlyIncome,
+          expenses: monthlyExpenses,
+          savingsRate: Math.max(0, Math.round((monthlyIncome - monthlyExpenses) / (monthlyIncome || 1) * 100)),
+          goals: goals,
+          loans: loans,
+          portfolio: portfolioAssets,
+          userProfile: userProfile
+        }}
+        isPremium={userProfile?.isPremium || false}
+        onUpgrade={() => setIsProModalOpen(true)}
+        currency={userCurrency}
+      />
+
+      {/* Pro Gating Modal */}
+      <AnimatePresence>
+        {isProModalOpen && (
+          <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsProModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl text-center space-y-6 overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-4">
+                <button onClick={() => setIsProModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <X className="w-6 h-6 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="mx-auto w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center">
+                <Zap className="w-10 h-10 text-indigo-600 animate-pulse" />
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Unlock AI Power</h3>
+                <p className="text-gray-500 font-medium leading-relaxed">
+                  The AI Financial Assistant analyzes your data to give you personalized wealth strategies. This is a Pro feature.
+                </p>
+              </div>
+
+              <div className="bg-[#6334FD]/5 rounded-2xl p-4 text-left space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] text-white font-black">✓</div>
+                  <p className="text-sm font-bold text-gray-700">Context-Aware Advisory</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] text-white font-black">✓</div>
+                  <p className="text-sm font-bold text-gray-700">Goal Planning Engine</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] text-white font-black">✓</div>
+                  <p className="text-sm font-bold text-gray-700">10-Year Wealth Simulations</p>
+                </div>
+              </div>
+
+              <Link 
+                to="/profile" 
+                onClick={() => setIsProModalOpen(false)}
+                className="block w-full bg-[#6334FD] text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-95 transition-all text-sm uppercase tracking-widest"
+              >
+                Go Pro for Unlimited Access
+              </Link>
+              
+              <button 
+                onClick={() => setIsProModalOpen(false)}
+                className="text-xs font-bold text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
+              >
+                Maybe Later
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

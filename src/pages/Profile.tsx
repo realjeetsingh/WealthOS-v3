@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Eye,
@@ -49,7 +50,7 @@ import {
   calculatePortfolioValue,
   calculateTotalLoanRemaining
 } from '../lib/financialEngine';
-import { Transaction, Asset, Liability, Loan, PortfolioAsset, UserProfile } from '../types';
+import { Transaction, Asset, Liability, Loan, PortfolioAsset, UserProfile, Goal } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
 
@@ -58,6 +59,7 @@ import Button from '../components/ui/Button';
 import Logo from '../components/ui/Logo';
 
 const Profile: React.FC = () => {
+  const navigate = useNavigate();
   const { user, userProfile, isPremium } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -71,7 +73,6 @@ const Profile: React.FC = () => {
   const [newBio, setNewBio] = useState(userProfile?.bio || '');
   const [newLocation, setNewLocation] = useState(userProfile?.location || '');
   const [newOccupation, setNewOccupation] = useState(userProfile?.occupation || '');
-  const [newFinancialGoals, setNewFinancialGoals] = useState<string[]>(userProfile?.financialGoals || []);
   const [newProfileImage, setNewProfileImage] = useState(userProfile?.profileImage || '');
   const [newCoverImage, setNewCoverImage] = useState(userProfile?.coverImage || '');
   
@@ -87,6 +88,8 @@ const Profile: React.FC = () => {
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [portfolioAssets, setPortfolioAssets] = useState<PortfolioAsset[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalsLoading, setGoalsLoading] = useState(true);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -96,6 +99,9 @@ const Profile: React.FC = () => {
     const liabilitiesPath = `users/${user.uid}/liabilities`;
     const loansPath = `users/${user.uid}/loans`;
     const portfolioPath = `users/${user.uid}/portfolio`;
+    const goalsPath = `users/${user.uid}/goals`;
+
+    console.log('Profile: Setting up goal listener for path:', goalsPath);
 
     const unsubTransactions = onSnapshot(
       query(collection(db, transactionsPath)),
@@ -142,12 +148,27 @@ const Profile: React.FC = () => {
       (err) => handleFirestoreError(err, OperationType.LIST, portfolioPath)
     );
 
+    const unsubGoals = onSnapshot(
+      query(collection(db, goalsPath)),
+      (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Goal[];
+        console.log('Profile: Fetched goals:', docs.length, docs);
+        setGoals(docs);
+        setGoalsLoading(false);
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, goalsPath);
+        setGoalsLoading(false);
+      }
+    );
+
     return () => {
       unsubTransactions();
       unsubAssets();
       unsubLiabilities();
       unsubLoans();
       unsubPortfolio();
+      unsubGoals();
     };
   }, [user?.uid]);
 
@@ -254,7 +275,6 @@ const Profile: React.FC = () => {
         bio: newBio.trim(),
         location: newLocation.trim(),
         occupation: newOccupation.trim(),
-        financialGoals: newFinancialGoals,
         profileImage: newProfileImage,
         coverImage: newCoverImage
       });
@@ -474,7 +494,6 @@ const Profile: React.FC = () => {
                   setNewBio(userProfile?.bio || '');
                   setNewLocation(userProfile?.location || '');
                   setNewOccupation(userProfile?.occupation || '');
-                  setNewFinancialGoals(userProfile?.financialGoals || []);
                   setNewProfileImage(userProfile?.profileImage || '');
                   setNewCoverImage(userProfile?.coverImage || '');
                   setIsEditing(true);
@@ -651,19 +670,53 @@ const Profile: React.FC = () => {
           </div>
         </div>
 
-        {userProfile?.financialGoals && userProfile.financialGoals.length > 0 ? (
+        {goalsLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+            <span className="ml-3 text-gray-500 font-medium">Syncing goals...</span>
+          </div>
+        ) : goals && goals.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {userProfile.financialGoals.map((goal, index) => (
-              <div 
-                key={index}
-                className="p-6 rounded-3xl bg-gray-50 border border-gray-100 flex items-center space-x-4 group hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all active:scale-[0.98] duration-150 cursor-pointer"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                  <Check className="w-6 h-6" />
+            {goals.map((goal) => {
+              const progress = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
+              return (
+                <div 
+                  key={goal.id}
+                  className="p-6 rounded-3xl bg-gray-50 border border-gray-100 flex flex-col space-y-4 group hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all active:scale-[0.98] duration-150 cursor-pointer"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                      <Target className="w-6 h-6" />
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="font-bold text-gray-900 tracking-tight truncate">{goal.title}</p>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{goal.category}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      <span>Progress</span>
+                      <span>{progress.toFixed(0)}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-indigo-600 rounded-full" 
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between items-baseline">
+                      <p className="text-sm font-black text-gray-900">
+                        <CurrencyDisplay value={goal.currentAmount} />
+                      </p>
+                      <p className="text-[10px] font-medium text-gray-400 italic">
+                        target <CurrencyDisplay value={goal.targetAmount} />
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <span className="font-bold text-gray-900 tracking-tight">{goal}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
@@ -675,18 +728,7 @@ const Profile: React.FC = () => {
               Define your financial targets to stay motivated and track your progress.
             </p>
             <button 
-              onClick={() => {
-                setNewName(userProfile?.name || '');
-                setNewPhone(userProfile?.phone || '');
-                setNewCurrency(userProfile?.currency || DEFAULT_CURRENCY);
-                setNewBio(userProfile?.bio || '');
-                setNewLocation(userProfile?.location || '');
-                setNewOccupation(userProfile?.occupation || '');
-                setNewFinancialGoals(userProfile?.financialGoals || []);
-                setNewProfileImage(userProfile?.profileImage || '');
-                setNewCoverImage(userProfile?.coverImage || '');
-                setIsEditing(true);
-              }}
+              onClick={() => navigate('/goals')}
               className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-xl border border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm"
             >
               Set Your First Goal
@@ -1005,61 +1047,6 @@ const Profile: React.FC = () => {
                       className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
                       placeholder="+91 00000 00000"
                     />
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Financial Goals</label>
-                  <div className="flex space-x-2 mb-4">
-                    <div className="relative flex-1">
-                      <Target className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input 
-                        type="text"
-                        id="goalInput"
-                        className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none font-bold text-gray-900"
-                        placeholder="Add a new goal (e.g. Buy a house)"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const input = e.currentTarget;
-                            if (input.value.trim()) {
-                              setNewFinancialGoals([...newFinancialGoals, input.value.trim()]);
-                              input.value = '';
-                            }
-                          }
-                        }}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const input = document.getElementById('goalInput') as HTMLInputElement;
-                        if (input.value.trim()) {
-                          setNewFinancialGoals([...newFinancialGoals, input.value.trim()]);
-                          input.value = '';
-                        }
-                      }}
-                      className="p-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
-                    >
-                      <Plus className="w-6 h-6" />
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {newFinancialGoals.map((goal, index) => (
-                      <div 
-                        key={index}
-                        className="flex items-center bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl border border-indigo-100 group"
-                      >
-                        <span className="font-bold text-sm">{goal}</span>
-                        <button
-                          type="button"
-                          onClick={() => setNewFinancialGoals(newFinancialGoals.filter((_, i) => i !== index))}
-                          className="ml-2 text-indigo-400 hover:text-indigo-600 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
                   </div>
                 </div>
 

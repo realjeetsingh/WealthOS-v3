@@ -78,7 +78,11 @@ service cloud.firestore {
              data.totalInterest is number &&
              data.emi is number && data.emi >= 0 &&
              data.remainingAmount is number && data.remainingAmount >= 0 &&
-             data.endDate is string &&
+             (!('endDate' in data) || data.endDate is string) &&
+             (!('startDate' in data) || data.startDate is string) &&
+             (!('emiDueDate' in data) || data.emiDueDate is number) &&
+             (!('lenderName' in data) || data.lenderName is string) &&
+             (!('interestRate' in data) || data.interestRate is number) &&
              data.status in ['active', 'completed'] &&
              data.timestamp is timestamp;
     }
@@ -87,8 +91,8 @@ service cloud.firestore {
       return data.category in ['Stocks', 'Crypto', 'Real Estate', 'Bonds', 'Gold'] &&
              data.assetName is string && data.assetName.size() > 0 &&
              data.investedAmount is number && data.investedAmount >= 0 &&
-             data.currentValue is number && data.currentValue >= 0 &&
-             data.metadata is map &&
+             (!('currentValue' in data) || data.currentValue is number) &&
+             (!('metadata' in data) || data.metadata is map) &&
              data.timestamp is timestamp;
     }
 

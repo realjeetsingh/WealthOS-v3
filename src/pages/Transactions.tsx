@@ -98,7 +98,7 @@ const Transactions: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [isDebugMode, setIsDebugMode] = useState(false);
+  const [isDebugMode, setIsDebugMode] = useState(true);
 
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -135,13 +135,15 @@ const Transactions: React.FC = () => {
       return;
     }
 
-    // TASK 6: RESET DATABASE (One-time)
+    /* 
+    // TASK 6: RESET DATABASE (One-time) - DISABLED TO PREVENT DATA LOSS
     const hasReset = localStorage.getItem(`db_reset_v2_${user.uid}`);
     if (!hasReset) {
       resetTransactions(user.uid).then(() => {
         localStorage.setItem(`db_reset_v2_${user.uid}`, 'true');
       });
     }
+    */
 
     const path = `users/${user.uid}/transactions`;
     const q = query(
@@ -155,6 +157,11 @@ const Transactions: React.FC = () => {
         id: doc.id,
         ...doc.data()
       })) as Transaction[];
+      
+      if (isDebugMode) {
+        console.log(`[DEBUG] Received ${docs.length} transactions from Firestore for path: ${path}`);
+      }
+      
       setTransactions(docs);
       setLoading(false);
     }, (err) => {
