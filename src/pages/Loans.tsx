@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useLayout } from '../contexts/LayoutContext';
+import { NAVBAR_HEIGHT, FAB_SAFE_SPACING } from '../constants';
 import { toast } from 'sonner';
 import { collection, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -49,6 +51,7 @@ import {
 
 const Loans: React.FC = () => {
   const { user, userProfile } = useAuth();
+  const { isNavVisible } = useLayout();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null);
@@ -78,6 +81,16 @@ const Loans: React.FC = () => {
   const [suggestions, setSuggestions] = useState<LoanSuggestion[]>([]);
   const [ignoredIds, setIgnoredIds] = useState<string[]>([]);
   const [currentDetectionSource, setCurrentDetectionSource] = useState<'manual' | 'sms' | 'aa'>('manual');
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowTooltip(true), 1500);
+    const hideTimer = setTimeout(() => setShowTooltip(false), 6000);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
 
   // Simulation state
   const [isSimModalOpen, setIsSimModalOpen] = useState(false);
@@ -847,51 +860,97 @@ const Loans: React.FC = () => {
         </Modal>
 
         {/* FAB Button and Menu */}
-        <div className="fixed bottom-8 right-8 z-50">
-          <motion.div className="flex flex-col items-end space-y-4">
-            {isFabMenuOpen && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-2 min-w-[200px] overflow-hidden"
-              >
-                <div className="p-3 border-b border-gray-50 mb-1">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Quick Actions</p>
-                </div>
-                <button 
-                  onClick={() => {
-                    setIsAddModalOpen(true);
-                    setIsFabMenuOpen(false);
-                  }}
-                  className="w-full flex items-center space-x-3 p-4 hover:bg-indigo-50 rounded-2xl transition-colors group"
-                >
-                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-white shadow-sm">
-                    <PlusCircle className="w-5 h-5" />
-                  </div>
-                  <span className="font-bold text-gray-700">Add New Loan</span>
-                </button>
-                <button 
-                  className="w-full flex items-center space-x-3 p-4 hover:bg-indigo-50 rounded-2xl transition-colors group opacity-50 cursor-not-allowed"
-                  disabled
-                >
-                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-white shadow-sm">
-                    <Zap className="w-5 h-5" />
-                  </div>
-                  <span className="font-bold text-gray-700">Detect Loans (Auto)</span>
-                </button>
-              </motion.div>
-            )}
-            
-            <button
-              onClick={() => setIsFabMenuOpen(!isFabMenuOpen)}
-              className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-300 transform active:scale-95 ${
-                isFabMenuOpen ? 'bg-gray-800 rotate-45' : 'bg-gradient-to-tr from-indigo-600 to-indigo-500 hover:scale-110'
-              }`}
+        {/* FAB System */}
+        <AnimatePresence>
+          {!isAddModalOpen && !isEditModalOpen && !isSimModalOpen && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ 
+                opacity: 1, 
+                scale: 1, 
+                y: 0,
+                bottom: isNavVisible 
+                  ? `calc(${NAVBAR_HEIGHT + FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))` 
+                  : `calc(${FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))`
+              }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+              className="fixed right-6 md:right-8 z-50 flex flex-col items-end"
             >
-              <PlusCircle className="w-8 h-8" />
-            </button>
-          </motion.div>
-        </div>
+              <AnimatePresence>
+                {showTooltip && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.8 }}
+                    className="mb-3 px-4 py-2 bg-gray-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap relative"
+                  >
+                    Add Loan
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {isFabMenuOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-2 min-w-[200px] overflow-hidden mb-4"
+                  >
+                    <div className="p-3 border-b border-gray-50 mb-1">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Quick Actions</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setIsAddModalOpen(true);
+                        setIsFabMenuOpen(false);
+                      }}
+                      className="w-full flex items-center space-x-3 p-4 hover:bg-indigo-50 rounded-2xl transition-colors group"
+                    >
+                      <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-white shadow-sm">
+                        <PlusCircle className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold text-gray-700">Add New Loan</span>
+                    </button>
+                    <button 
+                      className="w-full flex items-center space-x-3 p-4 hover:bg-indigo-50 rounded-2xl transition-colors group opacity-50 cursor-not-allowed"
+                      disabled
+                    >
+                      <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-white shadow-sm">
+                        <Zap className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold text-gray-700">Detect Loans (Auto)</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
+              <motion.button
+                onClick={() => {
+                  setIsFabMenuOpen(!isFabMenuOpen);
+                  setShowTooltip(false);
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-300 transform ${
+                  isFabMenuOpen ? 'bg-gray-800 rotate-45' : 'bg-gradient-to-tr from-indigo-600 to-indigo-500 shadow-indigo-200'
+                }`}
+              >
+                <PlusCircle className="w-8 h-8" />
+              </motion.button>
+
+              {/* Overlay to close menu */}
+              {isFabMenuOpen && (
+                <div 
+                  className="fixed inset-0 z-[-1]" 
+                  onClick={() => setIsFabMenuOpen(false)} 
+                />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Updated Loan Grid */}
         {loans.length > 0 && (

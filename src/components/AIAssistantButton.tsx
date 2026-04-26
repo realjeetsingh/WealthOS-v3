@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLayout } from '../contexts/LayoutContext';
+import { NAVBAR_HEIGHT, FAB_SAFE_SPACING } from '../constants';
 import { SmartFinancialAnalysis, SmartFinancialInsight } from '../services/geminiService';
 import { formatCurrency } from '../lib/formatCurrency';
 import Button from './ui/Button';
@@ -97,8 +98,8 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
               opacity: 1, 
               scale: 1,
               bottom: isNavVisible 
-                ? 'calc(90px + env(safe-area-inset-bottom))' 
-                : 'calc(20px + env(safe-area-inset-bottom))'
+                ? `calc(${NAVBAR_HEIGHT + FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))` 
+                : `calc(${FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))`
             }}
             exit={{ opacity: 0, scale: 0.5 }}
             transition={{ 

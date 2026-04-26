@@ -7,6 +7,8 @@ import { CurrencyDisplay } from './CurrencyDisplay';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toast } from 'sonner';
+import { useLayout } from '../contexts/LayoutContext';
+import { NAVBAR_HEIGHT, FAB_SAFE_SPACING } from '../constants';
 
 interface EmiReminderProps {
   loans: Loan[];
@@ -15,6 +17,7 @@ interface EmiReminderProps {
 }
 
 const EmiReminder: React.FC<EmiReminderProps> = ({ loans, userId, currency }) => {
+  const { isNavVisible } = useLayout();
   const [activeReminder, setActiveReminder] = useState<Loan | null>(null);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
 
@@ -133,9 +136,16 @@ const EmiReminder: React.FC<EmiReminderProps> = ({ loans, userId, currency }) =>
       {activeReminder && reminderConfig && (
         <motion.div
           initial={{ opacity: 0, y: 50, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
+          animate={{ 
+            opacity: 1, 
+            y: 0, 
+            scale: 1,
+            bottom: isNavVisible 
+              ? `calc(${NAVBAR_HEIGHT + FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))` 
+              : `calc(${FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))`
+          }}
           exit={{ opacity: 0, y: 50, scale: 0.9 }}
-          className="fixed bottom-24 right-6 left-6 md:left-auto md:w-96 z-50 shadow-2xl"
+          className="fixed right-6 left-6 md:left-auto md:w-96 z-50 shadow-2xl"
         >
           <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
             <div className={`${reminderConfig.color} p-4 flex items-center justify-between`}>

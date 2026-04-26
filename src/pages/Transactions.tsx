@@ -53,6 +53,7 @@ import { Link } from 'react-router-dom';
 
 import { motion, AnimatePresence } from 'motion/react';
 import { useLayout } from '../contexts/LayoutContext';
+import { NAVBAR_HEIGHT, FAB_SAFE_SPACING } from '../constants';
 import { getCategoryEmoji, CATEGORIES } from '../lib/categorizationEngine';
 
 const Transactions: React.FC = () => {
@@ -444,8 +445,8 @@ const Transactions: React.FC = () => {
         <motion.div 
           animate={{ 
             bottom: isNavVisible 
-              ? 'calc(90px + env(safe-area-inset-bottom))' 
-              : 'calc(20px + env(safe-area-inset-bottom))'
+              ? `calc(${NAVBAR_HEIGHT + FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))` 
+              : `calc(${FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))`
           }}
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
           className="fixed right-6 md:right-8 z-[9999] flex flex-col items-end"

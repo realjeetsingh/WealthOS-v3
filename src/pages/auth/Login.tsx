@@ -162,9 +162,12 @@ const Login: React.FC = () => {
         ></motion.div>
         
         <div className="relative z-10">
-          <div className="flex items-center space-x-3 mb-12">
-            <Logo size={40} />
-            <span className="text-white font-black text-2xl tracking-tighter">WealthOS</span>
+          <div className="flex items-center space-x-4 mb-14">
+            <div className="relative">
+              <div className="absolute inset-0 bg-white/20 blur-xl rounded-full scale-150"></div>
+              <Logo size={52} className="relative z-10" />
+            </div>
+            <span className="text-white font-black text-3xl tracking-tighter">WealthOS</span>
           </div>
 
           <div className="max-w-md">
@@ -216,13 +219,16 @@ const Login: React.FC = () => {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="max-w-md w-full relative z-10 my-auto"
         >
-          <div className="md:hidden flex items-center space-x-2 mb-8 justify-center">
-            <Logo size={32} />
-            <span className="text-gray-900 font-black text-xl tracking-tighter">WealthOS</span>
+          <div className="md:hidden flex items-center space-x-3 mb-10 justify-center">
+            <div className="relative">
+              <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full scale-150"></div>
+              <Logo size={44} className="relative z-10" />
+            </div>
+            <span className="text-gray-900 font-black text-2xl tracking-tighter">WealthOS</span>
           </div>
 
-          <div className="mb-10">
-            <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-2">
+          <div className="mb-12">
+            <h2 className="text-4xl font-black text-gray-900 tracking-tight mb-3">
               Welcome
             </h2>
             <p className="text-gray-600">

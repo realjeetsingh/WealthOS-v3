@@ -10,6 +10,7 @@ import { formatCurrency } from '../lib/formatCurrency';
 import Modal from '../components/Modal';
 import Button from '../components/ui/Button';
 import Skeleton from '../components/ui/Skeleton';
+import { toast } from 'sonner';
 import { 
   Target, 
   Plus, 
@@ -27,6 +28,8 @@ import {
   Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLayout } from '../contexts/LayoutContext';
+import { NAVBAR_HEIGHT, FAB_SAFE_SPACING } from '../constants';
 
 const CATEGORY_SUGGESTIONS = [
   'Food', 'Rent', 'Shopping', 'Transport', 'Entertainment', 
@@ -35,6 +38,7 @@ const CATEGORY_SUGGESTIONS = [
 
 const Budgets: React.FC = () => {
   const { user, userProfile } = useAuth();
+  const { isNavVisible } = useLayout();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,12 +46,23 @@ const Budgets: React.FC = () => {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isFABMenuOpen, setIsFABMenuOpen] = useState(false);
   const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [category, setCategory] = useState('');
   const [limit, setLimit] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowTooltip(true), 1500);
+    const hideTimer = setTimeout(() => setShowTooltip(false), 6000);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -195,6 +210,7 @@ const Budgets: React.FC = () => {
         });
       }
       setIsModalOpen(false);
+      toast.success(editingBudget ? "Budget updated successfully" : "Budget created successfully");
     } catch (err: any) {
       setError(err.message || "Failed to save budget");
     } finally {
@@ -243,24 +259,20 @@ const Budgets: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Budget Management</h1>
           <p className="text-gray-500 mt-1">Plan your spending and reach your financial goals.</p>
         </div>
-        <Button 
-          onClick={() => handleOpenModal()}
-          icon={<Plus className="w-5 h-5" />}
-          size="lg"
-          className="shadow-lg shadow-indigo-200"
-        >
-          Add Budget
-        </Button>
       </div>
 
       {budgets.length === 0 ? (
-        <div className="bg-white rounded-[2.5rem] shadow-xl shadow-black/5 border border-gray-100 p-20 text-center flex flex-col items-center justify-center space-y-6">
-          <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-[2.5rem] shadow-xl shadow-black/5 border border-gray-100 p-20 text-center flex flex-col items-center justify-center space-y-6"
+        >
+          <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center shadow-inner">
             <Target className="w-10 h-10 text-indigo-400" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Start by setting your first budget</h2>
-            <p className="text-gray-500 mt-2 max-w-md mx-auto">
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Start by setting your first budget</h2>
+            <p className="text-gray-500 mt-2 max-w-md mx-auto font-medium">
               Budgets help you track spending by category and ensure you're staying within your financial limits.
             </p>
           </div>
@@ -268,10 +280,11 @@ const Budgets: React.FC = () => {
             onClick={() => handleOpenModal()}
             size="lg"
             icon={<Plus className="w-5 h-5" />}
+            className="px-8 h-14 rounded-2xl shadow-xl shadow-indigo-100"
           >
-            Create Budget
+            Set Your First Budget
           </Button>
-        </div>
+        </motion.div>
       ) : (
         <>
           {/* Monthly Budget Overview Card */}
@@ -466,6 +479,117 @@ const Budgets: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Floating Action Button (FAB) System */}
+      <AnimatePresence>
+        {!isModalOpen && !isDeleteModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ 
+              opacity: 1, 
+              scale: 1, 
+              y: 0,
+              bottom: isNavVisible 
+                ? `calc(${NAVBAR_HEIGHT + FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))` 
+                : `calc(${FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))`
+            }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="fixed right-6 md:right-8 z-50 flex flex-col items-end"
+          >
+            <AnimatePresence>
+              {showTooltip && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.8 }}
+                  className="mb-3 px-4 py-2 bg-gray-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap relative"
+                >
+                  Manage Budgets
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Action Menu Popup */}
+            <AnimatePresence>
+              {isFABMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                  className="mb-4 w-56 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden"
+                >
+                  <div className="p-2 space-y-1">
+                    <button
+                      onClick={() => {
+                        handleOpenModal();
+                        setIsFABMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 p-4 hover:bg-indigo-50 rounded-2xl group transition-all"
+                    >
+                      <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-200 group-hover:scale-110 transition-transform">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-black text-gray-900 leading-tight">Add Budget</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-tight">Set monthly limit</p>
+                      </div>
+                    </button>
+                    
+                    <button
+                      disabled
+                      className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 rounded-2xl group transition-all opacity-40 cursor-not-allowed"
+                    >
+                      <div className="p-2 bg-gray-100 rounded-xl text-gray-400">
+                        <Edit2 className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-black text-gray-900 leading-tight">Edit Budget</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-tight">Coming soon</p>
+                      </div>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Main FAB */}
+            <motion.button
+              onClick={() => {
+                setIsFABMenuOpen(!isFABMenuOpen);
+                setShowTooltip(false);
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 ${isFABMenuOpen ? 'bg-gray-900 rotate-45' : 'bg-gradient-to-r from-[#6B66FE] to-[#6334FD] shadow-indigo-200'}`}
+            >
+              <Plus className="w-8 h-8 text-white" />
+              {!isFABMenuOpen && (
+                <motion.div 
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                    opacity: [0.5, 1, 0.5]
+                  }}
+                  transition={{ 
+                    duration: 2,
+                    repeat: Infinity
+                  }}
+                  className="absolute inset-0 bg-white/20 rounded-full blur-sm"
+                />
+              )}
+            </motion.button>
+            
+            {/* Overlay to close menu */}
+            {isFABMenuOpen && (
+              <div 
+                className="fixed inset-0 z-[-1]" 
+                onClick={() => setIsFABMenuOpen(false)} 
+              />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Add/Edit Modal */}
       <Modal
