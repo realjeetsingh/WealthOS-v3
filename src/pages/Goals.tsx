@@ -20,12 +20,26 @@ import {
   Trophy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLayout } from '../contexts/LayoutContext';
+import { NAVBAR_HEIGHT, FAB_SAFE_SPACING } from '../constants';
 
 const Goals: React.FC = () => {
   const { user, userProfile } = useAuth();
+  const { isNavVisible } = useLayout();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddingGoal, setIsAddingGoal] = useState(false);
+  const [isFABMenuOpen, setIsFABMenuOpen] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowTooltip(true), 1500);
+    const hideTimer = setTimeout(() => setShowTooltip(false), 6000);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
   
   // New Goal Form State
   const [title, setTitle] = useState('');
@@ -117,14 +131,6 @@ const Goals: React.FC = () => {
           </h1>
           <p className="text-gray-500 mt-2 font-medium">Set targets and track your journey to financial freedom.</p>
         </div>
-        <Button 
-          onClick={() => setIsAddingGoal(true)}
-          icon={<Plus className="w-5 h-5" />}
-          size="lg"
-          className="shadow-lg shadow-indigo-100"
-        >
-          Add New Goal
-        </Button>
       </div>
 
       {loading ? (
@@ -229,6 +235,130 @@ const Goals: React.FC = () => {
           })}
         </div>
       )}
+
+      {/* Floating Action Button (FAB) System */}
+      <AnimatePresence>
+        {!isAddingGoal && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ 
+              opacity: 1, 
+              scale: 1, 
+              y: 0,
+              bottom: isNavVisible 
+                ? `calc(${NAVBAR_HEIGHT + FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))` 
+                : `calc(${FAB_SAFE_SPACING}px + env(safe-area-inset-bottom))`
+            }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="fixed right-6 md:right-8 z-50 flex flex-col items-end"
+          >
+            <AnimatePresence>
+              {showTooltip && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.8 }}
+                  className="mb-3 px-4 py-2 bg-gray-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap relative"
+                >
+                  Manage Goals
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Action Menu Popup */}
+            <AnimatePresence>
+              {isFABMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                  className="mb-4 w-56 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden"
+                >
+                  <div className="p-2 space-y-1">
+                    <button
+                      onClick={() => {
+                        setIsAddingGoal(true);
+                        setIsFABMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 p-4 hover:bg-indigo-50 rounded-2xl group transition-all"
+                    >
+                      <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-200 group-hover:scale-110 transition-transform">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-black text-gray-900 leading-tight">Add New Goal</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-tight">Set target</p>
+                      </div>
+                    </button>
+                    
+                    <button
+                      disabled
+                      className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 rounded-2xl group transition-all opacity-40 cursor-not-allowed"
+                    >
+                      <div className="p-2 bg-gray-100 rounded-xl text-gray-400">
+                        <TrendingUp className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-black text-gray-900 leading-tight">Update Progress</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-tight">Coming soon</p>
+                      </div>
+                    </button>
+
+                    <button
+                      disabled
+                      className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 rounded-2xl group transition-all opacity-40 cursor-not-allowed"
+                    >
+                      <div className="p-2 bg-gray-100 rounded-xl text-gray-400">
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-black text-gray-900 leading-tight">Close Goal</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-tight">Coming soon</p>
+                      </div>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Main FAB */}
+            <motion.button
+              onClick={() => {
+                setIsFABMenuOpen(!isFABMenuOpen);
+                setShowTooltip(false);
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 ${isFABMenuOpen ? 'bg-gray-900 rotate-45' : 'bg-gradient-to-r from-[#6B66FE] to-[#6334FD] shadow-indigo-200'}`}
+            >
+              <Plus className="w-8 h-8 text-white" />
+              {!isFABMenuOpen && (
+                <motion.div 
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                    opacity: [0.5, 1, 0.5]
+                  }}
+                  transition={{ 
+                    duration: 2,
+                    repeat: Infinity
+                  }}
+                  className="absolute inset-0 bg-white/20 rounded-full blur-sm"
+                />
+              )}
+            </motion.button>
+            
+            {/* Overlay to close menu */}
+            {isFABMenuOpen && (
+              <div 
+                className="fixed inset-0 z-[-1]" 
+                onClick={() => setIsFABMenuOpen(false)} 
+              />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Add Goal Modal */}
       <AnimatePresence>
