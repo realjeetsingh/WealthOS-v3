@@ -158,6 +158,24 @@ const PrivacySettings: React.FC = () => {
             </Button>
           </div>
         </div>
+
+        <div className="pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={() => navigate('/privacy')}
+              className="text-xs font-black text-gray-400 uppercase tracking-widest hover:text-indigo-600 transition-colors"
+            >
+              Privacy Policy
+            </button>
+            <button 
+              onClick={() => navigate('/terms')}
+              className="text-xs font-black text-gray-400 uppercase tracking-widest hover:text-indigo-600 transition-colors"
+            >
+              Terms of Service
+            </button>
+          </div>
+          <p className="text-[10px] font-bold text-gray-300">WealthOS v1.2.0-beta</p>
+        </div>
       </div>
 
       <AnimatePresence>

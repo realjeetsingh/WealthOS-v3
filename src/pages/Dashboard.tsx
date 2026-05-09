@@ -67,6 +67,8 @@ import {
 import { updateStreak, UserStreak } from '../services/streakService';
 import { getDailySnapshot, DailySnapshotData } from '../services/dailyHabitEngine';
 
+import { toDate } from '../lib/dateUtils';
+
 const Dashboard: React.FC = () => {
   const { user, userProfile } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -272,18 +274,25 @@ const Dashboard: React.FC = () => {
   }, [user?.uid, netWorth, loading]);
 
   // Convert alerts to floating alert format
-  const floatingAlerts: FloatingAlert[] = alerts.map((alert, i) => ({
+  const floatingAlerts: FloatingAlert[] = useMemo(() => alerts.map((alert, i) => ({
     id: `alert-${i}-${Date.now()}`,
     type: alert.type === 'info' ? 'info' : 
           alert.type === 'danger' ? 'danger' : 'warning',
     title: alert.title,
     message: alert.message
-  }));
+  })), [alerts]);
 
   // Trend Calculation
   const lastSnapshot = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
   const netWorthTrend = lastSnapshot ? netWorth - lastSnapshot.netWorth : 0;
   const isIncreasing = netWorthTrend >= 0;
+
+  const chartData = useMemo(() => snapshots.map(s => ({
+    date: toDate(s.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+    value: s.netWorth || 0
+  })), [snapshots]);
+
+  const isDashboardEmpty = transactions.length === 0 && portfolioAssets.length === 0 && loans.length === 0;
 
   if (loading) {
     return (
@@ -320,8 +329,6 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const isDashboardEmpty = transactions.length === 0 && portfolioAssets.length === 0 && loans.length === 0;
-
   if (isDashboardEmpty && !loading) {
     return (
       <div className="w-full h-[calc(100vh-200px)] flex items-center justify-center">
@@ -336,11 +343,6 @@ const Dashboard: React.FC = () => {
       </div>
     );
   }
-
-  const chartData = snapshots.map(s => ({
-    date: (typeof s.timestamp?.toDate === 'function') ? s.timestamp.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '',
-    value: s.netWorth
-  }));
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
@@ -573,7 +575,7 @@ const Dashboard: React.FC = () => {
             <h3 className="font-bold text-gray-900 text-lg">Smart Insights</h3>
           </div>
           <div className="space-y-4 flex-1">
-            {upgradedInsights.length > 0 ? (
+            {Array.isArray(upgradedInsights) && upgradedInsights.length > 0 ? (
               <div className="space-y-3">
                 {upgradedInsights.slice(0, 2).map((insight, i) => (
                   <div key={i} className="space-y-1">

@@ -1,3 +1,4 @@
+import { toDate } from '../lib/dateUtils';
 import { Transaction, Loan, PortfolioAsset, UserProfile } from '../types';
 import { calculateMonthlyIncome, calculateMonthlyExpenses } from '../lib/financialEngine';
 
@@ -29,8 +30,8 @@ export const getDailySnapshot = (
   const getExpensesForDate = (date: Date) => {
     return transactions
       .filter(tx => {
-        if (!tx.timestamp) return false;
-        const txDate = tx.timestamp.toDate();
+        const txDate = toDate(tx.timestamp);
+        if (!txDate) return false;
         return txDate.getFullYear() === date.getFullYear() &&
                txDate.getMonth() === date.getMonth() &&
                txDate.getDate() === date.getDate() &&
@@ -52,19 +53,22 @@ export const getDailySnapshot = (
   }
 
   // Upcoming EMIs (next 3 days)
-  const upcomingEMIs = loans
+  const upcomingEMIs = (loans || [])
     .filter(loan => {
       if (loan.status !== 'active' || !loan.nextEmiDate) return false;
-      const emiDate = loan.nextEmiDate.toDate();
+      const emiDate = toDate(loan.nextEmiDate);
+      if (!emiDate) return false;
       const diffTime = emiDate.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       return diffDays >= 0 && diffDays <= 3;
     })
     .length;
 
-  // Portfolio movement (mocking since we don't have historical portfolio snapshots daily easily yet, but we can compute from sync data if available)
-  // For now, let's look at average gain/loss from existing assets
-  const portfolioMovement = portfolio.reduce((acc, p) => acc + (p.profitPercentage || 0), 0) / (portfolio.length || 1);
+  // Portfolio movement calculation
+  const portfolioMovement = portfolio.reduce((acc, p) => {
+    const profit = p.avgBuyPrice > 0 ? ((p.lastPrice - p.avgBuyPrice) / p.avgBuyPrice) * 100 : 0;
+    return acc + profit;
+  }, 0) / (portfolio.length || 1);
 
   // Message generation
   let message = "Welcome back! Here's what happened while you were away.";

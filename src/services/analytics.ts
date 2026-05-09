@@ -41,6 +41,7 @@ export const AnalyticsEvents = {
   AI_CHAT_RESPONSE_FAILURE: 'ai_chat_response_failure',
   PREMIUM_POPUP_OPENED: 'premium_popup_opened',
   SUBSCRIPTION_STARTED: 'subscription_started',
+  ONBOARDING_SKIPPED: 'onboarding_skipped',
   PORTFOLIO_SYNC_FAILURE: 'portfolio_sync_failure',
   API_FAILURE: 'api_failure',
   LOGIN_SUCCESS: 'login_success',

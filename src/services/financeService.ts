@@ -21,6 +21,8 @@ import { categorizeTransaction, CATEGORIES } from '../lib/categorizationEngine';
 import { getUserCategoryMappings, updateUserCategoryMapping } from './categorizationService';
 import { generateFingerprint } from '../lib/smsParser';
 
+import { trackEvent, AnalyticsEvents } from './analytics';
+
 /**
  * Budgets
  */
@@ -210,6 +212,15 @@ export const addTransaction = async (userId: string | undefined, data: Omit<Tran
     }
 
     updateFinancialSnapshot(userId).catch(console.error);
+
+    // Track Analytics
+    trackEvent(AnalyticsEvents.TRANSACTION_ADDED, {
+      type: type,
+      category: category,
+      amount: data.amount,
+      source: source
+    });
+
     return docRef;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);
@@ -568,6 +579,14 @@ export const addGoal = async (userId: string | undefined, data: any) => {
       ...data,
       timestamp: serverTimestamp()
     });
+
+    // Track Analytics
+    trackEvent(AnalyticsEvents.GOAL_CREATED, {
+      title: data.title,
+      targetAmount: data.targetAmount,
+      category: data.category
+    });
+
     return docRef;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);

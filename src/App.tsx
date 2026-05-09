@@ -37,237 +37,241 @@ import { auth } from './firebase';
 import { User as UserIcon } from 'lucide-react';
 import SMSSyncListener from './components/SMSSyncListener';
 
+import ErrorBoundary from './components/ErrorBoundary';
+
 export default function App() {
   return (
-    <AuthProvider>
-      <Toaster position="top-right" richColors />
-      <SMSSyncListener />
-      <Router>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/profile" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Profile />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/insights" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Insights />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/transactions" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Transactions />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/budgets" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Budgets />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/portfolio" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Portfolio />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/loans" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Loans />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Settings />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings/account" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <AccountSettings />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings/security" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <SecuritySettings />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings/preferences" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <PreferencesSettings />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings/notifications" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <NotificationSettings />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings/privacy" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <PrivacySettings />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings/support" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <SupportSettings />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings/permissions" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <AppPermissions />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/more" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <More />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/academy" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <WealthAcademy />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/onboarding" 
-            element={
-              <ProtectedRoute>
-                <Onboarding />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/goals" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Goals />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/faq" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <FAQ />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/privacy" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Privacy />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/terms" 
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Terms />
-                </Layout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="/auth/login" element={<Login />} />
-          <Route path="/auth/signup" element={<Signup />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Toaster position="top-right" richColors />
+        <SMSSyncListener />
+        <Router>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Dashboard />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Profile />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/insights" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Insights />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/transactions" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Transactions />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/budgets" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Budgets />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/portfolio" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Portfolio />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/loans" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Loans />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Settings />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings/account" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <AccountSettings />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings/security" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SecuritySettings />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings/preferences" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <PreferencesSettings />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings/notifications" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <NotificationSettings />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings/privacy" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <PrivacySettings />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings/support" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SupportSettings />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings/permissions" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <AppPermissions />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/more" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <More />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/academy" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WealthAcademy />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/onboarding" 
+              element={
+                <ProtectedRoute>
+                  <Onboarding />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/goals" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Goals />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/faq" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <FAQ />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/privacy" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Privacy />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/terms" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Terms />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/auth/login" element={<Login />} />
+            <Route path="/auth/signup" element={<Signup />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

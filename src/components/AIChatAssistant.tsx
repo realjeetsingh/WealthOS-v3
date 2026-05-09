@@ -175,7 +175,7 @@ const AIChatAssistant: React.FC<AIChatAssistantProps> = ({
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em]">✅ Action Plan</p>
                 </div>
                 <ul className="space-y-3 pl-1">
-                  {data.actionSteps.map((step, i) => (
+                  {Array.isArray(data.actionSteps) && data.actionSteps.map((step, i) => (
                     <li key={i} className="flex gap-3 text-sm text-gray-700 font-medium group">
                       <div className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5 shadow-sm group-hover:scale-110 transition-transform">
                         {i + 1}

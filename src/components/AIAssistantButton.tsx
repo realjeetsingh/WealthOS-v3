@@ -253,7 +253,7 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
                         <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Key Insights</h3>
                       </div>
                       <div className="grid grid-cols-1 gap-4">
-                        {analysis.keyInsights.map((insight, i) => {
+                        {Array.isArray(analysis.keyInsights) && analysis.keyInsights.map((insight, i) => {
                           // Guard against legacy string insights or malformed data
                           if (typeof insight === 'string' || !insight?.type || !insight?.action) return null;
 
@@ -354,7 +354,7 @@ const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
                         <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Strategic Recommendation</h3>
                       </div>
                       <div className="space-y-3">
-                        {analysis.strategicPlan.shortTerm.map((step, i) => (
+                        {Array.isArray(analysis.strategicPlan?.shortTerm) && analysis.strategicPlan.shortTerm.map((step, i) => (
                           <div key={i} className="flex items-center gap-4 p-4 bg-[#6334FD]/5 border border-[#6334FD]/10 rounded-2xl">
                             <ArrowRight className="w-4 h-4 text-[#6334FD] shrink-0" />
                             <p className="text-sm text-[#6334FD] font-bold">{step}</p>

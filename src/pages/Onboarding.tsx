@@ -129,12 +129,12 @@ const Onboarding: React.FC = () => {
     if (currentStep === 0) {
       trackEvent(AnalyticsEvents.ONBOARDING_STARTED);
     } else {
-      trackEvent('onboarding_step_reached', { step: currentStep, stepName: steps[currentStep].title });
+      trackEvent('onboarding_step_reached', { step: currentStep, stepName: STEPS[currentStep].title });
     }
   }, [currentStep]);
 
   const handleSkip = () => {
-    trackEvent('onboarding_skipped', { step: currentStep, stepName: steps[currentStep].title });
+    trackEvent(AnalyticsEvents.ONBOARDING_SKIPPED, { step: currentStep, stepName: STEPS[currentStep].title });
     setShowSkipWarning(true);
   };
 
