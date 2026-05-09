@@ -15,6 +15,7 @@ import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
 import { calculateTotalEMI, calculateMonthlyIncome } from '../lib/financialEngine';
 import Modal from '../components/Modal';
 import Button from '../components/ui/Button';
+import Skeleton from '../components/ui/Skeleton';
 import { detectLoanSuggestions } from '../services/loanDetectionService';
 import { 
   calculateEMI, 
@@ -46,8 +47,10 @@ import {
   ChevronRight,
   TrendingUp,
   MessageSquare,
-  Bell
+  Bell,
+  Briefcase
 } from 'lucide-react';
+import EmptyState from '../components/EmptyState';
 
 const Loans: React.FC = () => {
   const { user, userProfile } = useAuth();
@@ -497,6 +500,29 @@ const Loans: React.FC = () => {
 
   const healthUI = getHealthUI();
 
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto w-full px-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+          <div>
+            <Skeleton className="h-10 w-64 mb-2" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-[70px] w-48 rounded-2xl" />
+        </div>
+        <Skeleton className="h-[120px] w-full rounded-[2rem] mb-10" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          <Skeleton className="h-40 rounded-3xl" />
+          <Skeleton className="h-40 rounded-3xl" />
+        </div>
+        <div className="space-y-6">
+          <Skeleton className="h-48 w-full rounded-2xl" />
+          <Skeleton className="h-48 w-full rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto w-full overflow-x-hidden max-w-full">
       <div className="space-y-10">
@@ -680,25 +706,13 @@ const Loans: React.FC = () => {
 
         {/* Empty State */}
         {loans.length === 0 && !loading && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white p-12 rounded-[2rem] border border-dashed border-gray-200 flex flex-col items-center text-center shadow-sm"
-          >
-            <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-6">
-              <Building2 className="w-10 h-10 text-indigo-600" />
-            </div>
-            <h3 className="text-xl font-black text-gray-900">No loans added yet</h3>
-            <p className="text-gray-500 font-medium mt-2 max-w-sm">
-              Keep track of your active loans, EMIs, and debt progress in one place.
-            </p>
-            <Button 
-              onClick={() => setIsAddModalOpen(true)}
-              className="mt-8 px-8"
-            >
-              Add Your First Loan
-            </Button>
-          </motion.div>
+          <EmptyState
+            icon={Building2}
+            title="No loans added yet"
+            description="Keep track of your active loans, EMIs, and debt progress in one place. We'll automatically identify loans from your SMS if you sync."
+            actionLabel="Add Your First Loan"
+            onAction={() => setIsAddModalOpen(true)}
+          />
         )}
 
         {/* Add Loan Modal */}

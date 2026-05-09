@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
+import { trackEvent, reportError, AnalyticsEvents } from "./analytics";
 
 export interface SmartFinancialInsight {
   type: "risk" | "warning" | "optimization";
@@ -108,6 +109,8 @@ export const generateChatResponse = async (
         parts: [{ text: msg.text }]
       }))
     });
+    
+    trackEvent(AnalyticsEvents.AI_CHAT_REQUEST, { query });
 
     const result = await chat.sendMessage({
       message: query,
@@ -133,6 +136,8 @@ export const generateChatResponse = async (
     return text;
   } catch (error) {
     console.error("Chat AI Error:", error);
+    reportError(error, "GeminiService:generateChatResponse");
+    trackEvent(AnalyticsEvents.AI_CHAT_RESPONSE_FAILURE);
     return "I'm having trouble connecting to my financial brain right now. Please try again in a moment.";
   }
 };
@@ -311,9 +316,12 @@ export const getSmartFinancialAnalysis = async (data: {
     }
 
     const result = JSON.parse(response.text);
+    trackEvent('smart_analysis_success', { score: result.confidenceScore });
     return result as SmartFinancialAnalysis;
   } catch (error) {
     console.error("AI Service Failure:", error);
+    reportError(error, "GeminiService:getSmartFinancialAnalysis");
+    trackEvent(AnalyticsEvents.AI_CHAT_RESPONSE_FAILURE, { type: 'smart_analysis' });
     return { status: "failed", message: "We need more data to generate a detailed analysis", type: "insufficient_data" };
   }
 };

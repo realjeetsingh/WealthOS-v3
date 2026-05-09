@@ -18,6 +18,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useLayout } from '../contexts/LayoutContext';
 import { NAVBAR_HEIGHT, FAB_SAFE_SPACING } from '../constants';
+import { trackEvent, AnalyticsEvents } from '../services/analytics';
 import { generateChatResponse, ChatMessage, AIChatResponse } from '../services/geminiService';
 import { formatCurrency } from '../lib/formatCurrency';
 import Button from './ui/Button';
@@ -68,6 +69,12 @@ const AIChatAssistant: React.FC<AIChatAssistantProps> = ({
       clearTimeout(hideTimer);
     };
   }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      trackEvent(AnalyticsEvents.AI_CHAT_OPENED);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (messagesEndRef.current) {

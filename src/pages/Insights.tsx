@@ -46,9 +46,14 @@ import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import AIAssistantButton from '../components/AIAssistantButton';
 import PricingModal from '../components/PricingModal';
+import PremiumGate from '../components/PremiumGate';
+import Skeleton from '../components/ui/Skeleton';
+import EmptyState from '../components/EmptyState';
+import { useNavigate } from 'react-router-dom';
 
 const Insights: React.FC = () => {
   const { user, userProfile, isPremium } = useAuth();
+  const navigate = useNavigate();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
@@ -251,6 +256,26 @@ const Insights: React.FC = () => {
 
   const userCurrency = userProfile?.currency || 'INR';
   const upgradedInsights = getUpgradedInsights(income, expenses, transactions);
+
+  if (loading) {
+    return (
+      <div className="w-full max-w-4xl mx-auto py-12">
+        <div className="flex items-center space-x-4 mb-8">
+          <Skeleton className="w-12 h-12 rounded-xl" />
+          <div className="flex-1">
+            <Skeleton className="h-10 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <Skeleton className="h-[160px] rounded-2xl" />
+          <Skeleton className="h-[160px] rounded-2xl" />
+        </div>
+        <Skeleton className="h-[400px] rounded-2xl mb-8" />
+        <Skeleton className="h-[300px] rounded-2xl" />
+      </div>
+    );
+  }
 
   const handleGenerateSmartAnalysis = async (): Promise<SmartFinancialAnalysis | null> => {
     if (!isPremium) {
@@ -500,8 +525,9 @@ const Insights: React.FC = () => {
 
       {advice ? (
         <div className="space-y-8">
-          {/* SECTION 1 — BEST DECISION (SYSTEM PRIMARY) */}
-          {advice.improvement >= 1000 ? (
+      {/* Premium Gated Recommended Strategy */}
+      <PremiumGate featureName="Advanced Strategic Analysis">
+          {advice && advice.improvement >= 1000 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="bg-[#4F46E5] px-6 md:px-8 py-4 md:py-5">
                 <h2 className="text-white font-bold flex items-center text-base md:text-lg">
@@ -550,6 +576,7 @@ const Insights: React.FC = () => {
               <p className="text-gray-500 font-medium">Increase activity to unlock meaningful insights</p>
             </div>
           )}
+      </PremiumGate>
 
           {/* SECTION 2 — RECOMMENDATIONS */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
@@ -627,25 +654,14 @@ const Insights: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-3xl shadow-sm border-2 border-dashed border-gray-100 p-16 text-center flex flex-col items-center justify-center space-y-6">
-          <div className="p-6 bg-gray-50 rounded-full">
-            <TrendingUp className="w-12 h-12 text-gray-300" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Unlock Your Financial Future</h2>
-            <p className="text-gray-500 max-w-sm mx-auto text-lg leading-relaxed">
-              Add more transactions, assets, and liabilities to generate personalized financial insights and simulations.
-            </p>
-          </div>
-          <Link to="/transactions">
-            <Button
-              variant="primary"
-              size="lg"
-              icon={<PlusCircle className="w-5 h-5" />}
-            >
-              Add your first transaction
-            </Button>
-          </Link>
+        <div className="p-4 md:p-12">
+          <EmptyState
+            icon={TrendingUp}
+            title="Unlock Your Financial Future"
+            description="Add more transactions, assets, and liabilities to generate personalized financial insights and simulations."
+            actionLabel="Add your first transaction"
+            onAction={() => navigate('/transactions')}
+          />
         </div>
       )}
 

@@ -71,6 +71,15 @@ const Settings: React.FC = () => {
       path: '/settings/support',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
+    },
+    {
+      id: 'permissions',
+      title: 'App Permissions',
+      description: 'SMS, storage, and notification rationale',
+      icon: ShieldCheck,
+      path: '/settings/permissions',
+      color: 'text-rose-600',
+      bgColor: 'bg-rose-50'
     }
   ];
 

@@ -23,6 +23,11 @@ const Privacy: React.FC = () => {
       icon: Lock
     },
     {
+      title: "SMS Permissions",
+      content: "WealthOS requests SMS read access to automate transaction mapping. We only parse messages from recognized financial institutions. Personal messages never leave your device and are processed locally.",
+      icon: Shield
+    },
+    {
       title: "Third-Party Sharing",
       content: "We do not sell your personal data. We only share information with third-party service providers (like Firebase) necessary to operate our platform, and only to the extent required for those services.",
       icon: Globe

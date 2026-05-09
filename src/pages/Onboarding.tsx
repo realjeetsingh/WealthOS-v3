@@ -40,6 +40,7 @@ import {
   addPortfolioAsset
 } from '../services/financeService';
 import { updateFinancialSnapshot } from '../services/snapshotService';
+import { trackEvent, AnalyticsEvents } from '../services/analytics';
 import { syncPortfolioPrices } from '../services/portfolioSyncService';
 import { searchSymbols, SymbolResult } from '../services/marketDataService';
 import { formatCurrency } from '../lib/formatCurrency';
@@ -123,6 +124,19 @@ const Onboarding: React.FC = () => {
   }, [assetSearch]);
 
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (currentStep === 0) {
+      trackEvent(AnalyticsEvents.ONBOARDING_STARTED);
+    } else {
+      trackEvent('onboarding_step_reached', { step: currentStep, stepName: steps[currentStep].title });
+    }
+  }, [currentStep]);
+
+  const handleSkip = () => {
+    trackEvent('onboarding_skipped', { step: currentStep, stepName: steps[currentStep].title });
+    setShowSkipWarning(true);
+  };
 
   useEffect(() => {
     if (isDatePickerOpen || showSkipWarning) {
@@ -267,6 +281,8 @@ const Onboarding: React.FC = () => {
       if (formData.portfolio.hasPortfolio) {
         syncPortfolioPrices(user.uid).catch(console.error);
       }
+      
+      trackEvent(AnalyticsEvents.ONBOARDING_COMPLETED);
       
       toast.success('Your setup is complete!');
       navigate('/dashboard');

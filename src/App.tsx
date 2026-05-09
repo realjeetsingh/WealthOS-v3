@@ -30,6 +30,8 @@ import WealthAcademy from './pages/WealthAcademy';
 import Onboarding from './pages/Onboarding';
 import FAQ from './pages/FAQ';
 import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import AppPermissions from './pages/AppPermissions';
 import { Toaster } from 'sonner';
 import { auth } from './firebase';
 import { User as UserIcon } from 'lucide-react';
@@ -184,6 +186,16 @@ export default function App() {
             } 
           />
           <Route 
+            path="/settings/permissions" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AppPermissions />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/more" 
             element={
               <ProtectedRoute>
@@ -237,6 +249,16 @@ export default function App() {
               <ProtectedRoute>
                 <Layout>
                   <Privacy />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/terms" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Terms />
                 </Layout>
               </ProtectedRoute>
             } 

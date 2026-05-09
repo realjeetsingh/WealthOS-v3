@@ -59,6 +59,7 @@ import Button from '../components/ui/Button';
 import Skeleton from '../components/ui/Skeleton';
 import { fetchMarketPrice, normalizeSymbol, searchSymbols, SymbolResult, fetchBatchPrices } from '../services/marketDataService';
 import { Loader2, RefreshCw, Clock } from 'lucide-react';
+import EmptyState from '../components/EmptyState';
 
 const CATEGORIES = [
   { id: 'Stocks', label: 'Stocks', icon: Activity, type: 'stock' },
@@ -730,34 +731,30 @@ export default function Portfolio() {
         </div>
 
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left border-b border-gray-50">
-                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider pl-4">Asset Detail</th>
-                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Market Price</th>
-                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Invested</th>
-                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Current Value</th>
-                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Profit / Loss</th>
-                <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider pr-4"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {assets.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-24 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-4">
-                      <div className="p-4 bg-gray-50 rounded-full">
-                        <Briefcase className="w-12 h-12 text-gray-300" />
-                      </div>
-                      <div>
-                        <p className="text-gray-900 font-bold text-xl">No assets in portfolio</p>
-                        <p className="text-gray-500 font-medium">Start tracking your wealth by adding your first investment.</p>
-                      </div>
-                    </div>
-                  </td>
+          {assets.length === 0 ? (
+            <div className="p-8">
+              <EmptyState
+                icon={Briefcase}
+                title="No assets in portfolio"
+                description="Start tracking your wealth by adding your first investment. Track stocks, crypto, real estate and more."
+                actionLabel="Add Asset"
+                onAction={() => setIsModalOpen(true)}
+              />
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="text-left border-b border-gray-50">
+                  <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider pl-4">Asset Detail</th>
+                  <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Market Price</th>
+                  <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Invested</th>
+                  <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Current Value</th>
+                  <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Profit / Loss</th>
+                  <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider pr-4"></th>
                 </tr>
-              ) : (
-                assets.map((asset) => {
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {assets.map((asset) => {
                   const CategoryIcon = CATEGORIES.find(c => c.id === asset.category)?.icon || Activity;
                   const profit = asset.currentValue - asset.investedAmount;
                   const profitPercentage = asset.investedAmount > 0 ? (profit / asset.investedAmount) * 100 : 0;
@@ -854,33 +851,26 @@ export default function Portfolio() {
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Mobile Card View */}
         <div className="md:hidden divide-y divide-gray-50">
           {assets.length === 0 ? (
-            <div className="p-12 text-center bg-white rounded-3xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center space-y-4">
-              <div className="p-4 bg-gray-50 rounded-full">
-                <Briefcase className="w-12 h-12 text-gray-300" />
-              </div>
-              <div>
-                <p className="text-gray-900 font-bold text-xl">No assets yet</p>
-                <p className="text-gray-500 font-medium mt-1">Start tracking your diverse investments to see them here.</p>
-              </div>
-              <Button 
-                variant="outline"
-                onClick={() => {
+            <div className="p-4">
+              <EmptyState
+                icon={Briefcase}
+                title="No assets yet"
+                description="Start tracking your diverse investments to see them here."
+                actionLabel="Add first asset"
+                onAction={() => {
                   resetForm();
                   setIsModalOpen(true);
                 }}
-                icon={<Plus className="w-5 h-5" />}
-              >
-                Add your first asset
-              </Button>
+              />
             </div>
           ) : (
             assets.map((asset) => {

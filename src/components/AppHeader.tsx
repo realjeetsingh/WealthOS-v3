@@ -6,11 +6,13 @@ import {
   LogOut,
   User as UserIcon,
   Settings as SettingsIcon,
-  ChevronDown
+  ChevronDown,
+  MessageSquareHeart
 } from 'lucide-react';
 import { auth } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import PricingModal from './PricingModal';
+import FeedbackModal from './FeedbackModal';
 import Logo from './ui/Logo';
 
 interface AppHeaderProps {
@@ -23,6 +25,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
@@ -148,6 +151,17 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
                       <span>Settings</span>
                     </Link>
 
+                    <button
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        setShowFeedback(true);
+                      }}
+                      className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    >
+                      <MessageSquareHeart className="w-4 h-4" />
+                      <span>Beta Feedback</span>
+                    </button>
+
                     <div className="h-px bg-gray-50 my-1" />
 
                     <button
@@ -168,6 +182,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isVisible = true }) => {
         </div>
       </div>
       <PricingModal isOpen={showPricing} onClose={() => setShowPricing(false)} />
+      <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
     </header>
   );
 };

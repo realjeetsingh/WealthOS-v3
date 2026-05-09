@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, addDoc, deleteDoc, doc, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { trackEvent, AnalyticsEvents } from '../services/analytics';
 import { Goal } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { formatCurrency } from '../lib/formatCurrency';
@@ -82,6 +83,12 @@ const Goals: React.FC = () => {
         category,
         status: 'active',
         timestamp: serverTimestamp()
+      });
+
+      trackEvent(AnalyticsEvents.GOAL_CREATED, {
+        title,
+        targetAmount: Number(targetAmount),
+        category
       });
 
       setIsAddingGoal(false);

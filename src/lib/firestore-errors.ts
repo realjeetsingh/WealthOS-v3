@@ -1,5 +1,6 @@
 import { User } from 'firebase/auth';
 import { auth } from '../firebase';
+import { reportError } from '../services/analytics';
 
 export enum OperationType {
   CREATE = 'create',
@@ -29,6 +30,28 @@ export interface FirestoreErrorInfo {
   }
 }
 
+export function humanizeFirestoreError(error: any): string {
+  const message = error?.message || String(error);
+  
+  if (message.includes('insufficient permissions')) {
+    return "You don't have permission to perform this action. Please sign in again.";
+  }
+  
+  if (message.includes('offline') || message.includes('network')) {
+    return "Unable to connect to the database. Check your internet connection and try again.";
+  }
+  
+  if (message.includes('quota exceeded')) {
+    return "The daily data limit has been reached. Please try again tomorrow.";
+  }
+  
+  if (message.includes('not-found')) {
+    return "This item could not be found. It may have been deleted.";
+  }
+  
+  return "An unexpected error occurred. Please try again later.";
+}
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null, userOverride?: User | null) {
   const currentUser = userOverride !== undefined ? userOverride : auth.currentUser;
   const errInfo: FirestoreErrorInfo = {
@@ -49,6 +72,9 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
+  
+  reportError(error, `Firestore:${operationType}:${path}`);
+  
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }

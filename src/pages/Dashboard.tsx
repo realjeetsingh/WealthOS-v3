@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, onSnapshot, doc, addDoc, serverTimestamp, orderBy, limit, getDocs, where, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,7 +21,7 @@ import {
   getAlerts,
   getUpgradedInsights
 } from '../lib/retentionEngine';
-import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { handleFirestoreError, OperationType, humanizeFirestoreError } from '../lib/firestore-errors';
 import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import Button from '../components/ui/Button';
@@ -49,6 +49,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import FloatingAlerts, { Alert as FloatingAlert } from '../components/FloatingAlerts';
 import EmiReminder from '../components/EmiReminder';
 import AIChatAssistant from '../components/AIChatAssistant';
+import EmptyState from '../components/EmptyState';
+import DailySnapshot from '../components/DailySnapshot';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { 
   LineChart, 
   Line, 
@@ -60,6 +64,8 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import { updateStreak, UserStreak } from '../services/streakService';
+import { getDailySnapshot, DailySnapshotData } from '../services/dailyHabitEngine';
 
 const Dashboard: React.FC = () => {
   const { user, userProfile } = useAuth();
@@ -72,6 +78,9 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
+  const [userStreak, setUserStreak] = useState<UserStreak | null>(null);
+  const [dailySnapshot, setDailySnapshot] = useState<DailySnapshotData | null>(null);
+  const navigate = useNavigate();
 
   const fetchRawData = async () => {
     if (!user?.uid) return;
@@ -85,6 +94,7 @@ const Dashboard: React.FC = () => {
       console.log("MANUAL RE-FETCH COMPLETE:", docs.length, "transactions");
     } catch (err) {
       console.error("Manual re-fetch failed:", err);
+      toast.error(humanizeFirestoreError(err));
     } finally {
       setRefreshing(false);
     }
@@ -177,15 +187,15 @@ const Dashboard: React.FC = () => {
   }, [user?.uid]);
 
   // Real-time Calculations
-  const cashBalance = calculateCashBalance(transactions);
-  const portfolioValue = calculatePortfolioValue(portfolioAssets);
-  const loanBalance = calculateTotalLoanRemaining(loans);
-  const netWorth = calculateNetWorth(cashBalance, portfolioValue, loanBalance);
+  const cashBalance = useMemo(() => calculateCashBalance(transactions), [transactions]);
+  const portfolioValue = useMemo(() => calculatePortfolioValue(portfolioAssets), [portfolioAssets]);
+  const loanBalance = useMemo(() => calculateTotalLoanRemaining(loans), [loans]);
+  const netWorth = useMemo(() => calculateNetWorth(cashBalance, portfolioValue, loanBalance), [cashBalance, portfolioValue, loanBalance]);
   
-  const monthlyIncome = calculateMonthlyIncome(transactions);
-  const monthlyExpenses = calculateMonthlyExpenses(transactions, loans);
-  const cashflow = calculateCashflow(monthlyIncome, monthlyExpenses);
-  const totalEMI = calculateTotalEMI(loans);
+  const monthlyIncome = useMemo(() => calculateMonthlyIncome(transactions), [transactions]);
+  const monthlyExpenses = useMemo(() => calculateMonthlyExpenses(transactions, loans), [transactions, loans]);
+  const cashflow = useMemo(() => calculateCashflow(monthlyIncome, monthlyExpenses), [monthlyIncome, monthlyExpenses]);
+  const totalEMI = useMemo(() => calculateTotalEMI(loans), [loans]);
 
   // STEP 6 — MANDATORY DEBUG LOGGING
   useEffect(() => {
@@ -202,54 +212,32 @@ const Dashboard: React.FC = () => {
   const userCurrency = userProfile?.currency || 'INR';
 
   // Retention Engine Insights
-  const monthlyStatus = getMonthlyStatus(monthlyIncome, monthlyExpenses);
-  const monthlyTrend = getMonthlyTrend(transactions);
-  const progressSignal = getProgressSignal(monthlyIncome, monthlyExpenses);
-  const weeklySummary = getWeeklySummary(transactions);
-  const alerts = getAlerts(monthlyIncome, monthlyExpenses, userProfile?.lastActiveDate);
-  const upgradedInsights = getUpgradedInsights(monthlyIncome, monthlyExpenses, transactions);
+  const monthlyStatus = useMemo(() => getMonthlyStatus(monthlyIncome, monthlyExpenses), [monthlyIncome, monthlyExpenses]);
+  const monthlyTrend = useMemo(() => getMonthlyTrend(transactions), [transactions]);
+  const progressSignal = useMemo(() => getProgressSignal(monthlyIncome, monthlyExpenses), [monthlyIncome, monthlyExpenses]);
+  const weeklySummary = useMemo(() => getWeeklySummary(transactions), [transactions]);
+  const alerts = useMemo(() => getAlerts(monthlyIncome, monthlyExpenses, userProfile?.lastActiveDate), [monthlyIncome, monthlyExpenses, userProfile?.lastActiveDate]);
+  const upgradedInsights = useMemo(() => getUpgradedInsights(monthlyIncome, monthlyExpenses, transactions), [monthlyIncome, monthlyExpenses, transactions]);
 
   // Streak System Logic
   useEffect(() => {
-    if (!user?.uid || !userProfile || loading) return;
+    if (!user?.uid || loading) return;
 
-    const updateStreak = async () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const lastActive = (typeof userProfile.lastActiveDate?.toDate === 'function') ? userProfile.lastActiveDate.toDate() : null;
-      if (lastActive) {
-        lastActive.setHours(0, 0, 0, 0);
-        
-        const diffTime = today.getTime() - lastActive.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays === 0) return; // Already updated today
-
-        if (diffDays === 1) {
-          // Increment streak
-          await updateDoc(doc(db, 'users', user.uid), {
-            streakCount: (userProfile.streakCount || 0) + 1,
-            lastActiveDate: serverTimestamp()
-          });
-        } else if (diffDays > 1) {
-          // Reset streak
-          await updateDoc(doc(db, 'users', user.uid), {
-            streakCount: 1,
-            lastActiveDate: serverTimestamp()
-          });
-        }
-      } else {
-        // First time
-        await updateDoc(doc(db, 'users', user.uid), {
-          streakCount: 1,
-          lastActiveDate: serverTimestamp()
-        });
-      }
+    const runStreakUpdate = async () => {
+      const streak = await updateStreak(user.uid);
+      setUserStreak(streak);
     };
 
-    updateStreak();
-  }, [user?.uid, userProfile?.lastActiveDate, loading]);
+    runStreakUpdate();
+  }, [user?.uid, loading]);
+
+  // Daily Snapshot Logic
+  useEffect(() => {
+    if (loading || transactions.length === 0) return;
+    
+    const snapshot = getDailySnapshot(transactions, loans, portfolioAssets, userProfile);
+    setDailySnapshot(snapshot);
+  }, [loading, transactions, loans, portfolioAssets, userProfile]);
 
   // Snapshot Saving Logic (Daily)
   useEffect(() => {
@@ -332,6 +320,23 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  const isDashboardEmpty = transactions.length === 0 && portfolioAssets.length === 0 && loans.length === 0;
+
+  if (isDashboardEmpty && !loading) {
+    return (
+      <div className="w-full h-[calc(100vh-200px)] flex items-center justify-center">
+        <EmptyState
+          icon={Wallet}
+          title="Welcome to WealthOS"
+          description="Your financial journey starts now. To see your net worth and insights, add your first transaction or link your account."
+          actionLabel="Start Onboarding"
+          onAction={() => navigate('/onboarding')}
+          className="max-w-2xl border-none shadow-none bg-transparent"
+        />
+      </div>
+    );
+  }
+
   const chartData = snapshots.map(s => ({
     date: (typeof s.timestamp?.toDate === 'function') ? s.timestamp.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '',
     value: s.netWorth
@@ -346,10 +351,10 @@ const Dashboard: React.FC = () => {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-2 flex-wrap">
             <h1 className="text-[clamp(1.5rem,5vw,2.5rem)] font-black text-gray-900 tracking-tighter leading-tight break-words">Financial Dashboard</h1>
-            {userProfile?.streakCount && (
+            {userStreak && userStreak.currentStreak > 0 && (
               <div className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-sm font-black border border-orange-100 animate-pulse">
                 <Zap className="w-4 h-4 fill-orange-600" />
-                {userProfile.streakCount} DAY STREAK
+                {userStreak.currentStreak} DAY STREAK
               </div>
             )}
           </div>
@@ -383,6 +388,15 @@ const Dashboard: React.FC = () => {
       </div>
 
     
+
+      {/* Daily Habit Snapshot */}
+      {dailySnapshot && (
+        <DailySnapshot 
+          data={dailySnapshot} 
+          streak={userStreak} 
+          currency={userCurrency} 
+        />
+      )}
 
       {/* Primary Net Worth Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mb-12">

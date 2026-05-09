@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import AppHeader from './AppHeader';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
+import DebugPanel from './DebugPanel';
 import { LayoutProvider } from '../contexts/LayoutContext';
 
 interface LayoutProps {
@@ -86,6 +87,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <MobileNav isVisible={isVisible} />
         </div>
       </div>
+      <DebugPanel />
     </div>
   );
 };

@@ -11,8 +11,10 @@ import {
   checkDuplicate
 } from '../services/financeService';
 import { generateFingerprint } from '../lib/smsParser';
+import { trackEvent, AnalyticsEvents } from '../services/analytics';
 import { Transaction } from '../types';
-import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { handleFirestoreError, OperationType, humanizeFirestoreError } from '../lib/firestore-errors';
+import { toast } from 'sonner';
 import { formatCurrency, formatCurrencyShort } from '../lib/formatCurrency';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../lib/currency';
@@ -21,6 +23,7 @@ import Button from '../components/ui/Button';
 import Skeleton from '../components/ui/Skeleton';
 import SMSParser from '../components/SMSParser';
 import SmartSyncModal from '../components/SmartSyncModal';
+import EmptyState from '../components/EmptyState';
 import { 
   PlusCircle, 
   ArrowUpCircle, 
@@ -231,6 +234,12 @@ const Transactions: React.FC = () => {
         date: txDate
       });
 
+      trackEvent(AnalyticsEvents.TRANSACTION_ADDED, {
+        type,
+        category: finalCategory,
+        amount: numAmount
+      });
+
       // Reset form
       setType('expense');
       setAmount('');
@@ -240,8 +249,9 @@ const Transactions: React.FC = () => {
       setCustomCategoryName('');
       setDuplicateWarning(false);
       setSkipDuplicateCheck(false);
+      toast.success("Transaction added successfully");
     } catch (err: any) {
-      setError(err.message || "Failed to process transaction");
+      setError(humanizeFirestoreError(err));
     } finally {
       if (!duplicateWarning) {
         setSubmitting(false);
@@ -609,24 +619,13 @@ const Transactions: React.FC = () => {
             )}
           </div>
           {filteredTransactions.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center space-y-4">
-              <div className="p-4 bg-gray-50 rounded-full">
-                <FileText className="w-12 h-12 text-gray-300" />
-              </div>
-              <div>
-                <p className="text-gray-900 font-bold text-xl">{filterCategory ? `No ${filterCategory} transactions` : "No transactions yet"}</p>
-                <p className="text-gray-500 font-medium mt-1">Start tracking your income and expenses to see them here.</p>
-              </div>
-              {!filterCategory && (
-                <Button
-                  variant="outline"
-                  onClick={() => setIsAddModalOpen(true)}
-                  icon={<PlusCircle className="w-5 h-5" />}
-                >
-                  Add your first transaction
-                </Button>
-              )}
-            </div>
+            <EmptyState
+              icon={filterCategory ? Filter : FileText}
+              title={filterCategory ? `No ${filterCategory} transactions` : "No transactions yet"}
+              description={filterCategory ? `You don't have any transactions in the ${filterCategory} category.` : "Start tracking your income and expenses to see them here."}
+              actionLabel={!filterCategory ? "Add your first transaction" : "Clear Filter"}
+              onAction={() => filterCategory ? setFilterCategory(null) : setIsAddModalOpen(true)}
+            />
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="divide-y divide-gray-100">

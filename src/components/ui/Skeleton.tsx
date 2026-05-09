@@ -6,12 +6,12 @@ interface SkeletonProps {
 }
 
 const Skeleton: React.FC<SkeletonProps> = ({ className = '', variant = 'rectangular' }) => {
-  const baseStyles = 'bg-gray-200 animate-pulse';
+  const baseStyles = 'bg-gray-100 relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent';
   
   const variants = {
     text: 'h-4 w-full rounded',
     circular: 'rounded-full',
-    rectangular: 'rounded-xl',
+    rectangular: 'rounded-2xl',
   };
 
   return (
