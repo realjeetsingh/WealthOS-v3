@@ -20,6 +20,16 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
   const [rating, setRating] = useState(5);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
 
+  // Reset form when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setMessage('');
+      setType('feedback');
+      setRating(5);
+      setStatus('idle');
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || status === 'submitting' || !user) return;
@@ -38,17 +48,6 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
       
       trackEvent(AnalyticsEvents.FEEDBACK_SUBMITTED, { type });
       setStatus('success');
-      
-      // Reset form after delay
-      setTimeout(() => {
-        if (status === 'success') {
-          setMessage('');
-          setType('feedback');
-          setRating(5);
-          setStatus('idle');
-          onClose();
-        }
-      }, 3000);
     } catch (error) {
       console.error("Error submitting feedback:", error);
       setStatus('error');
@@ -59,6 +58,16 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
       }
     }
   };
+
+  // Auto-close success message after 3s
+  React.useEffect(() => {
+    if (status === 'success') {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [status, onClose]);
 
   if (status === 'success') {
     return (
