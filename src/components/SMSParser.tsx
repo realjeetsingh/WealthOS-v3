@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, X, CheckCircle2, ShieldCheck, AlertCircle, ArrowRight, Zap, BrainCircuit } from 'lucide-react';
+import { MessageSquare, X, CheckCircle2, ShieldCheck, AlertCircle, Zap, BrainCircuit } from 'lucide-react';
 import Button from './ui/Button';
 import { toast } from 'sonner';
 import { parseSMS, ParsedSMS } from '../lib/smsParser';
+import ModalShell from './ModalShell';
 
 interface SMSParserProps {
   onParse: (transaction: {
@@ -65,27 +66,17 @@ const SMSParser: React.FC<SMSParserProps> = ({ onParse, isOpen, onClose }) => {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[120] flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden relative"
-      >
-        <div className="absolute top-4 right-4 z-10">
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-400" />
-          </button>
-        </div>
-
-        <div className="p-8">
-          <AnimatePresence mode="wait">
-            {step === 'permission' && (
-              <motion.div 
-                key="permission"
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="lg"
+    >
+      <div className="pt-4">
+        <AnimatePresence mode="wait">
+          {step === 'permission' && (
+            <motion.div 
+              key="permission"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -199,10 +190,9 @@ const SMSParser: React.FC<SMSParserProps> = ({ onParse, isOpen, onClose }) => {
                 </div>
               </motion.div>
             )}
-          </AnimatePresence>
-        </div>
-      </motion.div>
-    </div>
+        </AnimatePresence>
+      </div>
+    </ModalShell>
   );
 };
 

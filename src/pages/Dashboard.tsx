@@ -331,7 +331,7 @@ const Dashboard: React.FC = () => {
 
   if (isDashboardEmpty && !loading) {
     return (
-      <div className="w-full h-[calc(100vh-200px)] flex items-center justify-center">
+      <div className="w-full h-[calc(100dvh-200px)] flex items-center justify-center">
         <EmptyState
           icon={Wallet}
           title="Welcome to WealthOS"

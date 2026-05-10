@@ -111,9 +111,30 @@ service cloud.firestore {
              data.timestamp is timestamp;
     }
 
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidFeedback(data) {
+      return data.keys().hasAll(['userId', 'type', 'message', 'timestamp', 'appVersion']) &&
+             data.keys().size() <= 7 &&
+             data.userId == request.auth.uid &&
+             data.type in ['feedback', 'bug', 'feature'] &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 2000 &&
+             data.timestamp is timestamp &&
+             data.appVersion is string &&
+             (!('userEmail' in data) || data.userEmail is string) &&
+             (!('rating' in data) || data.rating == null || (data.rating is number && data.rating >= 1 && data.rating <= 5));
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
+
+    match /feedback/{feedbackId} {
+      allow create: if isAuthenticated() && isValidId(feedbackId) && isValidFeedback(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
