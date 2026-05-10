@@ -24,12 +24,16 @@ import ModalShell from './ModalShell';
 
 interface AIChatAssistantProps {
   context: {
+    netWorth: number;
     income: number;
     expenses: number;
-    savingsRate: number;
-    goals: any[];
     loans: any[];
-    portfolio: any[];
+    goals: any[];
+    healthSummary: {
+      state: string;
+      stateLabel: string;
+      stateDescription: string;
+    };
     userProfile?: any;
   };
   isPremium: boolean;

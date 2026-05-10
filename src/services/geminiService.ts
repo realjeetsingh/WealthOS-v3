@@ -61,12 +61,16 @@ export const generateChatResponse = async (
   query: string,
   history: ChatMessage[],
   context: {
+    netWorth: number;
     income: number;
     expenses: number;
-    savingsRate: number;
-    goals: any[];
     loans: any[];
-    portfolio: any[];
+    goals: any[];
+    healthSummary: {
+      state: string;
+      stateLabel: string;
+      stateDescription: string;
+    };
     userProfile?: any;
   }
 ): Promise<AIChatResponse | string> => {
@@ -76,13 +80,13 @@ export const generateChatResponse = async (
     You are a world-class AI Financial Assistant. Your goal is to provide personalized, actionable financial advice based on the user's specific data.
     
     USER FINANCIAL CONTEXT:
-    - Name: ${context.userProfile?.name || 'User'}
+    - Name: ${context.userProfile?.fullName || 'User'}
+    - Current Net Worth: ₹${context.netWorth}
     - Monthly Income: ₹${context.income}
     - Monthly Expenses: ₹${context.expenses}
-    - Savings Rate: ${context.savingsRate}%
-    - Active Goals: ${JSON.stringify(context.goals.map(g => ({ title: g.title, target: g.targetAmount, current: g.currentAmount })))}
+    - Financial State: ${context.healthSummary.stateLabel} (${context.healthSummary.stateDescription})
+    - Active Goals: ${JSON.stringify(context.goals.map(g => ({ title: g.name, target: g.targetAmount, current: g.currentAmount })))}
     - Active Loans: ${JSON.stringify(context.loans.map(l => ({ name: l.name, emi: l.emi, remaining: l.remainingAmount })))}
-    - Portfolio Summary: ${JSON.stringify(context.portfolio.map(p => ({ asset: p.assetName, value: p.currentValue })))}
     
     RESPONSE GUIDELINES:
     1. If the user asks a general question, use their context to make it specific.

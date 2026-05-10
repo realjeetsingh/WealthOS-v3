@@ -14,9 +14,10 @@ interface EmiReminderProps {
   loans: Loan[];
   userId: string;
   currency: string;
+  variant?: 'floating' | 'inline';
 }
 
-const EmiReminder: React.FC<EmiReminderProps> = ({ loans, userId, currency }) => {
+const EmiReminder: React.FC<EmiReminderProps> = ({ loans, userId, currency, variant = 'floating' }) => {
   const { isNavVisible } = useLayout();
   const [activeReminder, setActiveReminder] = useState<Loan | null>(null);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
@@ -130,6 +131,51 @@ const EmiReminder: React.FC<EmiReminderProps> = ({ loans, userId, currency }) =>
   };
 
   const reminderConfig = activeReminder ? getReminderConfig(activeReminder) : null;
+
+  if (variant === 'inline') {
+    if (!activeReminder || !reminderConfig) {
+      return null;
+    }
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className={`p-6 rounded-3xl border ${reminderConfig.borderColor} ${reminderConfig.bgColor} relative overflow-hidden`}
+      >
+        <div className="absolute top-0 right-0 p-4">
+           <div className={`p-2 rounded-xl bg-white/50 ${reminderConfig.textColor}`}>
+              {reminderConfig.icon}
+           </div>
+        </div>
+        
+        <div className="relative z-10">
+          <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${reminderConfig.textColor}`}>
+            {reminderConfig.title}
+          </p>
+          <h4 className="text-lg font-black text-gray-900 leading-tight mb-2">{activeReminder.name}</h4>
+          <p className="text-sm text-gray-600 font-medium leading-relaxed mb-6 max-w-[80%]">
+            {reminderConfig.message}
+          </p>
+          
+          <div className="flex items-center justify-between gap-4">
+            <div>
+               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount Due</p>
+               <p className="text-xl font-black text-gray-900">
+                  <CurrencyDisplay value={activeReminder.emi} currency={currency} />
+               </p>
+            </div>
+            <button
+              onClick={handleMarkAsPaid}
+              className={`px-6 py-3 ${reminderConfig.color} text-white rounded-xl font-black text-xs hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-black/5 uppercase tracking-widest`}
+            >
+              {reminderConfig.action}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <AnimatePresence>

@@ -42,7 +42,9 @@ import {
   ArrowDownRight,
   PieChart as PieChartIcon,
   History,
-  X
+  X,
+  Target,
+  ArrowRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -50,7 +52,9 @@ import FloatingAlerts, { Alert as FloatingAlert } from '../components/FloatingAl
 import EmiReminder from '../components/EmiReminder';
 import AIChatAssistant from '../components/AIChatAssistant';
 import EmptyState from '../components/EmptyState';
-import DailySnapshot from '../components/DailySnapshot';
+import AIInsightBanner from '../components/AIInsightBanner';
+import DashboardHero from '../components/DashboardHero';
+import UnifiedCashflowCard from '../components/UnifiedCashflowCard';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { 
@@ -68,6 +72,7 @@ import { updateStreak, UserStreak } from '../services/streakService';
 import { getDailySnapshot, DailySnapshotData } from '../services/dailyHabitEngine';
 
 import { toDate } from '../lib/dateUtils';
+import { deriveFinancialState } from '../lib/financialLogic';
 
 const Dashboard: React.FC = () => {
   const { user, userProfile } = useAuth();
@@ -285,7 +290,9 @@ const Dashboard: React.FC = () => {
   // Trend Calculation
   const lastSnapshot = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
   const netWorthTrend = lastSnapshot ? netWorth - lastSnapshot.netWorth : 0;
-  const isIncreasing = netWorthTrend >= 0;
+  
+  const healthSummary = deriveFinancialState(netWorth, cashflow, loanBalance, monthlyIncome);
+  const savingsTrend = netWorthTrend;
 
   const chartData = useMemo(() => snapshots.map(s => ({
     date: toDate(s.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
@@ -293,6 +300,19 @@ const Dashboard: React.FC = () => {
   })), [snapshots]);
 
   const isDashboardEmpty = transactions.length === 0 && portfolioAssets.length === 0 && loans.length === 0;
+
+  const hasActiveAlerts = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return loans.some(loan => {
+      if (loan.status !== 'active' || !loan.nextEmiDate) return false;
+      const dueDate = new Date(loan.nextEmiDate);
+      const diffTime = dueDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays <= 3;
+    });
+  }, [loans]);
 
   if (loading) {
     return (
@@ -345,328 +365,159 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-4">
       <FloatingAlerts initialAlerts={floatingAlerts} />
-      <EmiReminder loans={loans} userId={user?.uid || ''} currency={userCurrency} />
+      
+      {/* 1. TOP LAYER: AI Insight Ticker */}
+      {dailySnapshot && <AIInsightBanner data={dailySnapshot} />}
 
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      {/* Header Actions (Simplified for Mobile) */}
+      <div className="mb-6 md:mb-10 flex flex-row items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-2 flex-wrap">
-            <h1 className="text-[clamp(1.5rem,5vw,2.5rem)] font-black text-gray-900 tracking-tighter leading-tight break-words">Financial Dashboard</h1>
+          <div className="flex items-center gap-2 mb-0.5">
+            <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">Wealth OS</h1>
             {userStreak && userStreak.currentStreak > 0 && (
-              <div className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-sm font-black border border-orange-100 animate-pulse">
-                <Zap className="w-4 h-4 fill-orange-600" />
-                {userStreak.currentStreak} DAY STREAK
+              <div className="flex items-center gap-1 bg-orange-50 text-orange-600 px-2 py-0.5 rounded-md text-[8px] font-black border border-orange-100 uppercase tracking-widest">
+                {userStreak.currentStreak} Day Streak
               </div>
             )}
           </div>
-          <p className="text-gray-600">Focusing on your long-term wealth and progress.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <Button 
-            onClick={fetchRawData}
-            loading={refreshing}
-            variant="outline"
-            icon={<Activity className="w-4 h-4" />}
-            title="Force recalculation from raw transactions"
-          >
-            Refresh
-          </Button>
-          <Link 
-            to="/portfolio" 
-            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-all active:scale-[0.98] duration-150 shadow-sm whitespace-nowrap"
-          >
-            <PieChartIcon className="w-4 h-4" />
-            Portfolio
-          </Link>
-          <Link 
-            to="/transactions" 
-            className="flex items-center gap-2 bg-[#6334FD] text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-all active:scale-[0.98] duration-150 shadow-md whitespace-nowrap"
-          >
-            <TrendingUp className="w-4 h-4" />
-            Manage Data
-          </Link>
-        </div>
-      </div>
-
-    
-
-      {/* Daily Habit Snapshot */}
-      {dailySnapshot && (
-        <DailySnapshot 
-          data={dailySnapshot} 
-          streak={userStreak} 
-          currency={userCurrency} 
-        />
-      )}
-
-      {/* Primary Net Worth Card */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mb-12">
-        <div className="lg:col-span-2 bg-gradient-to-br from-[#6B66FE] to-[#6334FD] rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden">
-          <div className="relative z-10">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-              <div>
-                <p className="text-white/80 font-medium mb-1">Total Net Worth</p>
-                <h2 className="text-[clamp(2rem,6vw,3.5rem)] font-black tracking-tighter leading-none break-words">
-                  <CurrencyDisplay value={netWorth} currency={userCurrency} />
-                </h2>
-              </div>
-              <div className={`self-start sm:self-auto flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest ${isIncreasing ? 'bg-white/20' : 'bg-red-500/20'} backdrop-blur-md border border-white/10`}>
-                {isIncreasing ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                {isIncreasing ? 'Increasing' : 'Decreasing'}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-10 border-t border-white/10">
-              <div>
-                <p className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-black mb-1">Cash</p>
-                <div className="text-xl sm:text-2xl font-black truncate">
-                  <CurrencyDisplay value={cashBalance} currency={userCurrency} />
-                </div>
-              </div>
-              <div>
-                <p className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-black mb-1">Portfolio</p>
-                <div className="text-xl sm:text-2xl font-black truncate">
-                  <CurrencyDisplay value={portfolioValue} currency={userCurrency} />
-                </div>
-              </div>
-              <div>
-                <p className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-black mb-1">Loans</p>
-                <div className="text-xl sm:text-2xl font-black opacity-80 truncate">
-                  -<CurrencyDisplay value={loanBalance} currency={userCurrency} />
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Decorative Elements */}
-          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-60 h-60 bg-indigo-400/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-        </div>
-
-        <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-xl shadow-black/5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <History className="w-5 h-5 text-[#6334FD]" />
-                Net Worth Trend
-              </h3>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Last 30 Days</span>
-            </div>
-            <div className="h-40 w-full">
-              {snapshots.length > 1 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6334FD" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#6334FD" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <Area type="monotone" dataKey="value" stroke="#6334FD" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
-                    <RechartsTooltip 
-                      formatter={(value: number) => [formatCurrencyShort(value, userCurrency), 'Net Worth']}
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-gray-400 text-sm text-center">
-                  <Activity className="w-8 h-8 mb-2 opacity-20" />
-                  <p>Keep using the app to<br/>see your wealth trend.</p>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="mt-6 pt-6 border-t border-gray-50">
-            <div className="text-sm text-gray-600">
-              {netWorthTrend !== 0 ? (
-                <>Your net worth {isIncreasing ? 'increased' : 'decreased'} by <span className={`font-bold ${isIncreasing ? 'text-green-600' : 'text-red-600'}`}><CurrencyDisplay value={Math.abs(netWorthTrend)} currency={userCurrency} /></span> since your last visit.</>
-              ) : (
-                "Start tracking your assets and liabilities to see your wealth grow."
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
-          <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Income</p>
-            <div className="p-2 bg-green-50 rounded-lg text-green-600 shrink-0">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <h3 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tighter break-words">
-            <CurrencyDisplay value={monthlyIncome} currency={userCurrency} />
-          </h3>
-          <p className="text-xs text-gray-400 mt-auto">Total earnings from all sources this month.</p>
-        </div>
-        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
-          <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Expenses</p>
-            <div className="p-2 bg-red-50 rounded-lg text-red-600 shrink-0">
-              <TrendingDown className="w-4 h-4" />
-            </div>
-          </div>
-          <h3 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tighter break-words">
-            <CurrencyDisplay value={monthlyExpenses} currency={userCurrency} />
-          </h3>
-          <p className="text-xs text-gray-400 mt-auto">Total spending including EMIs and bills.</p>
-        </div>
-        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-black/5 hover:shadow-indigo-500/5 transition-all active:scale-[0.98] duration-150 cursor-pointer flex flex-col min-h-[160px]">
-          <div className="flex items-start justify-between mb-4">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Cashflow</p>
-            <div className="p-2 bg-[#6334FD]/5 rounded-lg text-[#6334FD] shrink-0">
-              <BarChart3 className="w-4 h-4" />
-            </div>
-          </div>
-          <h3 className={`text-2xl sm:text-3xl font-black tracking-tighter break-words ${cashflow >= 0 ? 'text-[#6334FD]' : 'text-orange-600'}`}>
-            <CurrencyDisplay value={cashflow} currency={userCurrency} />
-          </h3>
-          <p className="text-xs text-gray-400 mt-auto">Net savings after all expenses.</p>
-        </div>
-      </div>
-
-      {/* Retention Engine Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-black/5 border border-gray-100 flex flex-col min-h-[220px]">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-[#6334FD]/5 rounded-xl shrink-0">
-              <Activity className="w-6 h-6 text-[#6334FD]" />
-            </div>
-            <h3 className="font-bold text-gray-900 text-lg">Monthly Status</h3>
-          </div>
-          <p className="text-gray-600 text-sm leading-relaxed">{monthlyStatus}</p>
-        </div>
-
-        <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-black/5 border border-gray-100 flex flex-col min-h-[220px]">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-[#6334FD]/5 rounded-xl shrink-0">
-              <Calendar className="w-6 h-6 text-[#6334FD]" />
-            </div>
-            <h3 className="font-bold text-gray-900 text-lg">Weekly Summary</h3>
-          </div>
-          <div className="space-y-2 flex-1">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">This Week:</span>
-              <span className="font-bold text-gray-900"><CurrencyDisplay value={weeklySummary.thisWeek.savings} currency={userCurrency} /></span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Last Week:</span>
-              <span className="font-bold text-gray-900"><CurrencyDisplay value={weeklySummary.lastWeek.savings} currency={userCurrency} /></span>
-            </div>
-          </div>
-          <p className="text-xs text-gray-400 mt-4">
-            {weeklySummary.thisWeek.savings > weeklySummary.lastWeek.savings 
-              ? "Great! You've saved more than last week." 
-              : "Try to reduce expenses to beat last week's savings."}
+          <p className="text-gray-400 text-[9px] md:text-xs font-bold uppercase tracking-widest leading-none truncate">
+            {healthSummary.stateLabel} <span className="mx-1 text-gray-200">•</span> Updated Just Now
           </p>
         </div>
-
-        <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-black/5 border border-gray-100 flex flex-col md:col-span-2 lg:col-span-1 min-h-[220px]">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="p-2.5 bg-[#6334FD]/5 rounded-xl shrink-0">
-              <Zap className="w-6 h-6 text-[#6334FD]" />
-            </div>
-            <h3 className="font-bold text-gray-900 text-lg">Smart Insights</h3>
-          </div>
-          <div className="space-y-4 flex-1">
-            {Array.isArray(upgradedInsights) && upgradedInsights.length > 0 ? (
-              <div className="space-y-3">
-                {upgradedInsights.slice(0, 2).map((insight, i) => (
-                  <div key={i} className="space-y-1">
-                    <p className="text-sm font-bold text-gray-900">{insight.title}</p>
-                    <p className="text-[10px] font-black text-[#6334FD] uppercase tracking-widest">Action: {insight.action}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-600 text-sm leading-relaxed">{progressSignal}</p>
-            )}
-          </div>
+        <div className="flex items-center gap-2 shrink-0">
+            <Button 
+              onClick={fetchRawData}
+              loading={refreshing}
+              variant="outline"
+              size="sm"
+              icon={<Activity className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+            >
+              <span className="hidden md:inline">Sync</span>
+            </Button>
+            <Link to="/transactions" className="p-2 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors border border-gray-100">
+              <History className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
+            </Link>
         </div>
       </div>
 
-      {totalEMI > 0 && (
-        <div className="mb-12">
-          {(() => {
-            const emiRatio = monthlyIncome > 0 ? (totalEMI / monthlyIncome) * 100 : 0;
-            let pressure = {
-              text: "Your EMI load is manageable, but can still be optimized",
-              color: 'text-[#6334FD]',
-              bgColor: 'bg-[#6334FD]/5',
-              borderColor: 'border-[#6334FD]/10',
-              icon: <Zap className="w-6 h-6 text-[#6334FD]" />
-            };
+      {/* 2. HERO SECTION: Dominant Financial State */}
+      <DashboardHero 
+        netWorth={netWorth}
+        cashBalance={cashBalance}
+        portfolioValue={portfolioValue}
+        loanBalance={loanBalance}
+        savingsTrend={savingsTrend}
+        currency={userCurrency}
+        userName={userProfile?.fullName?.split(' ')[0]}
+        healthSummary={healthSummary}
+      />
 
-            if (emiRatio > 40) {
-              pressure = {
-                text: (
-                  <>
-                    High EMI burden: <CurrencyDisplay value={totalEMI} currency={userCurrency} />/month is limiting your financial growth
-                  </>
-                ),
-                color: 'text-red-600',
-                bgColor: 'bg-red-50',
-                borderColor: 'border-red-100',
-                icon: <ShieldAlert className="w-6 h-6 text-red-600" />
-              };
-            } else if (emiRatio >= 20) {
-              pressure = {
-                text: (
-                  <>
-                    <CurrencyDisplay value={totalEMI} currency={userCurrency} />/month in EMIs is reducing your savings potential
-                  </>
-                ),
-                color: 'text-amber-600',
-                bgColor: 'bg-amber-50',
-                borderColor: 'border-amber-100',
-                icon: <AlertCircle className="w-6 h-6 text-amber-600" />
-              };
-            }
+      {/* 3. MAIN VISUALIZATION: Unified Cashflow */}
+      <div className="mb-12">
+        <UnifiedCashflowCard 
+          income={monthlyIncome}
+          expenses={monthlyExpenses}
+          cashflow={cashflow}
+          currency={userCurrency}
+          transactions={transactions}
+        />
+      </div>
 
-            return (
-              <div className={`${pressure.bgColor} ${pressure.borderColor} border-2 p-8 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm`}>
-                <div className="flex items-center space-x-5">
-                  <div className="p-4 rounded-xl bg-white shadow-sm">
-                    {pressure.icon}
-                  </div>
-                  <div>
-                    <p className={`text-xl font-bold ${pressure.color} leading-tight`}>
-                      {pressure.text}
-                    </p>
-                    {monthlyIncome > 0 && (
-                      <p className="text-sm font-medium text-gray-500 mt-2">
-                        EMIs consume <span className="text-gray-900 font-bold">{emiRatio.toFixed(1)}%</span> of your monthly income. Reducing this can increase your monthly savings by <span className="text-gray-900 font-bold"><CurrencyDisplay value={totalEMI} currency={userCurrency} /></span>.
-                      </p>
-                    )}
-                  </div>
+      {/* 4. ACTION & SECONDARY SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div className="lg:col-span-2 space-y-8">
+           {hasActiveAlerts && (
+             <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Priority Alerts</h3>
+                  <div className="h-px flex-1 bg-gray-100 ml-4" />
                 </div>
-                <div className="flex-shrink-0 text-center md:text-right">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Debt Freedom Score</p>
-                  <p className={`text-4xl font-bold ${emiRatio > 40 ? 'text-red-600' : emiRatio > 20 ? 'text-amber-600' : 'text-green-600'}`}>
-                    {Math.max(0, 100 - Math.round(emiRatio))}%
-                  </p>
+                <EmiReminder loans={loans} userId={user?.uid || ''} currency={userCurrency} variant="inline" />
+             </div>
+           )}
+
+           <div>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Wealth Goals</h3>
+                <div className="h-px flex-1 bg-gray-100 ml-4" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {goals.length > 0 ? goals.slice(0, 2).map((goal, i) => (
+                  <div key={i} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center shrink-0">
+                      <Target className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{goal.category || 'Goal'}</p>
+                      <h4 className="text-sm font-bold text-gray-900 truncate">{goal.name}</h4>
+                      <div className="mt-2 w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(100, (goal.currentAmount / goal.targetAmount) * 100)}%` }}
+                          className="h-full bg-indigo-500" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="col-span-full py-10 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 flex flex-col items-center justify-center text-center">
+                    <Target className="w-8 h-8 text-gray-300 mb-2" />
+                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest leading-relaxed px-4">No active strategies detected.<br/>Set a goal to optimize.</p>
+                  </div>
+                )}
+              </div>
+           </div>
+        </div>
+
+        <div className="space-y-8">
+           <div>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Wealth Intel</h3>
+                <div className="h-px flex-1 bg-gray-100 ml-4" />
+              </div>
+              
+              <div className="space-y-4">
+                <div 
+                  className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group cursor-pointer" 
+                  onClick={() => navigate('/portfolio')}
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="p-2 bg-amber-50 rounded-xl text-amber-600">
+                      <PieChartIcon className="w-5 h-5" />
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-500 transition-colors" />
+                  </div>
+                  <h4 className="text-lg font-black text-gray-900 mb-1">Portfolio Analysis</h4>
+                  <p className="text-sm text-gray-500 font-medium leading-relaxed">Distribution is weighted heavily in {portfolioAssets[0]?.type || 'Cash'}.</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-6 rounded-[2rem] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group cursor-pointer">
+                  <Zap className="absolute top-0 right-0 -mt-2 -mr-2 w-16 h-16 text-white/5 opacity-40 group-hover:rotate-45 transition-transform" />
+                  <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">Financial Health</p>
+                  <h4 className="text-lg font-black mb-4">AI Power Score</h4>
+                  <div className="flex items-end justify-between">
+                    <p className="text-4xl font-black">78</p>
+                    <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-1 rounded-md">
+                      Stable <Activity className="w-3 h-3" />
+                    </div>
+                  </div>
                 </div>
               </div>
-            );
-          })()}
+           </div>
         </div>
-      )}
+      </div>
+
       {/* AI Assistant FAB */}
       <AIChatAssistant 
         context={{
-          income: monthlyIncome,
-          expenses: monthlyExpenses,
-          savingsRate: Math.max(0, Math.round((monthlyIncome - monthlyExpenses) / (monthlyIncome || 1) * 100)),
-          goals: goals,
-          loans: loans,
-          portfolio: portfolioAssets,
-          userProfile: userProfile
+          netWorth,
+          monthlyIncome,
+          monthlyExpenses,
+          loans,
+          goals,
+          healthSummary: healthSummary
         }}
         isPremium={userProfile?.isPremium || false}
         onUpgrade={() => setIsProModalOpen(true)}
