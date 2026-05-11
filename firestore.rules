@@ -111,6 +111,18 @@ service cloud.firestore {
              data.timestamp is timestamp;
     }
 
+    function isValidLegalConsent(data) {
+      return data.userId == request.auth.uid &&
+             data.termsAccepted is bool &&
+             data.termsAccepted == true &&
+             data.privacyAccepted is bool &&
+             data.privacyAccepted == true &&
+             data.policyVersion is string &&
+             data.appVersion is string &&
+             data.acceptedAt is timestamp &&
+             data.status == 'accepted';
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -223,6 +235,17 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidBudget(request.resource.data);
         allow update: if isOwner(userId) && isValidBudget(request.resource.data);
         allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /consents/legal {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId) && isValidLegalConsent(request.resource.data);
+        allow delete: if isAdmin();
+      }
+
+      match /consents/{otherId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isAdmin();
       }
     }
 

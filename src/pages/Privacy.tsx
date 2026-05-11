@@ -1,104 +1,94 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Shield, Lock, Eye, Database, Globe, FileText, ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Shield, Lock, Eye, Database, Globe, FileText, Bell, PenTool as Tool, UserCheck } from 'lucide-react';
+import LegalPageLayout from './LegalPageLayout';
 
 const Privacy: React.FC = () => {
-  const navigate = useNavigate();
-
   const sections = [
     {
-      title: "Data Collection",
-      content: "We collect information you provide directly to us, such as when you create an account, add financial transactions, or contact support. This includes your name, email address, and financial records you choose to track.",
+      title: "Data We Collect",
+      content: "WealthOS collects information necessary to build your financial profile. This includes profile identifiers (name, email), financial inputs (income, expenses, goals, loans), and metadata required for platform stability. We prioritize minimalism—if we don't need it to provide insights, we don't collect it.",
       icon: Database
     },
     {
-      title: "How We Use Your Data",
-      content: "Your data is used solely to provide and improve the WealthOS experience. This includes calculating your net worth, providing AI-powered financial insights, and sending you relevant alerts about your budget and expenses.",
+      title: "Automated Transaction Logic",
+      content: "When you enable automation, WealthOS parses financial notifications to map cashflow. This process is designed with the 'Local First' principle. We identify spend patterns without storing raw, non-financial textual content on our primary analytics servers.",
       icon: Eye
     },
     {
-      title: "Data Security",
-      content: "We implement robust security measures to protect your personal and financial information. We use industry-standard encryption and secure cloud infrastructure provided by Google Firebase.",
+      title: "Device Permissions",
+      content: "WealthOS requests specific permissions (SMS, Notifications, Storage) only when functional features require them. We do not engage in 'background scraping' or data collection outside the explicit scope of financial management functionality.",
+      icon: UserCheck
+    },
+    {
+      title: "Storage & Protection",
+      content: "Your data is encrypted in transit and at rest. We utilize Google Firebase's enterprise-grade security infrastructure. Critical financial identifiers are partitioned to ensure that even in the event of a breach, identifiable data remains difficult to correlate.",
       icon: Lock
     },
     {
-      title: "SMS Permissions",
-      content: "WealthOS requests SMS read access to automate transaction mapping. We only parse messages from recognized financial institutions. Personal messages never leave your device and are processed locally.",
-      icon: Shield
+      title: "AI Analysis Boundaries",
+      content: "Our AI Financial Assistant uses anonymized context to generate advice. Your raw credentials or full unmasked identity are never sent to external LLM providers. Insights are generated based on mathematical patterns and historical velocity.",
+      icon: Bell
     },
     {
-      title: "Third-Party Sharing",
-      content: "We do not sell your personal data. We only share information with third-party service providers (like Firebase) necessary to operate our platform, and only to the extent required for those services.",
+      title: "Third-Party Integrations",
+      content: "We use trusted partners like Firebase (authentication and database) and Google Gemini (AI insights). We do not sell data to third-party brokers. These partners are governed by strict data processing agreements that prohibit processing for advertising.",
       icon: Globe
     }
   ];
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6">
-      <button 
-        onClick={() => navigate(-1)}
-        className="flex items-center text-gray-500 hover:text-indigo-600 transition-colors mb-8 font-bold"
-      >
-        <ChevronLeft className="w-5 h-5 mr-1" />
-        Back
-      </button>
+    <LegalPageLayout 
+      title="Privacy Policy"
+      subtitle="Our commitment to the security and confidentiality of your financial data."
+      lastUpdated="May 11, 2026"
+      icon={Shield}
+      iconColorClass="bg-emerald-600"
+    >
+      <section className="space-y-6">
+        <p className="text-lg font-semibold text-gray-900 border-l-4 border-indigo-600 pl-6 py-1">
+          Privacy is not a feature; it is a fundamental requirement for financial intelligence. 
+        </p>
+        <p>
+          This policy outlines how WealthOS Inc. ("we," "our," or "the Platform") manages, protects, and utilizes the information you provide. Our architecture is built to ensure that your financial identity remains private while providing you with necessary insights.
+        </p>
+      </section>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-16"
-      >
-        <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-emerald-100">
-          <Shield className="w-8 h-8 text-white" />
-        </div>
-        <h1 className="text-4xl font-black text-gray-900 tracking-tight mb-4">Privacy Policy</h1>
-        <p className="text-xl text-gray-500">Last updated: April 9, 2026</p>
-      </motion.div>
+      <div className="space-y-16 mt-16">
+        {sections.map((section, i) => (
+          <div 
+            key={i}
+            className="space-y-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gray-50 text-gray-400 rounded-lg flex items-center justify-center">
+                <section.icon className="w-4 h-4" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">{section.title}</h2>
+            </div>
+            <div className="text-gray-600 leading-relaxed pl-11">
+              {section.content}
+            </div>
+          </div>
+        ))}
+      </div>
 
-      <div className="prose prose-indigo max-w-none">
-        <div className="bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-sm mb-12">
-          <p className="text-lg text-gray-600 leading-relaxed mb-0">
-            At WealthOS, we take your privacy seriously. This policy outlines how we handle your data and the steps we take to ensure your financial information remains secure and private.
+      <div className="mt-24 p-10 bg-gray-50 rounded-[2rem] border border-gray-100 space-y-8">
+        <div className="space-y-4">
+          <h3 className="text-2xl font-bold text-gray-900">Data Ownership & Deletion</h3>
+          <p className="text-gray-600 leading-relaxed font-medium">
+            At any time, you may request an export of your stored financial records or initiate a permanent account deletion. Upon deletion, all financial profile data, asset history, and transaction mappings are scrubbed from our production databases and backup cycles according to our data retention schedule.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-          {sections.map((section, i) => (
-            <motion.div 
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="bg-gray-50 rounded-3xl p-8 border border-gray-100"
-            >
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm mb-6">
-                <section.icon className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">{section.title}</h3>
-              <p className="text-gray-600 leading-relaxed">{section.content}</p>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="bg-indigo-50 rounded-[2.5rem] p-10 border border-indigo-100">
-          <div className="flex items-start space-x-6">
-            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm flex-shrink-0">
-              <FileText className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Your Rights</h3>
-              <p className="text-gray-600 leading-relaxed mb-4">
-                You have the right to access, correct, or delete your personal information at any time. You can manage your data directly through the Settings page in the WealthOS app.
-              </p>
-              <p className="text-gray-600 leading-relaxed">
-                If you have any questions about our privacy practices, please contact us at <span className="font-bold text-indigo-600">privacy@wealthos.app</span>.
-              </p>
-            </div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between pt-6 border-t border-gray-200/60 gap-4">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Inquiries: privacy@wealthos.app</p>
+          <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-widest">
+             <Shield className="w-4 h-4" /> Built for Global Data Standards
           </div>
         </div>
       </div>
-    </div>
+    </LegalPageLayout>
   );
 };
 

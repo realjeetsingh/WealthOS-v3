@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, X, ArrowRight, TrendingUp, TrendingDown, Zap } from 'lucide-react';
+import { Sparkles, X, ArrowRight, TrendingUp, TrendingDown, Zap, ShieldCheck } from 'lucide-react';
 import { DailySnapshotData } from '../services/dailyHabitEngine';
 
 interface AIInsightBannerProps {
@@ -53,12 +53,17 @@ const AIInsightBanner: React.FC<AIInsightBannerProps> = ({ data }) => {
           <motion.div 
             initial={false}
             animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }}
-            className="overflow-hidden md:hidden"
+            className="overflow-hidden"
           >
-            <div className="pt-2 mt-2 border-t border-indigo-100/30">
-               <p className="text-[10px] text-gray-500 font-medium leading-relaxed italic">
-                 "Our AI analyzed your recent velocity and suggests maintaining this trajectory for another 4 days to hit your next milestone."
+            <div className="pt-3 mt-3 border-t border-indigo-100/30 space-y-3">
+               <p className="text-[10px] md:text-xs text-gray-600 font-medium leading-relaxed">
+                 {data.spendingTrend === 'down' 
+                   ? "You've decreased velocity by 12% compared to last cycle. This surplus is best allocated to your principal-heavy debt or your Emergency Fund goal."
+                   : "Current velocity is trending high relative to your income velocity. AI suggests reviewing optional subscriptions this week."}
                </p>
+               <div className="flex items-center gap-2 p-2 bg-indigo-50/50 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest text-indigo-400">
+                 <ShieldCheck className="w-3 h-3" /> Educational Use Only. Not Licensed Financial Advice.
+               </div>
             </div>
           </motion.div>
 

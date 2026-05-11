@@ -3,7 +3,9 @@ import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../../firebase';
 import { handleFirestoreError, OperationType } from '../../lib/firestore-errors';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { getAuthErrorMessage } from '../../utils/authErrorMap';
+import { doc, serverTimestamp } from 'firebase/firestore';
+import { resolveUserSession } from '../../services/authService';
 import { AlertCircle, Lock, Mail, CheckCircle2, TrendingUp, BrainCircuit, ShieldCheck, Sparkles, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import Button from '../../components/ui/Button';
@@ -60,27 +62,13 @@ const Login: React.FC = () => {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      // Ensure user document exists
-      try {
-        await setDoc(doc(db, 'users', user.uid), {
-          name: user.displayName || 'User',
-          email: user.email,
-          profileImage: user.photoURL,
-          currency: 'INR',
-          role: 'user',
-          isPremium: false,
-          onboardingCompleted: false,
-          hasSeenIntro: false,
-          lastLogin: serverTimestamp(),
-        }, { merge: true });
-      } catch (firestoreErr) {
-        handleFirestoreError(firestoreErr, OperationType.WRITE, `users/${user.uid}`, user);
-      }
+      // Ensure user document exists and handle identity mapping securely
+      await resolveUserSession(user);
 
       navigate(from, { replace: true });
     } catch (err: any) {
       console.error("Google Sign-In error:", err);
-      setError("Failed to sign in with Google. Please try again.");
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -111,23 +99,7 @@ const Login: React.FC = () => {
     } catch (err: any) {
       console.error("Login error:", err);
       setFailedAttempts(prev => prev + 1);
-
-      // TASK 1 & 2: Context-aware errors
-      const code = err.code;
-      
-      if (code === 'auth/invalid-email') {
-        setError("Invalid email address format.");
-      } else if (code === 'auth/user-not-found') {
-        setError("No account found with this email. Please create an account.");
-      } else if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-        setError("Incorrect email or password. Please check and try again.");
-      } else if (code === 'auth/too-many-requests') {
-        setError("Too many attempts. Please try again after some time.");
-      } else if (code === 'auth/network-request-failed') {
-        setError("Network error. Please check your connection and try again.");
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -387,8 +359,8 @@ const Login: React.FC = () => {
           <div className="mt-8 pt-8 border-t border-gray-200">
             <p className="text-center text-xs text-gray-500">
               By signing in, you agree to our{' '}
-              <a href="#" className="underline hover:text-gray-700">Terms of Service</a> and{' '}
-              <a href="#" className="underline hover:text-gray-700">Privacy Policy</a>.
+              <Link to="/terms" className="underline hover:text-gray-700">Terms of Service</Link> and{' '}
+              <Link to="/privacy" className="underline hover:text-gray-700">Privacy Policy</Link>.
             </p>
           </div>
         </motion.div>

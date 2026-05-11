@@ -70,7 +70,7 @@ const ASSET_SUGGESTIONS = [
 ];
 
 const STEPS = [
-  { id: 'welcome', title: 'Welcome', icon: Sparkles, description: 'Take control in 60 seconds' },
+  { id: 'welcome', title: 'Welcome', icon: Sparkles, description: 'Setup your financial dashboard' },
   { id: 'income', title: 'Monthly Income', icon: TrendingUp, description: 'How much do you earn each month?' },
   { id: 'expenses', title: 'Monthly Expenses', icon: TrendingDown, description: 'How much do you spend monthly?' },
   { id: 'loans', title: 'Loan Check', icon: Wallet, description: 'Any ongoing EMIs or debts?' },
@@ -308,10 +308,10 @@ const Onboarding: React.FC = () => {
             </motion.div>
             <div className="space-y-3">
               <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-tight">
-                Take Control of <br />
-                <span className="text-indigo-600">Your Money</span>
+                Personalize <br />
+                <span className="text-indigo-600">Your Experience</span>
               </h1>
-              <p className="text-lg text-gray-500 font-medium tracking-tight">In just 60 seconds</p>
+              <p className="text-lg text-gray-500 font-medium tracking-tight">Setup your financial dashboard in a few steps</p>
             </div>
             <div className="grid grid-cols-1 gap-4 pt-4 max-w-sm mx-auto">
               {[
@@ -968,8 +968,8 @@ const Onboarding: React.FC = () => {
               >
                 <CheckCircle2 className="text-white w-10 h-10" />
               </motion.div>
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight leading-tight">Your Financial <br/><span className="text-indigo-600">Snapshot</span></h2>
-              <p className="text-gray-500 font-medium">Initial system analysis complete.</p>
+              <h2 className="text-3xl font-black text-gray-900 tracking-tight leading-tight">Your Financial <br/><span className="text-indigo-600">Summary</span></h2>
+              <p className="text-gray-500 font-medium">Analysis complete.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

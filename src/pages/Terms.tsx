@@ -1,69 +1,81 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { FileText, Shield, Scale, ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Scale, FileText, AlertCircle, CreditCard, UserX, Lightbulb, Gavel } from 'lucide-react';
+import LegalPageLayout from './LegalPageLayout';
 
 const Terms: React.FC = () => {
-  const navigate = useNavigate();
-
   const sections = [
     {
-      title: "1. Acceptance of Terms",
-      content: "By accessing or using WealthOS, you agree to be bound by these Terms and Conditions. If you disagree with any part of the terms, you may not access the service."
+      title: "Platform Usage",
+      content: "WealthOS is provided for personal financial management. You agree to use the platform only for lawful purposes. Unauthorized scraping, automated harvesting, or attempts to breach our security layers will result in permanent account termination.",
+      icon: Scale
     },
     {
-      title: "2. Subscription & Payments",
-      content: "Pro features are provided on a subscription basis (₹199/mo or ₹1499/yr). Payments are processed securely via third-party providers. Subscriptions can be canceled at any time from your account settings."
+      title: "User Responsibility",
+      content: "You are responsible for the accuracy of data you input or sync. WealthOS is a reflection of your financial reality—if you sync incorrect data, the insights will be inaccurate. You must keep your credentials secure.",
+      icon: Lightbulb
     },
     {
-      title: "3. Financial Disclaimer",
-      content: "WealthOS is a financial tracking and analysis tool. The insights, projections, and AI recommendations are for informational purposes only and do NOT constitute professional financial, investment, or legal advice. Always consult with a certified professional before making significant financial decisions."
+      title: "AI Analysis Limits",
+      content: "AI-generated projections and summaries are for informational purposes only. They do not constitute financial advice. WealthOS does not guarantee wealth creation or specific investment outcomes.",
+      icon: AlertCircle
     },
     {
-      title: "4. Data SMS Sync",
-      content: "WealthOS requests SMS access to automate expense tracking. We only parse financial transaction alerts. Personal messages are never processed or stored on our servers. You are responsible for granting and managing these permissions."
+      title: "Premium Subscriptions",
+      content: "Pro features are billed on a recurring basis. You can cancel at any time via Settings. All payments are non-refundable except where required by law. Subscription provides access to advanced AI modules and automation tools.",
+      icon: CreditCard
     },
     {
-      title: "5. Limitation of Liability",
-      content: "WealthOS shall not be liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use the service, including but not limited to financial losses or data inaccuracies."
+      title: "Limitation of Liability",
+      content: "WealthOS Inc. shall not be held liable for any financial losses, investment failures, or data inaccuracies resulting from your use of the platform. We provide tools; you drive your financial vehicle.",
+      icon: Gavel
+    },
+    {
+      title: "Account Termination",
+      content: "We reserve the right to suspend accounts that violate our terms or engagement in abusive behavior. You may terminate your account at any time via the Security Settings panel.",
+      icon: UserX
     }
   ];
 
   return (
-    <div className="max-w-3xl mx-auto py-12 px-6">
-      <button 
-        onClick={() => navigate(-1)}
-        className="flex items-center text-gray-500 hover:text-indigo-600 transition-colors mb-8 font-bold"
-      >
-        <ChevronLeft className="w-5 h-5 mr-1" />
-        Back
-      </button>
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-12"
-      >
-        <div className="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-gray-100">
-          <Scale className="w-8 h-8 text-white" />
-        </div>
-        <h1 className="text-4xl font-black text-gray-900 tracking-tight mb-4">Terms of Service</h1>
-        <p className="text-xl text-gray-500">The rules of the platform and our mutual agreement.</p>
-      </motion.div>
-
-      <div className="space-y-12">
-        {sections.map((s, i) => (
-          <section key={i} className="space-y-4">
-            <h3 className="text-xl font-black text-gray-900">{s.title}</h3>
-            <p className="text-gray-600 leading-relaxed font-medium">{s.content}</p>
-          </section>
+    <LegalPageLayout 
+      title="Terms of Service"
+      subtitle="The governance framework for your usage of the WealthOS platform."
+      lastUpdated="May 11, 2026"
+      icon={FileText}
+      iconColorClass="bg-gray-900"
+    >
+      <div className="space-y-16">
+        {sections.map((section, i) => (
+          <div 
+            key={i}
+            className="group"
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <span className="text-xs font-black text-gray-300 w-6">{String(i + 1).padStart(2, '0')}</span>
+              <h3 className="text-xl font-bold text-gray-900">{section.title}</h3>
+            </div>
+            <p className="text-gray-600 leading-relaxed font-medium pl-10 border-l border-gray-100 group-hover:border-indigo-100 transition-colors">
+              {section.content}
+            </p>
+          </div>
         ))}
       </div>
 
-      <div className="mt-16 p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100 italic text-sm text-gray-400 text-center">
-        Last Updated: May 2026 • © WealthOS Growth Systems
+      <div className="mt-24 p-8 bg-indigo-50/30 rounded-2xl border border-indigo-100/50">
+        <div className="flex flex-col md:flex-row items-start gap-8">
+          <div className="w-12 h-12 bg-white border border-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+             <AlertCircle className="w-6 h-6 text-indigo-600" />
+          </div>
+          <div className="space-y-3">
+            <h3 className="text-lg font-bold text-gray-900">Intellectual Property Notice</h3>
+            <p className="text-sm text-gray-600 leading-relaxed font-medium">
+              All source code, visual interfaces, proprietary algorithms, and brand assets within the WealthOS environment are the exclusive intellectual property of WealthOS Inc. Reverse engineering, redistribution, or unauthorized commercial use is strictly prohibited.
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
+    </LegalPageLayout>
   );
 };
 

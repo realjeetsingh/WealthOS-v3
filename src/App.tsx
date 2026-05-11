@@ -31,6 +31,7 @@ import Onboarding from './pages/Onboarding';
 import FAQ from './pages/FAQ';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import Disclaimer from './pages/Disclaimer';
 import AppPermissions from './pages/AppPermissions';
 import { Toaster } from 'sonner';
 import { auth } from './firebase';
@@ -239,31 +240,33 @@ export default function App() {
             <Route 
               path="/faq" 
               element={
-                <ProtectedRoute>
-                  <Layout>
-                    <FAQ />
-                  </Layout>
-                </ProtectedRoute>
+                <Layout>
+                  <FAQ />
+                </Layout>
               } 
             />
             <Route 
               path="/privacy" 
               element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Privacy />
-                  </Layout>
-                </ProtectedRoute>
+                <Layout>
+                  <Privacy />
+                </Layout>
               } 
             />
             <Route 
               path="/terms" 
               element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Terms />
-                  </Layout>
-                </ProtectedRoute>
+                <Layout>
+                  <Terms />
+                </Layout>
+              } 
+            />
+            <Route 
+              path="/disclaimer" 
+              element={
+                <Layout>
+                  <Disclaimer />
+                </Layout>
               } 
             />
             <Route path="/auth/login" element={<Login />} />

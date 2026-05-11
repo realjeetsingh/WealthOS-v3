@@ -48,13 +48,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Use onSnapshot for real-time profile updates
         unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            // STEP 3 — SAFE PROFILE SET: No fallback override
             setUserProfile(docSnap.data() as UserProfile);
+            setLoading(false);
           } else {
+            // Document might be being created by Login/Signup
+            // We wait for it to exist before ending loading state
+            // Or if it's a first-time email user, they might not have a doc yet
             setUserProfile(null);
+            // Don't set loading false yet if we expect a doc soon? 
+            // Actually, if it doesn't exist, we might be in the middle of a signup/login flow
+            // But we should stop loading at some point.
+            setLoading(false);
           }
-          // STEP 4 — HANDLE LOADING: Ensure loading = false only after snapshot fires
-          setLoading(false);
         }, (error) => {
           setLoading(false);
           handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`, currentUser);

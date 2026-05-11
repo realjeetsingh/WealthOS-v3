@@ -24,14 +24,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
-  // If user is logged in but hasn't completed onboarding, redirect to onboarding
-  // BUT don't redirect if they are ALREADY on the onboarding page
-  if (userProfile && !userProfile.onboardingCompleted && location.pathname !== '/onboarding') {
-    return <Navigate to="/onboarding" replace />;
+  // If user is logged in but profile is missing or onboarding is not completed, redirect to onboarding
+  // We check location.pathname to avoid infinite redirect
+  const isOnboardingPage = location.pathname === '/onboarding';
+  
+  if (user && !isOnboardingPage) {
+    if (!userProfile || !userProfile.onboardingCompleted) {
+      return <Navigate to="/onboarding" replace />;
+    }
   }
 
   // If user HAS completed onboarding, don't let them go back to onboarding page
-  if (userProfile?.onboardingCompleted && location.pathname === '/onboarding') {
+  if (userProfile?.onboardingCompleted && isOnboardingPage) {
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { resolveUserSession } from '../../services/authService';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth, db } from '../../firebase';
 import { handleFirestoreError, OperationType } from '../../lib/firestore-errors';
+import { recordLegalConsent } from '../../services/consentService';
+import { getAuthErrorMessage } from '../../utils/authErrorMap';
 import { AlertCircle, Lock, Mail, User as UserIcon, CheckCircle2, TrendingUp, BrainCircuit, ShieldCheck, Sparkles, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import Button from '../../components/ui/Button';
@@ -37,11 +40,16 @@ const Signup: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleGoogleSignIn = async () => {
+    if (!consentAccepted) {
+      setError("Please accept the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
     setError(null);
     setLoading(true);
     const provider = new GoogleAuthProvider();
@@ -49,27 +57,17 @@ const Signup: React.FC = () => {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      // Ensure user document exists
-      try {
-        await setDoc(doc(db, 'users', user.uid), {
-          name: user.displayName || 'User',
-          email: user.email,
-          profileImage: user.photoURL,
-          currency: 'INR',
-          role: 'user',
-          isPremium: false,
-          onboardingCompleted: false,
-          hasSeenIntro: false,
-          lastLogin: serverTimestamp(),
-        }, { merge: true });
-      } catch (firestoreErr) {
-        handleFirestoreError(firestoreErr, OperationType.WRITE, `users/${user.uid}`, user);
+      // Ensure user document exists and handle identity mapping securely
+      const { isNewUser } = await resolveUserSession(user);
+      
+      if (isNewUser) {
+        await recordLegalConsent(user.uid);
       }
 
       navigate('/dashboard');
     } catch (err: any) {
       console.error("Google Sign-In error:", err);
-      setError("Failed to sign in with Google. Please try again.");
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -78,6 +76,11 @@ const Signup: React.FC = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!consentAccepted) {
+      setError("Please accept the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -102,6 +105,8 @@ const Signup: React.FC = () => {
           hasSeenIntro: false,
           createdAt: serverTimestamp(),
         });
+
+        await recordLegalConsent(user.uid);
       } catch (firestoreErr) {
         handleFirestoreError(firestoreErr, OperationType.WRITE, `users/${user.uid}`);
       }
@@ -109,15 +114,7 @@ const Signup: React.FC = () => {
       navigate('/dashboard');
     } catch (err: any) {
       console.error("Signup error:", err);
-      if (err.code === 'auth/email-already-in-use') {
-        setError("Email already in use. Try logging in.");
-      } else if (err.code === 'auth/weak-password') {
-        setError("Password is too short (min 6 characters).");
-      } else if (err.code === 'auth/invalid-email') {
-        setError("Invalid email address format.");
-      } else {
-        setError("An error occurred during signup. Please try again.");
-      }
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -320,12 +317,22 @@ const Signup: React.FC = () => {
               </div>
             </div>
 
+            <div className="flex items-start space-x-3 py-2 cursor-pointer group" onClick={() => setConsentAccepted(!consentAccepted)}>
+              <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center transition-all ${consentAccepted ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300 group-hover:border-gray-400'}`}>
+                {consentAccepted && <CheckCircle2 className="w-3 h-3 text-white" />}
+              </div>
+              <p className="text-xs text-gray-600 leading-relaxed font-medium">
+                I have read and agree to the <Link to="/terms" onClick={(e) => e.stopPropagation()} className="font-bold text-indigo-600 hover:underline">Terms of Service</Link> and <Link to="/privacy" onClick={(e) => e.stopPropagation()} className="font-bold text-indigo-600 hover:underline">Privacy Policy</Link>.
+              </p>
+            </div>
+
             <div className="pt-2">
               <Button
                 type="submit"
                 loading={loading}
                 fullWidth
                 size="lg"
+                disabled={!consentAccepted}
               >
                 Start Your Journey
               </Button>
@@ -353,6 +360,7 @@ const Signup: React.FC = () => {
               onClick={handleGoogleSignIn}
               loading={loading}
               type="button"
+              disabled={!consentAccepted}
               icon={<GoogleIcon />}
             >
               Continue with Google
@@ -391,8 +399,8 @@ const Signup: React.FC = () => {
           <div className="mt-8 pt-8 border-t border-gray-200">
             <p className="text-center text-xs text-gray-500 leading-relaxed">
               By creating an account, you agree to our{' '}
-              <a href="#" className="underline hover:text-gray-700 font-medium">Terms of Service</a> and{' '}
-              <a href="#" className="underline hover:text-gray-700 font-medium">Privacy Policy</a>.
+              <Link to="/terms" className="underline hover:text-gray-700 font-medium">Terms of Service</Link> and{' '}
+              <Link to="/privacy" className="underline hover:text-gray-700 font-medium">Privacy Policy</Link>.
             </p>
           </div>
         </motion.div>

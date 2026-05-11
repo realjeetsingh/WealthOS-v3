@@ -11,6 +11,8 @@ import {
   LogOut,
   HelpCircle,
   ShieldCheck,
+  Scale,
+  Octagon,
   ArrowRight,
   Sparkles
 } from 'lucide-react';
@@ -76,6 +78,20 @@ const More: React.FC = () => {
       title: 'Privacy Policy',
       icon: ShieldCheck,
       path: '/privacy',
+      color: 'text-gray-600'
+    },
+    {
+      id: 'terms',
+      title: 'Terms of Service',
+      icon: Scale,
+      path: '/terms',
+      color: 'text-gray-600'
+    },
+    {
+      id: 'disclaimer',
+      title: 'Financial Disclaimer',
+      icon: Octagon,
+      path: '/disclaimer',
       color: 'text-gray-600'
     }
   ];

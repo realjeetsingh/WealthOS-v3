@@ -140,9 +140,28 @@ const Settings: React.FC = () => {
         <span>Logout from WealthOS</span>
       </button>
 
+      {/* Privacy Transparency Section */}
+      <div className="bg-emerald-50 rounded-[2rem] p-8 border border-emerald-100/50 space-y-4">
+        <div className="flex items-center gap-3 text-emerald-700">
+          <ShieldCheck className="w-6 h-6" />
+          <h3 className="text-xl font-black">Data Transparency</h3>
+        </div>
+        <p className="text-sm text-emerald-800 leading-relaxed font-medium">
+          WealthOS follows the <span className="font-bold">Principle of Zero Knowledge</span> for AI parsing. Financial notifications are processed locally when possible, and only mathematical abstractions are sent for AI insights. We do not sell your personal financial data to third parties.
+        </p>
+        <div className="grid grid-cols-2 gap-4 pt-2">
+          <button onClick={() => navigate('/privacy')} className="p-3 bg-white/60 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-700 hover:bg-white transition-colors border border-emerald-200">
+            Privacy Policy
+          </button>
+          <button onClick={() => navigate('/disclaimer')} className="p-3 bg-white/60 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-700 hover:bg-white transition-colors border border-emerald-200">
+            Legal Disclaimer
+          </button>
+        </div>
+      </div>
+
       {/* VERSION INFO */}
       <div className="text-center space-y-1 py-4">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">WealthOS v2.4.0</p>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">WealthOS v1.2.0-beta</p>
         <p className="text-[10px] text-gray-300">© 2026 WealthOS Inc. All rights reserved.</p>
       </div>
     </div>

@@ -165,6 +165,21 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["category", "limit", "timestamp"]
+    },
+    "LegalConsent": {
+      "title": "Legal Consent Record",
+      "description": "Consolidated legal consent record for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "termsAccepted": { "type": "boolean" },
+        "privacyAccepted": { "type": "boolean" },
+        "acceptedAt": { "type": "string", "format": "date-time" },
+        "policyVersion": { "type": "string" },
+        "appVersion": { "type": "string" },
+        "status": { "type": "string", "enum": ["accepted", "revoked"] }
+      },
+      "required": ["userId", "termsAccepted", "privacyAccepted", "acceptedAt", "policyVersion", "status"]
     }
   },
   "firestore": {
@@ -199,6 +214,10 @@
     "/users/{uid}/budgets/{budgetId}": {
       "schema": "Budget",
       "description": "Subcollection of monthly budgets for a specific user."
+    },
+    "/users/{uid}/consents/legal": {
+      "schema": "LegalConsent",
+      "description": "Consolidated legal documentation acceptance status."
     }
   }
 }
