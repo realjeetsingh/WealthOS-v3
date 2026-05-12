@@ -36,6 +36,7 @@ import {
   Activity,
   Calendar,
   Zap,
+  Smartphone,
   AlertCircle,
   ShieldAlert,
   ArrowUpRight,
@@ -55,6 +56,8 @@ import EmptyState from '../components/EmptyState';
 import AIInsightBanner from '../components/AIInsightBanner';
 import DashboardHero from '../components/DashboardHero';
 import UnifiedCashflowCard from '../components/UnifiedCashflowCard';
+import NotificationApprovalList from '../components/NotificationApprovalList';
+import IntelligenceOnboarding from '../components/IntelligenceOnboarding';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { 
@@ -85,9 +88,24 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
+  const [isIntelligenceModalOpen, setIsIntelligenceModalOpen] = useState(false);
   const [userStreak, setUserStreak] = useState<UserStreak | null>(null);
   const [dailySnapshot, setDailySnapshot] = useState<DailySnapshotData | null>(null);
   const navigate = useNavigate();
+
+  const handleEnableIntelligence = async () => {
+    if (!user?.uid) return;
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        notificationSyncEnabled: true,
+        notificationPermissionAsked: true
+      });
+      setIsIntelligenceModalOpen(false);
+      toast.success('Smart Sync enabled!');
+    } catch (err) {
+      toast.error('Failed to enable Smart Sync');
+    }
+  };
 
   const fetchRawData = async () => {
     if (!user?.uid) return;
@@ -413,6 +431,13 @@ const Dashboard: React.FC = () => {
         userName={userProfile?.fullName?.split(' ')[0]}
         healthSummary={healthSummary}
       />
+      
+      {/* 2.5 INTELLIGENCE LAYER: Pending Alerts */}
+      {userProfile?.notificationSyncEnabled && (
+        <div className="mb-12">
+          <NotificationApprovalList />
+        </div>
+      )}
 
       {/* 3. MAIN VISUALIZATION: Unified Cashflow */}
       <div className="mb-12">
@@ -479,6 +504,32 @@ const Dashboard: React.FC = () => {
               </div>
               
               <div className="space-y-4">
+                {!userProfile?.notificationSyncEnabled && !userProfile?.notificationPermissionAsked && (
+                  <div 
+                    className="bg-indigo-600 p-6 rounded-[2rem] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group cursor-pointer"
+                    onClick={() => {
+                        setIsIntelligenceModalOpen(true);
+                        // Track that they saw it
+                        if (user?.uid) {
+                          updateDoc(doc(db, 'users', user.uid), {
+                            notificationEducationSeen: true
+                          }).catch(() => {});
+                        }
+                    }}
+                  >
+                    <Smartphone className="absolute top-0 right-0 -mt-2 -mr-2 w-20 h-20 text-white/5 opacity-40 group-hover:rotate-12 transition-transform" />
+                    <div className="flex items-center gap-2 mb-4">
+                      <Zap className="w-5 h-5 text-indigo-200" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-100">Smart Feature</span>
+                    </div>
+                    <h4 className="text-xl font-black mb-2 leading-tight">Enable Auto-Sync Intelligence</h4>
+                    <p className="text-sm text-indigo-100/80 mb-6 font-medium leading-relaxed">Automatically detect transactions from your bank alerts.</p>
+                    <Button variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white hover:text-indigo-600 border-none px-6">
+                      Setup Now
+                    </Button>
+                  </div>
+                )}
+
                 <div 
                   className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group cursor-pointer" 
                   onClick={() => navigate('/portfolio')}
@@ -591,6 +642,21 @@ const Dashboard: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <IntelligenceOnboarding 
+        isOpen={isIntelligenceModalOpen}
+        onClose={async () => {
+          setIsIntelligenceModalOpen(false);
+          // If they close it, we still count it as "asked" for the dashboard CTA logic
+          // to prevent clutter, but they can still enable it in settings.
+          if (user?.uid) {
+            await updateDoc(doc(db, 'users', user.uid), {
+              notificationPermissionAsked: true
+            }).catch(() => {});
+          }
+        }}
+        onEnable={handleEnableIntelligence}
+      />
     </div>
   );
 };

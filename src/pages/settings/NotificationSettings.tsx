@@ -18,11 +18,15 @@ const NotificationSettings: React.FC = () => {
   
   const [expenseAlerts, setExpenseAlerts] = useState(userProfile?.emailAlerts ?? true);
   const [budgetAlerts, setBudgetAlerts] = useState(userProfile?.budgetAlerts ?? true);
+  const [smartSync, setSmartSync] = useState(userProfile?.notificationSyncEnabled ?? false);
+  const [investmentAlerts, setInvestmentAlerts] = useState(userProfile?.investmentAlerts ?? false);
 
   useEffect(() => {
     if (userProfile) {
       setExpenseAlerts(userProfile.emailAlerts ?? true);
       setBudgetAlerts(userProfile.budgetAlerts ?? true);
+      setSmartSync(userProfile.notificationSyncEnabled ?? false);
+      setInvestmentAlerts(userProfile.investmentAlerts ?? false);
     }
   }, [userProfile]);
 
@@ -33,7 +37,9 @@ const NotificationSettings: React.FC = () => {
       const userRef = doc(db, 'users', user.uid);
       await updateDoc(userRef, {
         emailAlerts: expenseAlerts,
-        budgetAlerts: budgetAlerts
+        budgetAlerts: budgetAlerts,
+        notificationSyncEnabled: smartSync,
+        investmentAlerts: investmentAlerts
       });
       toast.success('Notification settings saved successfully');
     } catch (error) {
@@ -91,11 +97,16 @@ const NotificationSettings: React.FC = () => {
             onChange={setBudgetAlerts}
           />
           <Toggle 
+            label="Smart Sync Intelligence" 
+            description="Automatically track transactions from Android notifications"
+            enabled={smartSync}
+            onChange={setSmartSync}
+          />
+          <Toggle 
             label="Investment alerts" 
             description="Real-time updates on your portfolio performance"
-            enabled={false}
-            onChange={() => {}}
-            disabled={true}
+            enabled={investmentAlerts}
+            onChange={setInvestmentAlerts}
           />
         </div>
 

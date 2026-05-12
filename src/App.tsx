@@ -37,6 +37,7 @@ import { Toaster } from 'sonner';
 import { auth } from './firebase';
 import { User as UserIcon } from 'lucide-react';
 import SMSSyncListener from './components/SMSSyncListener';
+import NotificationSimulator from './components/NotificationSimulator';
 
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -46,6 +47,7 @@ export default function App() {
       <AuthProvider>
         <Toaster position="top-right" richColors />
         <SMSSyncListener />
+        <NotificationSimulator />
         <Router>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

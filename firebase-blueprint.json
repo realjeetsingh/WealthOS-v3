@@ -180,6 +180,26 @@
         "status": { "type": "string", "enum": ["accepted", "revoked"] }
       },
       "required": ["userId", "termsAccepted", "privacyAccepted", "acceptedAt", "policyVersion", "status"]
+    },
+    "DetectedTransaction": {
+      "title": "Detected Transaction",
+      "description": "Transactions detected from notifications pending user approval.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "amount": { "type": "number" },
+        "merchant": { "type": "string" },
+        "date": { "type": "string" },
+        "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+        "source": { "type": "string" },
+        "app": { "type": "string" },
+        "rawBody": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "ignored"] },
+        "detectedAt": { "type": "string", "format": "date-time" },
+        "fingerprint": { "type": "string" }
+      },
+      "required": ["userId", "type", "amount", "merchant", "status", "fingerprint"]
     }
   },
   "firestore": {
@@ -190,6 +210,10 @@
     "/users/{uid}/transactions/{transactionId}": {
       "schema": "Transaction",
       "description": "Subcollection of financial transactions for a specific user."
+    },
+    "/users/{uid}/detected_transactions/{txId}": {
+      "schema": "DetectedTransaction",
+      "description": "Pending queue for transactions detected via automation."
     },
     "/users/{uid}/assets/{assetId}": {
       "schema": "Asset",

@@ -19,6 +19,9 @@ export interface UserProfile {
   emailAlerts?: boolean;
   budgetAlerts?: boolean;
   investmentAlerts?: boolean;
+  notificationSyncEnabled?: boolean;
+  notificationPermissionAsked?: boolean;
+  notificationEducationSeen?: boolean;
   streakCount?: number;
   lastActiveDate?: Timestamp;
   viewedLessons?: string[];

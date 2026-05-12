@@ -69,6 +69,15 @@ service cloud.firestore {
              data.currentAmount is number && data.currentAmount >= 0;
     }
 
+    function isValidDetectedTransaction(data) {
+      return data.userId == request.auth.uid &&
+             data.type in ['income', 'expense'] &&
+             data.amount is number && data.amount > 0 &&
+             data.merchant is string &&
+             data.status in ['pending', 'approved', 'ignored'] &&
+             data.fingerprint is string;
+    }
+
     function isValidLoan(data) {
       return data.name is string && data.name.size() > 0 &&
              data.principalAmount is number && data.principalAmount >= 0 &&
@@ -234,6 +243,13 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && isValidBudget(request.resource.data);
         allow update: if isOwner(userId) && isValidBudget(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+      
+      match /detected_transactions/{txId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidDetectedTransaction(request.resource.data);
+        allow update: if isOwner(userId) && isValidDetectedTransaction(request.resource.data);
         allow delete: if isOwner(userId) || isAdmin();
       }
 

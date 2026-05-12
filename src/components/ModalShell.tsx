@@ -62,7 +62,7 @@ const ModalShell: React.FC<ModalShellProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            className="absolute inset-0 bg-black/60 backdrop-blur-md overscroll-none"
           />
 
           {/* Modal Container */}
@@ -79,11 +79,12 @@ const ModalShell: React.FC<ModalShellProps> = ({
                 ${contentClasses[align]}
                 overflow-hidden
                 relative
+                shadow-2xl
               `}
             >
               {/* Header */}
               {(title || showClose) && (
-                <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 sticky top-0 z-10">
+                <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 sticky top-0 z-10 rounded-t-[2.5rem]">
                   {title && (
                     <h3 className="text-xl font-black text-gray-900 tracking-tight">{title}</h3>
                   )}
@@ -100,8 +101,8 @@ const ModalShell: React.FC<ModalShellProps> = ({
 
               {/* Scrollable Content */}
               <div 
-                className="overflow-y-auto flex-1 overscroll-contain px-8 pb-8 pt-2 [-webkit-overflow-scrolling:touch] custom-scrollbar"
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 2rem)' }}
+                className="overflow-y-auto flex-1 overscroll-contain px-8 pb-12 pt-2 [-webkit-overflow-scrolling:touch] custom-scrollbar"
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 3rem)' }}
               >
                 {children}
               </div>
