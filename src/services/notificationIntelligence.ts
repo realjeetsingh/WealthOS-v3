@@ -30,8 +30,11 @@ export interface DetectedTransaction {
   fingerprint: string;
 }
 
+export type ParseStatus = 'SUCCESS' | 'FILTERED' | 'DUPLICATE_IGNORED' | 'LOW_CONFIDENCE' | 'PARSE_FAILED' | 'ERROR';
+
 export interface ParseResult {
   success: boolean;
+  status: ParseStatus;
   stage: 'capture' | 'filter' | 'parse' | 'normalize' | 'confidence' | 'dedupe' | 'save';
   data?: Partial<DetectedTransaction>;
   error?: string;
@@ -41,29 +44,103 @@ export interface ParseResult {
 /**
  * Intelligent Transaction Detection Engine
  */
-export const financialApps = [
-  'hdfc', 'sbi', 'axis', 'icici', 'fede', 'idfc', 'kotk', 'rbl',
-  'paytm', 'phonepe', 'google pay', 'gpay', 'mobikwik', 'cred'
+
+/**
+ * Canonical Financial Provider Registry
+ */
+interface FinancialProvider {
+  name: string;
+  aliases: string[];
+  packages: string[];
+  type: 'bank' | 'upi' | 'wallet' | 'fintech';
+}
+
+const TRUSTED_PROVIDERS: FinancialProvider[] = [
+  {
+    name: 'Google Pay',
+    aliases: ['gpay', 'google pay'],
+    packages: ['com.google.android.apps.nbu.paisa.user'],
+    type: 'upi'
+  },
+  {
+    name: 'PhonePe',
+    aliases: ['phonepe'],
+    packages: ['com.phonepe.app'],
+    type: 'upi'
+  },
+  {
+    name: 'Paytm',
+    aliases: ['paytm'],
+    packages: ['net.one97.paytm'],
+    type: 'upi'
+  },
+  {
+    name: 'BHIM',
+    aliases: ['bhim'],
+    packages: ['in.org.npci.upiapp'],
+    type: 'upi'
+  },
+  {
+    name: 'Amazon Pay',
+    aliases: ['amazon.pay', 'amazon pay'],
+    packages: ['com.amazon.mShop.android.shopping'],
+    type: 'upi'
+  },
+  {
+    name: 'CRED',
+    aliases: ['cred'],
+    packages: ['com.dreamplug.android.cred'],
+    type: 'fintech'
+  }
+];
+
+const SECONDARY_FINANCIAL_KEYS = [
+  'hdfc', 'icici', 'sbi', 'kotak', 'axis', 'pnb', 'bob', 'canara', 'rbl', 'yesbank', 'indusind',
+  'slice', 'fampay', 'jupiter', 'fi.money', 'niyo', 'scopia', 'mobikwik'
 ];
 
 /**
  * Layer 2: Filter financial notifications
  */
-export const isFinancialNotification = (notification: RawNotification): { isFinancial: boolean; reason?: string } => {
+export const isFinancialNotification = (notification: RawNotification): { isFinancial: boolean; reason?: string; status?: ParseStatus } => {
   const text = (notification.title + ' ' + notification.body).toLowerCase();
-  
-  const isFromFinApp = financialApps.some(app => 
-    notification.app.toLowerCase().includes(app) || 
-    (notification.packageName && notification.packageName.toLowerCase().includes(app))
+  const appName = notification.app.toLowerCase();
+  const packageName = (notification.packageName || '').toLowerCase();
+
+  // 1. Check Primary Trusted Registry
+  const provider = TRUSTED_PROVIDERS.find(p => 
+    p.packages.some(pkg => packageName.includes(pkg)) ||
+    p.aliases.some(alias => appName.includes(alias))
   );
 
-  if (!isFromFinApp) {
-    return { isFinancial: false, reason: `App '${notification.app}' is not in financial allow-list.` };
+  // 2. Check Secondary Keyword Match
+  const isSecondaryMatch = SECONDARY_FINANCIAL_KEYS.some(key => 
+    appName.includes(key) || packageName.includes(key)
+  );
+
+  if (!provider && !isSecondaryMatch) {
+    return { 
+      isFinancial: false, 
+      reason: "Notification safely ignored: Not from a recognized financial application.",
+      status: 'FILTERED'
+    };
   }
 
   const validation = validateFinancialSMS(text, notification.app);
+  
+  // UPI apps are more trusted for "Transaction" keywords even if bank reference is missing
+  if (provider?.type === 'upi' && extractAmount(text)) {
+    return { isFinancial: true };
+  }
+
   if (validation.confidence === 'low') {
-    return { isFinancial: false, reason: validation.reason || "Content did not match financial patterns." };
+    return { 
+      isFinancial: false, 
+      reason: isSecondaryMatch || provider 
+        ? "Financial provider detected, but no transaction details found in notification."
+        : "Notification safely ignored: No transaction patterns detected.",
+      status: 'FILTERED'
+    };
   }
 
   return { isFinancial: true };
@@ -77,17 +154,23 @@ export const processIncomingNotification = async (notification: RawNotification)
   logs.push(`[Capture] Received notification from ${notification.app}`);
 
   if (!auth.currentUser) {
-    return { success: false, stage: 'capture', error: 'User not authenticated', logs };
+    return { success: false, status: 'ERROR', stage: 'capture', error: 'User not authenticated', logs };
   }
 
   try {
     // 1. Filter
-    const filterResult = isFinancialNotification(notification);
-    if (!filterResult.isFinancial) {
-      logs.push(`[Filter] Rejected: ${filterResult.reason}`);
-      return { success: false, stage: 'filter', error: filterResult.reason, logs };
+    const filterDetails = isFinancialNotification(notification);
+    if (!filterDetails.isFinancial) {
+      logs.push(`[Filter] Rejected: ${filterDetails.reason}`);
+      return { 
+        success: false, 
+        status: filterDetails.status || 'FILTERED', 
+        stage: 'filter', 
+        error: filterDetails.reason, 
+        logs 
+      };
     }
-    logs.push(`[Filter] Passed financial check`);
+    logs.push(`[Filter] Trusted financial source identified`);
 
     // 2. Parse
     const combinedText = notification.title + ' ' + notification.body;
@@ -95,25 +178,36 @@ export const processIncomingNotification = async (notification: RawNotification)
     
     const type = detectType(normalized);
     const amount = extractAmount(normalized);
-    const merchant = extractMerchant(normalized);
+    let merchant = extractMerchant(normalized);
     const date = extractDate(normalized);
     const validation = validateFinancialSMS(normalized, notification.app);
 
     if (!amount) {
       logs.push(`[Parse] Failed to extract amount from: "${normalized}"`);
-      return { success: false, stage: 'parse', error: 'Could not detect transaction amount', logs };
+      return { success: false, status: 'PARSE_FAILED', stage: 'parse', error: 'Could not detect transaction amount', logs };
+    }
+
+    // Salary/Income Merchant Refinement
+    if (type === 'income' && !merchant) {
+      if (normalized.includes('salary') || normalized.includes('credited by salary')) {
+        merchant = 'Salary Credit';
+      } else {
+        merchant = 'Received Payment';
+      }
+    } else if (!merchant) {
+      merchant = 'Paid Merchant';
     }
     
     // Categorization Logic
     const catResult = categorizeTransaction(merchant || combinedText);
-    logs.push(`[Parse] Extracted: Type=${type || 'expense'}, Amount=${amount}, Merchant=${merchant || 'Unknown'}`);
+    logs.push(`[Parse] Extracted: Type=${type || 'expense'}, Amount=${amount}, Merchant=${merchant}`);
     logs.push(`[Parse] Categorized: ${catResult.category} (${(catResult.confidence * 100).toFixed(0)}% confidence)`);
 
     // 3. Normalize
     const parsed: Partial<DetectedTransaction> = {
       type: type || 'expense',
       amount,
-      merchant: merchant || (type === 'income' ? 'Received Payment' : 'Paid Merchant'),
+      merchant: merchant,
       category: catResult.category,
       date: date || new Date().toLocaleDateString('en-GB'),
       confidence: validation.confidence,
@@ -134,7 +228,13 @@ export const processIncomingNotification = async (notification: RawNotification)
 
     if (!existing.empty) {
       logs.push(`[Dedupe] Found existing transaction with same fingerprint`);
-      return { success: false, stage: 'dedupe', error: 'Duplicate transaction detected', logs };
+      return { 
+        success: true, // We return success: true because it's not an "error" that it worked twice
+        status: 'DUPLICATE_IGNORED', 
+        stage: 'dedupe', 
+        error: 'Transaction already tracked', 
+        logs 
+      };
     }
 
     // 5. Save
@@ -146,20 +246,32 @@ export const processIncomingNotification = async (notification: RawNotification)
       source: 'notification'
     };
 
-    const docRef = await addDoc(pendingTxRef, txData);
-    logs.push(`[Save] Success! Document ID: ${docRef.id}`);
+    const path = `users/${auth.currentUser.uid}/detected_transactions`;
+    logs.push(`[Save] Attempting write to: ${path}`);
+    logs.push(`[Save] Payload Summary: ${parsed.merchant} | ₹${parsed.amount} | ${parsed.type}`);
+    logs.push(`[Save] Full Payload: ${JSON.stringify({ ...txData, detectedAt: 'SERVER_TIMESTAMP' })}`);
 
-    return { 
-      success: true, 
-      stage: 'save', 
-      data: { ...parsed, id: docRef.id } as DetectedTransaction, 
-      logs 
-    };
+    try {
+      const docRef = await addDoc(pendingTxRef, txData);
+      logs.push(`[Save] Success! Document ID: ${docRef.id}`);
+
+      return { 
+        success: true, 
+        status: 'SUCCESS',
+        stage: 'save', 
+        data: { ...parsed, id: docRef.id } as DetectedTransaction, 
+        logs 
+      };
+    } catch (saveError: any) {
+      const errorMsg = saveError instanceof Error ? saveError.message : String(saveError);
+      logs.push(`[Critical] Firestore Error: ${errorMsg}`);
+      return { success: false, status: 'ERROR', stage: 'save', error: errorMsg, logs };
+    }
 
   } catch (error: any) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    logs.push(`[Critical] ${errorMsg}`);
-    return { success: false, stage: 'save', error: errorMsg, logs };
+    logs.push(`[Critical] Runtime: ${errorMsg}`);
+    return { success: false, status: 'ERROR', stage: 'save', error: errorMsg, logs };
   }
 };
 

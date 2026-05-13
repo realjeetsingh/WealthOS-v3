@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Smartphone, Bell, Zap, X, ShieldCheck, AlertCircle, Info, Terminal, ChevronRight, CheckCircle2, History } from 'lucide-react';
+import { Smartphone, Bell, Zap, X, ShieldCheck, AlertCircle, Info, Terminal, ChevronRight, CheckCircle2, History, TrendingUp, TrendingDown } from 'lucide-react';
 import Button from './ui/Button';
 import ModalShell from './ModalShell';
 import { processIncomingNotification, RawNotification, ParseResult } from '../services/notificationIntelligence';
@@ -32,6 +32,12 @@ const MOCK_NOTIFICATIONS = [
     packageName: 'com.sbi.upi'
   },
   {
+    app: 'Jupiter',
+    title: 'New Feature!',
+    body: 'Check out our new mutual fund investments.',
+    packageName: 'me.jupiter.app'
+  },
+  {
     app: 'Unknown App',
     title: 'Random Alert',
     body: 'Something happened on your device with ₹100',
@@ -43,6 +49,7 @@ const NotificationSimulator: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [lastResult, setLastResult] = useState<ParseResult | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [isDeveloperMode, setIsDeveloperMode] = useState(false);
 
   const simulate = async (mock: any) => {
     const notification: RawNotification = {
@@ -56,12 +63,31 @@ const NotificationSimulator: React.FC = () => {
 
     const result = await processIncomingNotification(notification);
     setLastResult(result);
-    setShowDebug(true);
-
-    if (result.success) {
-      toast.success(`${mock.app} transaction detected!`);
+    
+    if (result.status === 'SUCCESS' || result.status === 'DUPLICATE_IGNORED') {
+      setShowDebug(true);
     } else {
-      toast.error(`Detector Error: ${result.error || 'Unknown failure'}`);
+      setShowDebug(true); // Always show details for errors/filters
+    }
+
+    switch (result.status) {
+      case 'SUCCESS':
+        toast.success(`${mock.app} transaction detected!`);
+        break;
+      case 'DUPLICATE_IGNORED':
+        toast.info('Transaction already tracked. Skipping duplicate.');
+        break;
+      case 'FILTERED':
+        toast.info(`Notification safely ignored.`);
+        break;
+      case 'LOW_CONFIDENCE':
+        toast.warning('Detection bypassed: Ambiguous alert content.');
+        break;
+      case 'PARSE_FAILED':
+        toast.error('Could not extract transaction value.');
+        break;
+      default:
+        toast.error(`Process Error: ${result.error || 'Check logs'}`);
     }
   };
 
@@ -76,26 +102,38 @@ const NotificationSimulator: React.FC = () => {
         <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
       </button>
 
-      <ModalShell isOpen={isOpen} onClose={() => setIsOpen(false)} title="Intelligence Sandbox">
+      <ModalShell isOpen={isOpen} onClose={() => setIsOpen(false)} title="Intelligence Simulator">
         <div className="-mt-2">
           {!showDebug ? (
             <>
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6">
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 mb-6">
                 <div className="flex gap-3">
-                  <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-900 font-medium leading-relaxed">
-                    Test the transaction detection engine by triggering simulated bank alerts.
+                  <ShieldCheck className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-indigo-900 font-medium leading-relaxed">
+                    Test the transaction detection engine by triggering simulated bank alerts. 
+                    Transactions will appear in your approval queue.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Scenario</p>
+                <div className="flex justify-between items-center px-1">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Scenario</p>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase">Dev Mode</span>
+                    <input 
+                      type="checkbox" 
+                      checked={isDeveloperMode} 
+                      onChange={(e) => setIsDeveloperMode(e.target.checked)}
+                      className="w-3 h-3 text-indigo-600 rounded focus:ring-indigo-500"
+                    />
+                  </label>
+                </div>
                 {MOCK_NOTIFICATIONS.map((mock, idx) => (
                   <button
                     key={idx}
                     onClick={() => simulate(mock)}
-                    className="w-full text-left p-4 bg-gray-50 hover:bg-indigo-50 border border-gray-100 hover:border-indigo-200 rounded-2xl transition-all group"
+                    className="w-full text-left p-4 bg-gray-50 hover:bg-white border border-gray-100 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/5 rounded-2xl transition-all group"
                   >
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-xs font-black text-indigo-600 uppercase tracking-widest">{mock.app}</span>
@@ -111,91 +149,98 @@ const NotificationSimulator: React.FC = () => {
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <Terminal className="w-5 h-5 text-indigo-600" />
-                  <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Parser Debugger</h4>
+                  <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                  <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Processing Result</h4>
                 </div>
                 <button 
                   onClick={() => setShowDebug(false)}
                   className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
                 >
-                  Back to Scenarios
+                  New Simulation
                 </button>
               </div>
 
               {lastResult && (
                 <div className="space-y-4">
                   <div className={`p-4 rounded-2xl flex items-start gap-3 border ${
-                    lastResult.success ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'
+                    lastResult.status === 'SUCCESS' ? 'bg-green-50 border-green-100' : 
+                    lastResult.status === 'DUPLICATE_IGNORED' ? 'bg-indigo-50 border-indigo-100' :
+                    'bg-gray-50 border-gray-100'
                   }`}>
-                    {lastResult.success ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                    {lastResult.status === 'SUCCESS' || lastResult.status === 'DUPLICATE_IGNORED' ? (
+                      <CheckCircle2 className={`w-5 h-5 shrink-0 ${lastResult.status === 'SUCCESS' ? 'text-green-600' : 'text-indigo-600'}`} />
                     ) : (
-                      <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+                      <AlertCircle className="w-5 h-5 text-gray-400 shrink-0" />
                     )}
                     <div>
-                      <p className={`text-sm font-black ${lastResult.success ? 'text-green-900' : 'text-red-900'}`}>
-                        {lastResult.success ? 'Success: Transaction Normalised' : `Failed at ${lastResult.stage} stage`}
+                      <p className={`text-sm font-black ${
+                        lastResult.status === 'SUCCESS' ? 'text-green-900' : 
+                        lastResult.status === 'DUPLICATE_IGNORED' ? 'text-indigo-900' : 
+                        'text-gray-900'
+                      }`}>
+                        {lastResult.status === 'SUCCESS' ? 'Actionable Intelligence Found' : 
+                         lastResult.status === 'DUPLICATE_IGNORED' ? 'Redundant Signal Ignored' :
+                         'Notification Filtered'}
                       </p>
                       <p className="text-xs font-medium opacity-70">
-                        {lastResult.error || 'The engine successfully extracted all required fields.'}
+                        {lastResult.status === 'SUCCESS' ? 'Transaction detected and added to your pending queue.' : 
+                         lastResult.status === 'DUPLICATE_IGNORED' ? 'This transaction was already tracked. No action taken.' :
+                         lastResult.error || 'System determined this alert does not contain financial data.'}
                       </p>
                     </div>
                   </div>
 
-                  {lastResult.data && (
-                    <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Extracted Data</p>
-                      <div className="grid grid-cols-2 gap-y-3">
-                        <div>
-                          <p className="text-[9px] text-gray-400 font-bold uppercase">Merchant</p>
-                          <p className="text-xs font-black text-gray-900">{lastResult.data.merchant}</p>
+                  {lastResult.data && lastResult.status === 'SUCCESS' && (
+                    <div className="bg-white rounded-2xl p-5 border border-indigo-100 shadow-xl shadow-indigo-500/5">
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">Detected Transaction</p>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-xl ${lastResult.data.type === 'income' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                            {lastResult.data.type === 'income' ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-gray-900">{lastResult.data.merchant}</p>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase">{lastResult.data.category}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 font-bold uppercase">Category</p>
-                          <p className="text-xs font-black text-indigo-600 truncate">{lastResult.data.category || 'Other'}</p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 font-bold uppercase">Amount</p>
-                          <p className="text-xs font-black text-gray-900">₹{lastResult.data.amount?.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 font-bold uppercase">Type</p>
-                          <p className="text-xs font-black text-gray-900 italic">{lastResult.data.type}</p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 font-bold uppercase">Confidence</p>
-                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
-                            lastResult.data.confidence === 'high' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                          }`}>
-                            {lastResult.data.confidence}
-                          </span>
-                        </div>
+                        <p className={`text-lg font-black ${lastResult.data.type === 'income' ? 'text-green-600' : 'text-gray-900'}`}>
+                          {lastResult.data.type === 'income' ? '+' : ''}₹{lastResult.data.amount?.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold bg-gray-50 p-2 rounded-lg">
+                        <Smartphone className="w-3 h-3" />
+                        <span className="uppercase tracking-widest">Source: {lastResult.data.app}</span>
                       </div>
                     </div>
                   )}
 
-                  <div className="bg-gray-900 rounded-2xl p-4 font-mono text-[10px] leading-relaxed overflow-hidden">
-                    <p className="text-gray-500 mb-2 border-b border-gray-800 pb-2">Intelligence Pipeline Logs</p>
-                    <div className="space-y-1.5 max-h-[150px] overflow-y-auto custom-scrollbar">
-                      {lastResult.logs.map((log, i) => (
-                        <div key={i} className="flex gap-2">
-                          <span className="text-indigo-400/50">{i+1}</span>
-                          <span className={log.includes('[Critical]') || log.includes('Rejected') ? 'text-rose-400' : 'text-gray-300'}>
-                            {log}
-                          </span>
-                        </div>
-                      ))}
+                  {isDeveloperMode && (
+                    <div className="bg-gray-900 rounded-2xl p-4 font-mono text-[10px] leading-relaxed overflow-hidden">
+                      <div className="flex items-center justify-between mb-2 border-b border-gray-800 pb-2">
+                        <p className="text-gray-500">Pipeline Execution Logs</p>
+                        <span className="text-[8px] bg-indigo-500/20 text-indigo-400 px-1.5 rounded uppercase font-bold tracking-widest">Dev Mode</span>
+                      </div>
+                      <div className="space-y-1.5 max-h-[150px] overflow-y-auto custom-scrollbar">
+                        {lastResult.logs.map((log, i) => (
+                          <div key={i} className="flex gap-2">
+                            <span className="text-indigo-400/50">{i+1}</span>
+                            <span className={log.includes('[Critical]') || log.includes('Rejected') ? 'text-rose-400' : 'text-gray-300'}>
+                              {log}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
           <div className="mt-8 p-6 bg-gray-50 rounded-[2rem] flex items-center gap-3">
-            <Info className="w-4 h-4 text-gray-400 shrink-0" />
+            <ShieldCheck className="w-4 h-4 text-gray-400 shrink-0" />
             <p className="text-[10px] text-gray-500 font-medium">
-              Intelligence sandbox allows debugging of the notification parsing pipeline in real-time.
+              Intelligence sandbox is for testing purposes. Real processing happens in the background via Android hooks.
             </p>
           </div>
         </div>

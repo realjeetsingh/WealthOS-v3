@@ -75,7 +75,14 @@ service cloud.firestore {
              data.amount is number && data.amount > 0 &&
              data.merchant is string &&
              data.status in ['pending', 'approved', 'ignored'] &&
-             data.fingerprint is string;
+             data.fingerprint is string &&
+             data.source == 'notification' &&
+             data.detectedAt is timestamp &&
+             (!('category' in data) || data.category is string) &&
+             (!('date' in data) || data.date is string) &&
+             (!('confidence' in data) || data.confidence in ['high', 'medium', 'low']) &&
+             (!('app' in data) || data.app is string) &&
+             (!('rawBody' in data) || data.rawBody is string);
     }
 
     function isValidLoan(data) {
