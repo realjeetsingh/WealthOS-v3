@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { BrainCircuit, Zap, Sparkles, MessageSquare, AlertTriangle, Brain } from 'lucide-react';
+import { BrainCircuit, Zap, Sparkles, MessageSquare, AlertTriangle, Brain, RefreshCw } from 'lucide-react';
 import NotificationApprovalList from '../components/NotificationApprovalList';
+import IntelligenceHealthCard from '../components/IntelligenceHealthCard';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import { triggerRecoverySync } from '../services/androidBridge';
+import { toast } from 'sonner';
 
 const DetectedTransactions: React.FC = () => {
   const [learnedCount, setLearnedCount] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -17,10 +21,21 @@ const DetectedTransactions: React.FC = () => {
     getDocs(q).then(snap => setLearnedCount(snap.docs.length));
   }, []);
 
+  const handleManualSync = () => {
+    setIsSyncing(true);
+    const success = triggerRecoverySync();
+    if (success) {
+      toast.info('Scanning notifications...', {
+        description: 'Syncing missed signals from your recent Android history.'
+      });
+    }
+    setTimeout(() => setIsSyncing(false), 2000);
+  };
+
   return (
     <div className="max-w-4xl mx-auto pb-24">
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
+      <div className="mb-8 px-2">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 border border-indigo-50">
               <Zap className="w-6 h-6 text-indigo-600 fill-indigo-600" />
@@ -33,12 +48,20 @@ const DetectedTransactions: React.FC = () => {
             </div>
           </div>
           
-          <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-full border border-indigo-100">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">Bridged to Android</span>
-          </div>
+          <button 
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className={`flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-full border border-indigo-100 transition-all active:scale-95 ${isSyncing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-100'}`}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-indigo-900 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">
+              {isSyncing ? 'Syncing...' : 'Sync History'}
+            </span>
+          </button>
         </div>
       </div>
+
+      <IntelligenceHealthCard />
 
       {/* Operational Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
