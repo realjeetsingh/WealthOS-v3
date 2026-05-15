@@ -3,8 +3,7 @@
  * Handles price fetching, symbols normalization, caching, line searching and error states.
  */
 
-const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
-const API_KEY = import.meta.env.VITE_FINNHUB_API_KEY || '';
+const API_BASE_URL = '/api/market';
 
 // Cache & Rate Limit Config
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -49,29 +48,49 @@ export const normalizeSymbol = (nameOrSymbol: string): string => {
 };
 
 /**
- * Searches for symbols matching a query (Finnhub /search)
+ * Searches for symbols matching a query (via internal proxy)
  */
 export const searchSymbols = async (query: string): Promise<SymbolResult[]> => {
-  if (!query || query.length < 1) return [];
-  if (!API_KEY) {
-    console.warn("Finnhub API Key is missing for search.");
+  console.info(`WealthOS Search: Initiating lookup for "${query}" via internal proxy`);
+  
+  if (!query || query.trim().length === 0) {
     return [];
   }
 
   try {
-    const response = await fetch(`${FINNHUB_BASE_URL}/search?q=${query}&token=${API_KEY}`);
-    if (!response.ok) throw new Error(`Search failed: ${response.statusText}`);
+    const encodedQuery = encodeURIComponent(query.trim());
+    const url = `${API_BASE_URL}/search?q=${encodedQuery}`;
+    
+    const response = await fetch(url);
+    
+    if (response.status === 429) {
+      console.warn("WealthOS Search: Rate limit reached (429)");
+      throw new Error("RATE_LIMIT");
+    }
+
+    if (!response.ok) {
+      console.error(`WealthOS Search: Proxy Error ${response.status} - ${response.statusText}`);
+      throw new Error(`HTTP_${response.status}`);
+    }
+    
     const data = await response.json();
-    return data.result || [];
+    
+    // Finnhub returns { count: number, result: [] } via our proxy
+    const results = data.result || []; 
+    console.info(`WealthOS Search: Found ${results.length} results for "${query}"`);
+    
+    return results;
   } catch (error) {
-    console.error('Symbol search error:', error);
+    console.error('WealthOS Search: Critical failure in search pipeline:', error);
+    if (error instanceof Error && error.message === "RATE_LIMIT") {
+      throw error;
+    }
     return [];
   }
 };
 
 /**
- * Fetches the latest quote for a symbol
- * Includes caching and rate-limit handling
+ * Fetches the latest quote for a symbol (via internal proxy)
  */
 export const fetchMarketPrice = async (symbol: string): Promise<number | null> => {
   if (!symbol) return null;
@@ -83,17 +102,11 @@ export const fetchMarketPrice = async (symbol: string): Promise<number | null> =
     return priceCache[standardSymbol].price;
   }
 
-  // 2. API Fetch
-  if (!API_KEY) {
-    console.warn("Finnhub API Key is missing. Using cached or null values.");
-    return priceCache[standardSymbol]?.price || null;
-  }
-
   try {
-    const response = await fetch(`${FINNHUB_BASE_URL}/quote?symbol=${standardSymbol}&token=${API_KEY}`);
+    const response = await fetch(`${API_BASE_URL}/quote?symbol=${standardSymbol}`);
     
     if (response.status === 429) {
-      console.error("Finnhub Rate Limit Reached (429)");
+      console.error("WealthOS Market: Rate Limit Reached (429)");
       return priceCache[standardSymbol]?.price || null;
     }
 
@@ -103,10 +116,7 @@ export const fetchMarketPrice = async (symbol: string): Promise<number | null> =
 
     const data = await response.json();
     
-    // Finnhub 'c' is the current price. 0 usually means not found or market closed (but 0 itself is valid for some).
-    // Finnhub returns c=0 for invalid symbols often.
     if (data.c && data.c !== 0) {
-      // Update Cache
       priceCache[standardSymbol] = {
         price: data.c,
         timestamp: now

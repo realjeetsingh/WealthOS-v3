@@ -94,8 +94,14 @@ export default function Portfolio() {
   const [priceError, setPriceError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
+  
+  // Search State Machine (Step 7)
+  type SearchState = 'IDLE' | 'LOADING' | 'RESULTS' | 'EMPTY' | 'ERROR' | 'RATE_LIMIT';
+  const [searchState, setSearchState] = useState<SearchState>('IDLE');
   const [searchResults, setSearchResults] = useState<SymbolResult[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [selectedCategory, setSelectedCategory] = useState<Category>('Stocks');
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -152,23 +158,40 @@ export default function Portfolio() {
     }
   };
 
-  const handleSymbolSearch = async (query: string) => {
-    setFormData(prev => ({ ...prev, assetName: query }));
-    if (query.length < 1) {
-      setSearchResults([]);
-      return;
-    }
+  // Debounced Search Implementation (Step 2)
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (searchQuery.length < 2) {
+        setSearchResults([]);
+        setSearchState('IDLE');
+        return;
+      }
 
-    setIsSearching(true);
-    try {
-      const results = await searchSymbols(query);
-      // Filter for stocks/crypto/mf based on category if needed, otherwise show all
-      setSearchResults(results.slice(0, 10));
-    } catch (error) {
-      console.error('Search error:', error);
-    } finally {
-      setIsSearching(false);
-    }
+      setSearchState('LOADING');
+      setSearchError(null);
+      
+      try {
+        const results = await searchSymbols(searchQuery);
+        setSearchResults(results.slice(0, 10));
+        setSearchState(results.length > 0 ? 'RESULTS' : 'EMPTY');
+      } catch (error: any) {
+        if (error.message === 'RATE_LIMIT') {
+          setSearchState('RATE_LIMIT');
+          setSearchError('Too many requests. Please slow down.');
+        } else {
+          setSearchState('ERROR');
+          setSearchError('Search failed. Check your connection.');
+        }
+        console.error('WealthOS: UI Search trigger failed', error);
+      }
+    }, 400); // 400ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSymbolSearch = (query: string) => {
+    setSearchQuery(query);
+    setFormData(prev => ({ ...prev, assetName: query }));
   };
 
   const handleSymbolSelect = async (result: SymbolResult) => {
@@ -1042,7 +1065,7 @@ export default function Portfolio() {
                       <div className="space-y-2 md:col-span-2 relative">
                         <label className="text-sm font-bold text-gray-700 flex justify-between items-center">
                           Search Symbol / Asset Name
-                          {isSearching && <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />}
+                          {searchState === 'LOADING' && <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />}
                         </label>
                         <div className="relative group">
                           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors">
@@ -1052,26 +1075,41 @@ export default function Portfolio() {
                             type="text"
                             required
                             placeholder="e.g. Reliance, Apple, Bitcoin"
-                            className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                            className={`w-full pl-11 pr-4 py-3 rounded-xl border outline-none transition-all ${
+                              searchState === 'ERROR' || searchState === 'RATE_LIMIT' 
+                                ? 'border-red-200 focus:ring-red-500' 
+                                : 'border-gray-200 focus:ring-indigo-500'
+                            }`}
                             value={formData.assetName}
                             onChange={(e) => handleSymbolSearch(e.target.value)}
                           />
                         </div>
                         
-                        {/* Search Results Dropdown */}
+                        {/* Search Results Dropdown (Step 6 & 7) */}
                         <AnimatePresence>
-                          {formData.assetName.length >= 2 && searchResults.length > 0 && (
+                          {searchQuery.length >= 2 && searchState !== 'IDLE' && (
                             <motion.div
                               initial={{ opacity: 0, y: 5 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: 5 }}
-                              className="absolute z-[300] left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
+                              className="absolute z-[10001] left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
                             >
-                              {searchResults.map((result, idx) => (
+                              {searchState === 'LOADING' && (
+                                <div className="p-8 text-center">
+                                  <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
+                                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Searching Market...</p>
+                                </div>
+                              )}
+
+                              {searchState === 'RESULTS' && searchResults.map((result, idx) => (
                                 <button
                                   key={`${result.symbol}-${idx}`}
                                   type="button"
-                                  onClick={() => handleSymbolSelect(result)}
+                                  onClick={() => {
+                                    handleSymbolSelect(result);
+                                    setSearchQuery('');
+                                    setSearchState('IDLE');
+                                  }}
                                   className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors"
                                 >
                                   <div className="min-w-0 pr-4">
@@ -1084,6 +1122,26 @@ export default function Portfolio() {
                                   <Plus className="w-4 h-4 text-gray-300 shrink-0" />
                                 </button>
                               ))}
+
+                              {searchState === 'EMPTY' && (
+                                <div className="p-8 text-center">
+                                  <Search className="w-6 h-6 text-gray-300 mx-auto mb-2" />
+                                  <p className="text-xs text-gray-500 font-bold">No assets found for "{searchQuery}"</p>
+                                </div>
+                              )}
+
+                              {(searchState === 'ERROR' || searchState === 'RATE_LIMIT') && (
+                                <div className="p-8 text-center bg-rose-50/30">
+                                  <AlertCircle className="w-6 h-6 text-rose-500 mx-auto mb-2" />
+                                  <p className="text-xs text-rose-600 font-bold">{searchError || 'Search unavailable'}</p>
+                                  <button 
+                                    onClick={() => handleSymbolSearch(searchQuery)}
+                                    className="mt-2 text-[10px] font-black uppercase text-indigo-600 hover:underline"
+                                  >
+                                    Try Again
+                                  </button>
+                                </div>
+                              )}
                             </motion.div>
                           )}
                         </AnimatePresence>

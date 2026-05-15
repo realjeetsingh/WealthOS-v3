@@ -15,6 +15,7 @@ import {
   requestNotificationPermission, 
   requestBatteryOptimizationExclusion,
   requestPostNotificationsPermission,
+  setupPermissionListeners,
   AndroidSystemStatus
 } from '../services/androidBridge';
 import ModalShell from './ui/ModalShell';
@@ -37,9 +38,29 @@ const AndroidPermissionOnboarding: React.FC<AndroidPermissionOnboardingProps> = 
   useEffect(() => {
     if (isOpen) refreshStatus();
     
-    // Auto-refresh every 5s while open to detect permission changes on return
-    const interval = setInterval(refreshStatus, 5000);
-    return () => clearInterval(interval);
+    // 1. Reactive Refresh on Resume
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isOpen) {
+        refreshStatus();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // 2. Real-time Native Push handler
+    setupPermissionListeners((updatedStatus) => {
+      if (isOpen) setStatus(updatedStatus);
+    });
+
+    // 3. Fallback Polyfill Polling
+    const interval = setInterval(() => {
+      if (isOpen) refreshStatus();
+    }, 10000);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      delete (window as any).onWealthOSStatusUpdate;
+    };
   }, [isOpen]);
 
   const steps = [

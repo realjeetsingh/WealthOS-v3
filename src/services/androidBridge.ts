@@ -17,8 +17,23 @@ const DEFAULT_STATUS: AndroidSystemStatus = {
   isNotificationListenerEnabled: false,
   isBatteryOptimizationIgnored: false,
   isForegroundServiceActive: false,
-  isPostNotificationsEnabled: true,
+  isPostNotificationsEnabled: false,
   lastSyncTimestamp: Date.now()
+};
+
+/**
+ * GLOBAL PERMISSION LISTENERS
+ * Allows native host to push permission updates
+ */
+export const setupPermissionListeners = (onUpdate: (status: AndroidSystemStatus) => void) => {
+  (window as any).onWealthOSStatusUpdate = (statusJson: string) => {
+    try {
+      const status = JSON.parse(statusJson);
+      onUpdate(status);
+    } catch (err) {
+      console.error('WealthOS Bridge: Failed to parse native status update', err);
+    }
+  };
 };
 
 /**
@@ -27,8 +42,7 @@ const DEFAULT_STATUS: AndroidSystemStatus = {
 export const checkAndroidStatus = async (): Promise<AndroidSystemStatus> => {
   const host = (window as any).WealthOSAndroid;
   if (!host) {
-    // For web development/simulator
-    return { ...DEFAULT_STATUS, isNotificationListenerEnabled: true }; 
+    return DEFAULT_STATUS; 
   }
 
   try {

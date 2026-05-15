@@ -15,6 +15,7 @@ import {
   requestNotificationPermission, 
   requestBatteryOptimizationExclusion,
   triggerRecoverySync,
+  setupPermissionListeners,
   AndroidSystemStatus
 } from '../services/androidBridge';
 import AndroidPermissionOnboarding from './AndroidPermissionOnboarding';
@@ -31,8 +32,24 @@ const IntelligenceHealthCard: React.FC = () => {
 
   useEffect(() => {
     refreshStatus();
-    const interval = setInterval(refreshStatus, 15000); // More frequent check
-    return () => clearInterval(interval);
+    
+    // 1. Static Polling & Visibility listener
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshStatus();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const interval = setInterval(refreshStatus, 30000);
+
+    // 2. Real-time Native Push handler
+    setupPermissionListeners((updatedStatus) => {
+      setStatus(updatedStatus);
+    });
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      delete (window as any).onWealthOSStatusUpdate;
+    };
   }, []);
 
   const handleSync = () => {
