@@ -96,7 +96,7 @@ export default function Portfolio() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Search State Machine (Step 7)
-  type SearchState = 'IDLE' | 'LOADING' | 'RESULTS' | 'EMPTY' | 'ERROR' | 'RATE_LIMIT';
+  type SearchState = 'IDLE' | 'LOADING' | 'RESULTS' | 'EMPTY' | 'ERROR' | 'RATE_LIMIT' | 'AUTH_FAILURE';
   const [searchState, setSearchState] = useState<SearchState>('IDLE');
   const [searchResults, setSearchResults] = useState<SymbolResult[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -177,10 +177,13 @@ export default function Portfolio() {
       } catch (error: any) {
         if (error.message === 'RATE_LIMIT') {
           setSearchState('RATE_LIMIT');
-          setSearchError('Too many requests. Please slow down.');
+          setSearchError('Search quota reached. Please wait a moment.');
+        } else if (error.message === 'AUTH_FAILURE') {
+          setSearchState('AUTH_FAILURE');
+          setSearchError('Market data provider authentication failed.');
         } else {
           setSearchState('ERROR');
-          setSearchError('Search failed. Check your connection.');
+          setSearchError('Market search temporarily unavailable.');
         }
         console.error('WealthOS: UI Search trigger failed', error);
       }
@@ -1130,7 +1133,7 @@ export default function Portfolio() {
                                 </div>
                               )}
 
-                              {(searchState === 'ERROR' || searchState === 'RATE_LIMIT') && (
+                              {(searchState === 'ERROR' || searchState === 'RATE_LIMIT' || searchState === 'AUTH_FAILURE') && (
                                 <div className="p-8 text-center bg-rose-50/30">
                                   <AlertCircle className="w-6 h-6 text-rose-500 mx-auto mb-2" />
                                   <p className="text-xs text-rose-600 font-bold">{searchError || 'Search unavailable'}</p>

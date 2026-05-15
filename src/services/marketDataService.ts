@@ -62,30 +62,26 @@ export const searchSymbols = async (query: string): Promise<SymbolResult[]> => {
     const url = `${API_BASE_URL}/search?q=${encodedQuery}`;
     
     const response = await fetch(url);
-    
-    if (response.status === 429) {
-      console.warn("WealthOS Search: Rate limit reached (429)");
-      throw new Error("RATE_LIMIT");
-    }
-
-    if (!response.ok) {
-      console.error(`WealthOS Search: Proxy Error ${response.status} - ${response.statusText}`);
-      throw new Error(`HTTP_${response.status}`);
-    }
-    
     const data = await response.json();
+    
+    if (!response.ok) {
+      console.error(`WealthOS Search: Proxy Error ${response.status}`, data);
+      const errorMsg = data.type || `HTTP_${response.status}`;
+      throw new Error(errorMsg);
+    }
     
     // Finnhub returns { count: number, result: [] } via our proxy
     const results = data.result || []; 
     console.info(`WealthOS Search: Found ${results.length} results for "${query}"`);
     
     return results;
-  } catch (error) {
+  } catch (error: any) {
     console.error('WealthOS Search: Critical failure in search pipeline:', error);
-    if (error instanceof Error && error.message === "RATE_LIMIT") {
+    // Protect these specific error types so the UI can react
+    if (error.message === 'RATE_LIMIT' || error.message === 'AUTH_FAILURE' || error.message === 'API_FAILURE') {
       throw error;
     }
-    return [];
+    throw new Error('API_FAILURE');
   }
 };
 

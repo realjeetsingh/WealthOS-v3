@@ -51,12 +51,24 @@ app.get("/api/market/search", async (req, res) => {
       timeout: 5000
     });
     
+    console.info(`WealthOS Server: Provider status: ${response.status}. Found ${response.data?.count || 0} results.`);
+    
     cache.set(cacheKey, { data: response.data, timestamp: Date.now() });
     res.json(response.data);
   } catch (error: any) {
-    console.error("WealthOS Server: Search proxy error", error.message);
     const status = error.response?.status || 500;
-    res.status(status).json({ error: error.message });
+    const providerData = error.response?.data;
+    console.error(`WealthOS Server: Search proxy error [${status}]`, error.message, JSON.stringify(providerData));
+    
+    let errorType = 'API_FAILURE';
+    if (status === 401 || status === 403) errorType = 'AUTH_FAILURE';
+    else if (status === 429) errorType = 'RATE_LIMIT';
+
+    res.status(status).json({ 
+      error: error.message, 
+      type: errorType,
+      providerData 
+    });
   }
 });
 
@@ -92,9 +104,9 @@ app.get("/api/market/quote", async (req, res) => {
     cache.set(cacheKey, { data: response.data, timestamp: Date.now() });
     res.json(response.data);
   } catch (error: any) {
-    console.error(`WealthOS Server: Quote proxy error for ${symbol}`, error.message);
     const status = error.response?.status || 500;
-    res.status(status).json({ error: error.message });
+    console.error(`WealthOS Server: Quote proxy error for ${symbol} [${status}]`, error.message);
+    res.status(status).json({ error: error.message, type: status === 429 ? 'RATE_LIMIT' : 'API_FAILURE' });
   }
 });
 
