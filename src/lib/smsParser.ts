@@ -120,24 +120,36 @@ export const validateFinancialSMS = (text: string, sender: string = ''): { confi
   const normalizedSender = sender.toLowerCase();
 
   // 0. EXCLUSION PATTERNS (CRITICAL)
-  const exclusions = ['subscription', 'due', 'offer', 'reminder', 'otp', 'verification code', 'limited time'];
-  for (const word of exclusions) {
-    if (normalizedText.includes(word)) {
-      return { confidence: 'low', reason: `Rejected: Contains restricted word '${word}'` };
-    }
+  const isMarketing = normalizedText.includes('offer') || 
+                      normalizedText.includes('limited time') || 
+                      normalizedText.includes('exclusive');
+  const isOTP = normalizedText.includes('otp') || normalizedText.includes('verification code');
+  
+  if (isMarketing || isOTP) {
+    return { confidence: 'low', reason: "Rejected: Marketing or OTP content" };
   }
 
+  // Potential signal (not necessarily a definitive transaction)
+  const isReminder = normalizedText.includes('due') || 
+                      normalizedText.includes('outstanding') || 
+                      normalizedText.includes('statement generated');
+
   // 1. AMOUNT CHECK
-  const hasAmount = normalizedText.includes('rs') || normalizedText.includes('₹');
-  if (!hasAmount) return { confidence: 'low', reason: "Rejected: No amount detected" };
+  const hasAmountSymbol = normalizedText.includes('rs') || normalizedText.includes('₹');
+  if (!hasAmountSymbol) return { confidence: 'low', reason: "Rejected: No amount detected" };
 
   // 2. KEYWORD CHECK
-  const keywords = ['credited', 'debited', 'sent', 'received', 'paid'];
+  const keywords = ['credited', 'debited', 'sent', 'received', 'paid', 'purchase', 'spent', 'charged'];
   const hasKeyword = keywords.some(k => normalizedText.includes(k));
+  
+  if (!hasKeyword && isReminder) {
+    return { confidence: 'low', reason: "Financial signal: Informational alert, not a transaction" };
+  }
+
   if (!hasKeyword) return { confidence: 'low', reason: "Rejected: No transaction keywords" };
 
   // 3. ACCOUNT REFERENCE CHECK
-  const accountRefs = ['a/c', 'upi', 'ref', 'account', 'vpa'];
+  const accountRefs = ['a/c', 'upi', 'ref', 'account', 'vpa', 'card'];
   const hasAccountRef = accountRefs.some(r => normalizedText.includes(r));
   if (!hasAccountRef) return { confidence: 'low', reason: "Rejected: No bank/account reference" };
 

@@ -435,6 +435,15 @@ const Dashboard: React.FC = () => {
       {/* 2.5 INTELLIGENCE LAYER: Pending Alerts */}
       {userProfile?.notificationSyncEnabled && (
         <div className="mb-12">
+          <div className="flex items-center justify-between mb-4 px-2">
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-indigo-600 animate-pulse" />
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Active Intelligence</h3>
+            </div>
+            <Link to="/review" className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline flex items-center gap-1">
+              View Full Queue <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
           <NotificationApprovalList />
         </div>
       )}

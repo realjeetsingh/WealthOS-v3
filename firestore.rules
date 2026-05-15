@@ -127,6 +127,16 @@ service cloud.firestore {
              data.timestamp is timestamp;
     }
 
+    function isValidLearnedPattern(data) {
+      return data.userId == request.auth.uid &&
+             data.patternType in ['merchant_category', 'recurring_transaction'] &&
+             data.key is string &&
+             data.value is string &&
+             data.occurrenceCount is number &&
+             (!('confidenceImpact' in data) || data.confidenceImpact is number) &&
+             (!('lastObservedAt' in data) || data.lastObservedAt is timestamp);
+    }
+
     function isValidLegalConsent(data) {
       return data.userId == request.auth.uid &&
              data.termsAccepted is bool &&
@@ -257,6 +267,12 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && isValidDetectedTransaction(request.resource.data);
         allow update: if isOwner(userId) && isValidDetectedTransaction(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+      
+      match /intelligence_memory/{patternId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId) && isValidLearnedPattern(request.resource.data);
         allow delete: if isOwner(userId) || isAdmin();
       }
 

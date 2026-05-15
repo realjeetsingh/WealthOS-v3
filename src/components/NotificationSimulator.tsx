@@ -42,14 +42,43 @@ const MOCK_NOTIFICATIONS = [
     title: 'Random Alert',
     body: 'Something happened on your device with ₹100',
     packageName: 'com.unknown.app'
+  },
+  {
+    app: 'Cred',
+    title: 'New Bill detected',
+    body: 'You spent ₹1,200 at "Blue Tokai Coffee" using your Axis Bank card.',
+    packageName: 'com.cred.app'
+  },
+  {
+    app: 'HDFC Bank',
+    title: 'Bill Due Reminder',
+    body: 'Your Credit Card bill ending 4422 of ₹45,000 is due on 20th May. Pay now to avoid charges.',
+    packageName: 'com.hdfcbank.smartbuy'
+  },
+  {
+    app: 'ICICI Bank',
+    title: 'Statement Generated',
+    body: 'Your monthly statement for A/c XXXXX123 is now available. Outstanding: ₹2,150.',
+    packageName: 'com.icicibank.mobile'
   }
 ];
 
-const NotificationSimulator: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+interface NotificationSimulatorProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const NotificationSimulator: React.FC<NotificationSimulatorProps> = ({ isOpen, onClose }) => {
   const [lastResult, setLastResult] = useState<ParseResult | null>(null);
   const [showDebug, setShowDebug] = useState(false);
-  const [isDeveloperMode, setIsDeveloperMode] = useState(false);
+  const [isDeveloperMode, setIsDeveloperMode] = useState(() => {
+    return localStorage.getItem('intelligence_dev_mode') === 'true';
+  });
+
+  const toggleDevMode = (val: boolean) => {
+    setIsDeveloperMode(val);
+    localStorage.setItem('intelligence_dev_mode', val ? 'true' : 'false');
+  };
 
   const simulate = async (mock: any) => {
     const notification: RawNotification = {
@@ -93,16 +122,7 @@ const NotificationSimulator: React.FC = () => {
 
   return (
     <>
-      <button 
-        onClick={() => setIsOpen(true)}
-        className="fixed top-24 right-6 w-12 h-12 bg-indigo-600/20 text-indigo-600 backdrop-blur-md rounded-2xl shadow-lg border border-indigo-100 flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 group"
-        title="Simulate Notifications"
-      >
-        <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-        <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
-      </button>
-
-      <ModalShell isOpen={isOpen} onClose={() => setIsOpen(false)} title="Intelligence Simulator">
+      <ModalShell isOpen={isOpen} onClose={onClose} title="Intelligence Simulator">
         <div className="-mt-2">
           {!showDebug ? (
             <>
@@ -119,14 +139,18 @@ const NotificationSimulator: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center px-1">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Scenario</p>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <span className="text-[9px] font-bold text-gray-400 uppercase">Dev Mode</span>
-                    <input 
-                      type="checkbox" 
-                      checked={isDeveloperMode} 
-                      onChange={(e) => setIsDeveloperMode(e.target.checked)}
-                      className="w-3 h-3 text-indigo-600 rounded focus:ring-indigo-500"
-                    />
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase group-hover:text-gray-600 transition-colors">Developer Mode</span>
+                    <div className="relative">
+                      <input 
+                        type="checkbox" 
+                        checked={isDeveloperMode} 
+                        onChange={(e) => toggleDevMode(e.target.checked)}
+                        className="sr-only"
+                      />
+                      <div className={`w-8 h-4 rounded-full transition-colors ${isDeveloperMode ? 'bg-indigo-600' : 'bg-gray-200'}`} />
+                      <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${isDeveloperMode ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </div>
                   </label>
                 </div>
                 {MOCK_NOTIFICATIONS.map((mock, idx) => (

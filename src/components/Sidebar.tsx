@@ -14,10 +14,14 @@ import {
   Crown,
   Target,
   Trophy,
-  GraduationCap
+  GraduationCap,
+  Zap
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../firebase';
+import { usePendingTransactions } from '../services/usePendingTransactions';
+
+import IntelligenceOrb from './IntelligenceOrb';
 
 interface SidebarProps {
   isHovered: boolean;
@@ -28,6 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isHovered, setIsHovered }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { userProfile, isPremium } = useAuth();
+  const { pendingCount } = usePendingTransactions();
 
   const isExpanded = isHovered;
 
@@ -59,8 +64,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isHovered, setIsHovered }) => {
         isExpanded ? 'w-[240px]' : 'w-[70px]'
       }`}
     >
+      {/* Featured Intelligence Action */}
+      <div className={`mt-6 mb-2 flex justify-center transition-all ${isExpanded ? 'px-4' : 'px-0'}`}>
+        <div className={`flex items-center gap-4 bg-indigo-50/50 rounded-2xl w-full transition-all ${isExpanded ? 'p-4' : 'p-2 justify-center bg-transparent'}`}>
+          <IntelligenceOrb size={isExpanded ? 'lg' : 'sm'} />
+          {isExpanded && (
+            <div className="animate-in fade-in slide-in-from-left-4 duration-300">
+              <p className="text-[10px] font-black text-indigo-900 uppercase tracking-widest leading-none mb-1">Intelligence</p>
+              <p className="text-[11px] text-indigo-600/70 font-bold leading-tight">Review Center</p>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Navigation Links */}
-      <nav className={`flex-1 space-y-2 pt-6 transition-all duration-200 ${isExpanded ? 'px-4' : 'px-2'}`}>
+      <nav className={`flex-1 space-y-2 pt-2 transition-all duration-200 ${isExpanded ? 'px-4' : 'px-2'}`}>
         {navLinks.map((link) => {
           const Icon = link.icon;
           const isActive = location.pathname === link.to;
@@ -88,6 +106,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isHovered, setIsHovered }) => {
                 className="relative z-10"
               >
                 <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[#6334FD]' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                {(link as any).badge && pendingCount > 0 && (
+                  <div className={`absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border-2 border-white`} />
+                )}
               </motion.div>
               {isExpanded && (
                 <div className="ml-3 relative z-10 animate-in fade-in slide-in-from-left-2 duration-200">

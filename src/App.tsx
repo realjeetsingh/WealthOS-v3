@@ -24,6 +24,7 @@ import PrivacySettings from './pages/settings/PrivacySettings';
 import SupportSettings from './pages/settings/SupportSettings';
 import Profile from './pages/Profile';
 import Budgets from './pages/Budgets';
+import DetectedTransactions from './pages/DetectedTransactions';
 import Goals from './pages/Goals';
 import More from './pages/More';
 import WealthAcademy from './pages/WealthAcademy';
@@ -40,6 +41,7 @@ import SMSSyncListener from './components/SMSSyncListener';
 import NotificationSimulator from './components/NotificationSimulator';
 
 import ErrorBoundary from './components/ErrorBoundary';
+import NotificationListener from './components/NotificationListener';
 
 export default function App() {
   return (
@@ -47,7 +49,7 @@ export default function App() {
       <AuthProvider>
         <Toaster position="top-right" richColors />
         <SMSSyncListener />
-        <NotificationSimulator />
+        <NotificationListener />
         <Router>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -77,6 +79,16 @@ export default function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Insights />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/review" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DetectedTransactions />
                   </Layout>
                 </ProtectedRoute>
               } 

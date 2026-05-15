@@ -200,6 +200,21 @@
         "fingerprint": { "type": "string" }
       },
       "required": ["userId", "type", "amount", "merchant", "status", "fingerprint"]
+    },
+    "LearnedPattern": {
+      "title": "Learned Intelligence Pattern",
+      "description": "User-specific corrections and patterns learned from transaction verification.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "patternType": { "type": "string", "enum": ["merchant_category", "recurring_transaction"] },
+        "key": { "type": "string" },
+        "value": { "type": "string" },
+        "confidenceImpact": { "type": "number" },
+        "lastObservedAt": { "type": "string", "format": "date-time" },
+        "occurrenceCount": { "type": "number" }
+      },
+      "required": ["userId", "patternType", "key", "value", "occurrenceCount"]
     }
   },
   "firestore": {
@@ -214,6 +229,10 @@
     "/users/{uid}/detected_transactions/{txId}": {
       "schema": "DetectedTransaction",
       "description": "Pending queue for transactions detected via automation."
+    },
+    "/users/{uid}/intelligence_memory/{patternId}": {
+      "schema": "LearnedPattern",
+      "description": "User-specific behavioral intelligence memory."
     },
     "/users/{uid}/assets/{assetId}": {
       "schema": "Asset",

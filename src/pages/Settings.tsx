@@ -9,13 +9,17 @@ import {
   Database,
   LifeBuoy,
   ChevronRight,
-  LogOut
+  LogOut,
+  Terminal,
+  Brain
 } from 'lucide-react';
 import { auth } from '../firebase';
 import { toast } from 'sonner';
+import NotificationSimulator from '../components/NotificationSimulator';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
+  const [isSimulatorOpen, setIsSimulatorOpen] = React.useState(false);
 
   const settingsItems = [
     {
@@ -26,6 +30,15 @@ const Settings: React.FC = () => {
       path: '/settings/account',
       color: 'text-blue-600',
       bgColor: 'bg-blue-50'
+    },
+    {
+      id: 'developer',
+      title: 'Developer Options',
+      description: 'Intelligence simulator & debug logs',
+      icon: Terminal,
+      onClick: () => setIsSimulatorOpen(true),
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-100'
     },
     {
       id: 'security',
@@ -113,7 +126,13 @@ const Settings: React.FC = () => {
           {settingsItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => navigate(item.path)}
+              onClick={() => {
+                if ('path' in item && item.path) {
+                  navigate(item.path);
+                } else if ('onClick' in item && item.onClick) {
+                  item.onClick();
+                }
+              }}
               className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-all active:scale-[0.99] duration-150 group text-left"
             >
               <div className="flex items-center space-x-4">
@@ -130,6 +149,8 @@ const Settings: React.FC = () => {
           ))}
         </div>
       </div>
+
+      <NotificationSimulator isOpen={isSimulatorOpen} onClose={() => setIsSimulatorOpen(false)} />
 
       {/* LOGOUT BUTTON */}
       <button
