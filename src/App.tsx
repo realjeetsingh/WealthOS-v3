@@ -42,6 +42,7 @@ import NotificationSimulator from './components/NotificationSimulator';
 
 import ErrorBoundary from './components/ErrorBoundary';
 import NotificationListener from './components/NotificationListener';
+import AndroidRecoveryManager from './components/AndroidRecoveryManager';
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
         <Toaster position="top-right" richColors />
         <SMSSyncListener />
         <NotificationListener />
+        <AndroidRecoveryManager />
         <Router>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

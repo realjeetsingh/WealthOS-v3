@@ -7,7 +7,8 @@ import {
   CheckCircle2, 
   ChevronRight, 
   RefreshCcw,
-  Zap
+  Zap,
+  BookOpen
 } from 'lucide-react';
 import { 
   checkAndroidStatus, 
@@ -16,11 +17,12 @@ import {
   triggerRecoverySync,
   AndroidSystemStatus
 } from '../services/androidBridge';
-import Button from './ui/Button';
+import AndroidPermissionOnboarding from './AndroidPermissionOnboarding';
 
 const IntelligenceHealthCard: React.FC = () => {
   const [status, setStatus] = useState<AndroidSystemStatus | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const refreshStatus = async () => {
     const newStatus = await checkAndroidStatus();
@@ -29,8 +31,7 @@ const IntelligenceHealthCard: React.FC = () => {
 
   useEffect(() => {
     refreshStatus();
-    // Refresh health every 30 seconds while user is on this page
-    const interval = setInterval(refreshStatus, 30000);
+    const interval = setInterval(refreshStatus, 15000); // More frequent check
     return () => clearInterval(interval);
   }, []);
 
@@ -61,28 +62,37 @@ const IntelligenceHealthCard: React.FC = () => {
             </p>
           </div>
         </div>
-        <button 
-          onClick={handleSync}
-          disabled={isSyncing}
-          className={`p-2 rounded-xl transition-all ${isSyncing ? 'animate-spin opacity-50' : 'hover:bg-white active:scale-95'}`}
-        >
-          <RefreshCcw className="w-5 h-5 text-gray-400" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setShowOnboarding(true)}
+            className="p-2 bg-white border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+            title="Setup Guide"
+          >
+            <BookOpen className="w-4 h-4 text-indigo-600" />
+          </button>
+          <button 
+            onClick={handleSync}
+            disabled={isSyncing}
+            className={`p-2 bg-white border border-gray-100 rounded-xl transition-all shadow-sm ${isSyncing ? 'animate-spin opacity-50' : 'hover:bg-gray-50 active:scale-95'}`}
+          >
+            <RefreshCcw className="w-4 h-4 text-gray-400" />
+          </button>
+        </div>
       </div>
 
-      <div className="p-6 space-y-4">
-        {/* Notification Listener Status */}
+      <div className="p-6 space-y-3">
+        {/* Signal Capturer (Notification Listener) */}
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
           <div className="flex items-center gap-3">
             <Zap className={`w-5 h-5 ${status.isNotificationListenerEnabled ? 'text-indigo-600' : 'text-gray-300'}`} />
             <div>
               <p className="text-xs font-black text-gray-900 uppercase tracking-widest">Signal Capturer</p>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Notification Listener Service</p>
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none mt-0.5">Notification Listener Access</p>
             </div>
           </div>
           {status.isNotificationListenerEnabled ? (
             <div className="flex items-center gap-1 text-emerald-600">
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="w-3 h-3" />
               <span className="text-[9px] font-black uppercase tracking-widest">Active</span>
             </div>
           ) : (
@@ -95,18 +105,18 @@ const IntelligenceHealthCard: React.FC = () => {
           )}
         </div>
 
-        {/* Battery Optimization Status */}
+        {/* Power Guard (Battery Exclusion) */}
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
           <div className="flex items-center gap-3">
             <Battery className={`w-5 h-5 ${status.isBatteryOptimizationIgnored ? 'text-emerald-600' : 'text-gray-300'}`} />
             <div>
               <p className="text-xs font-black text-gray-900 uppercase tracking-widest">Power Guard</p>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Background Persistence</p>
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none mt-0.5">Battery Optimization Status</p>
             </div>
           </div>
           {status.isBatteryOptimizationIgnored ? (
             <div className="flex items-center gap-1 text-emerald-600">
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="w-3 h-3" />
               <span className="text-[9px] font-black uppercase tracking-widest">Exempted</span>
             </div>
           ) : (
@@ -120,13 +130,22 @@ const IntelligenceHealthCard: React.FC = () => {
         </div>
 
         {!isHealthy && (
-          <div className="pt-2">
-            <p className="text-[10px] text-amber-700 font-bold leading-relaxed bg-amber-50 p-4 rounded-2xl border border-amber-100">
-              ⚠️ Android may kill WealthOS in the background to save battery. Enable "Exemption" and "Listener Access" to ensure real-time transaction detection.
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="pt-1"
+          >
+            <p className="text-[10px] text-amber-700 font-bold leading-relaxed bg-amber-50 p-4 rounded-2xl border border-amber-100 italic">
+              WealthOS may miss background signals if Android restricts activity. Fix these settings for 100% intelligence reliability.
             </p>
-          </div>
+          </motion.div>
         )}
       </div>
+
+      <AndroidPermissionOnboarding 
+        isOpen={showOnboarding} 
+        onClose={() => setShowOnboarding(false)} 
+      />
     </div>
   );
 };

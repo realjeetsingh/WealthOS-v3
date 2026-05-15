@@ -5,12 +5,14 @@ import NotificationApprovalList from '../components/NotificationApprovalList';
 import IntelligenceHealthCard from '../components/IntelligenceHealthCard';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { triggerRecoverySync } from '../services/androidBridge';
+import { triggerRecoverySync, checkAndroidStatus } from '../services/androidBridge';
 import { toast } from 'sonner';
+import AndroidPermissionOnboarding from '../components/AndroidPermissionOnboarding';
 
 const DetectedTransactions: React.FC = () => {
   const [learnedCount, setLearnedCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -19,6 +21,13 @@ const DetectedTransactions: React.FC = () => {
       where('patternType', '==', 'merchant_category')
     );
     getDocs(q).then(snap => setLearnedCount(snap.docs.length));
+
+    // Check if onboarding is needed
+    checkAndroidStatus().then(status => {
+      if (!status.isNotificationListenerEnabled) {
+        setShowOnboarding(true);
+      }
+    });
   }, []);
 
   const handleManualSync = () => {
@@ -62,6 +71,11 @@ const DetectedTransactions: React.FC = () => {
       </div>
 
       <IntelligenceHealthCard />
+
+      <AndroidPermissionOnboarding 
+        isOpen={showOnboarding} 
+        onClose={() => setShowOnboarding(false)} 
+      />
 
       {/* Operational Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">

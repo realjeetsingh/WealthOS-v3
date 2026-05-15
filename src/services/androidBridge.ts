@@ -9,6 +9,7 @@ export interface AndroidSystemStatus {
   isNotificationListenerEnabled: boolean;
   isBatteryOptimizationIgnored: boolean;
   isForegroundServiceActive: boolean;
+  isPostNotificationsEnabled: boolean;
   lastSyncTimestamp: number;
 }
 
@@ -16,12 +17,12 @@ const DEFAULT_STATUS: AndroidSystemStatus = {
   isNotificationListenerEnabled: false,
   isBatteryOptimizationIgnored: false,
   isForegroundServiceActive: false,
+  isPostNotificationsEnabled: true,
   lastSyncTimestamp: Date.now()
 };
 
 /**
  * Check the status of required Android permissions and services
- * Native Host will provide this via window.AndroidHost
  */
 export const checkAndroidStatus = async (): Promise<AndroidSystemStatus> => {
   const host = (window as any).WealthOSAndroid;
@@ -36,6 +37,16 @@ export const checkAndroidStatus = async (): Promise<AndroidSystemStatus> => {
   } catch (err) {
     console.error('WealthOS Bridge: Failed to check Android status', err);
     return DEFAULT_STATUS;
+  }
+};
+
+/**
+ * Request Runtime POST_NOTIFICATIONS permission (Android 13+)
+ */
+export const requestPostNotificationsPermission = () => {
+  const host = (window as any).WealthOSAndroid;
+  if (host) {
+    host.requestPostNotificationsPermission();
   }
 };
 
