@@ -24,7 +24,8 @@ import {
   Zap,
   MoreVertical,
   Edit2,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -57,17 +58,51 @@ import { useLayout } from '../contexts/LayoutContext';
 import { NAVBAR_HEIGHT, FAB_SAFE_SPACING } from '../constants';
 import Button from '../components/ui/Button';
 import Skeleton from '../components/ui/Skeleton';
-import { fetchMarketPrice, normalizeSymbol, searchSymbols, SymbolResult, fetchBatchPrices } from '../services/marketDataService';
-import { Loader2, RefreshCw, Clock } from 'lucide-react';
+import { fetchMarketPrice, normalizeSymbol, searchSymbols, SymbolResult, fetchBatchPrices, calculateSafeGainLoss } from '../services/marketDataService';
+import { RefreshCw, Clock } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 
 const CATEGORIES = [
-  { id: 'Stocks', label: 'Stocks', icon: Activity, type: 'stock' },
-  { id: 'Crypto', label: 'Crypto', icon: Coins, type: 'crypto' },
-  { id: 'MF', label: 'Mutual Funds', icon: FileText, type: 'mf' },
-  { id: 'Real Estate', label: 'Real Estate', icon: Home, type: 'other' },
-  { id: 'Gold', label: 'Gold / Physical', icon: Gem, type: 'other' },
-  { id: 'Bonds', label: 'Bonds / Debt', icon: Wallet, type: 'other' },
+  { 
+    id: 'Stocks', 
+    label: 'Stocks', 
+    subtitle: 'Public company investments',
+    icon: Activity, 
+    type: 'equity', 
+    defaultMode: 'api' 
+  },
+  { 
+    id: 'Crypto', 
+    label: 'Crypto', 
+    subtitle: 'Bitcoin, Ethereum, digital assets',
+    icon: Coins, 
+    type: 'crypto', 
+    defaultMode: 'api' 
+  },
+  { 
+    id: 'Real Estate', 
+    label: 'Property', 
+    subtitle: 'House, land, real estate',
+    icon: Home, 
+    type: 'real_estate', 
+    defaultMode: 'manual' 
+  },
+  { 
+    id: 'Gold', 
+    label: 'Gold & Metals', 
+    subtitle: 'Gold, silver, physical metals',
+    icon: Gem, 
+    type: 'precious_metals', 
+    defaultMode: 'manual' 
+  },
+  { 
+    id: 'Others', 
+    label: 'Other Asset', 
+    subtitle: 'Track anything else you own',
+    icon: Briefcase, 
+    type: 'others', 
+    defaultMode: 'manual' 
+  },
 ] as const;
 
 type Category = typeof CATEGORIES[number]['id'];
@@ -103,6 +138,7 @@ export default function Portfolio() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const [selectedCategory, setSelectedCategory] = useState<Category>('Stocks');
+  const [modalStep, setModalStep] = useState<'category' | 'form'>('category');
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
@@ -112,7 +148,8 @@ export default function Portfolio() {
   const [formData, setFormData] = useState({
     assetName: '',
     symbol: '',
-    assetType: 'stock' as 'stock' | 'crypto' | 'mf' | 'other',
+    assetType: 'equity' as PortfolioAsset['assetType'],
+    trackingMode: 'api' as 'api' | 'manual',
     quantity: '',
     avgBuyPrice: '',
     lastPrice: '',
@@ -120,6 +157,7 @@ export default function Portfolio() {
     currentValue: '',
     investmentDate: new Date().toISOString().split('T')[0],
     coinName: '',
+    coinId: '',
     propertyName: '',
     rentalIncome: '',
     bondName: '',
@@ -127,6 +165,45 @@ export default function Portfolio() {
     maturityDate: '',
     weight: ''
   });
+
+  // Helper: Calculate derived values for the UI/Storage
+  const getDerivedFinancials = (data: typeof formData) => {
+    const qty = Number(data.quantity) || 0;
+    const isLive = data.trackingMode === 'api';
+
+    if (isLive) {
+      const avgPrice = Number(data.avgBuyPrice) || 0;
+      const marketPrice = Number(data.lastPrice) || 0;
+      
+      const invested = qty * avgPrice;
+      const current = qty * marketPrice;
+      
+      return {
+        qty,
+        avgPrice,
+        lastPrice: marketPrice,
+        investedAmount: invested,
+        currentValue: current,
+        isComplete: qty > 0 && avgPrice > 0 && data.symbol
+      };
+    } else {
+      const invested = Number(data.investedAmount) || 0;
+      const current = Number(data.currentValue) || 0;
+      
+      // For manual, avgPrice and lastPrice are derived for display only
+      const derivedAvgPrice = qty > 0 ? invested / qty : 0;
+      const derivedLastPrice = qty > 0 ? current / qty : 0;
+
+      return {
+        qty,
+        avgPrice: derivedAvgPrice,
+        lastPrice: derivedLastPrice,
+        investedAmount: invested,
+        currentValue: current,
+        isComplete: data.assetName && invested >= 0 && current >= 0
+      };
+    }
+  };
   
   const handleSyncPrice = async () => {
     const symbolToFetch = formData.symbol;
@@ -138,21 +215,20 @@ export default function Portfolio() {
     setIsFetchingPrice(true);
     setPriceError(null);
     try {
-      const price = await fetchMarketPrice(symbolToFetch);
+      const isCrypto = selectedCategory === 'Crypto';
+      const price = await fetchMarketPrice(symbolToFetch, isCrypto);
       if (price !== null) {
-        const qty = Number(formData.quantity) || 1;
         setFormData(prev => ({
           ...prev,
-          lastPrice: price.toString(),
-          currentValue: (price * qty).toString()
+          lastPrice: price.toString()
         }));
         toast.success(`Latest price fetched for ${symbolToFetch}`);
       } else {
-        setPriceError('Live price unavailable at the moment.');
+        setPriceError('Live pricing is temporarily unavailable. You can still enter it manually.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error syncing price:', error);
-      setPriceError('Network error. Check connection.');
+      setPriceError(error.message || 'Failed to sync price. Please enter manually.');
     } finally {
       setIsFetchingPrice(false);
     }
@@ -171,7 +247,7 @@ export default function Portfolio() {
       setSearchError(null);
       
       try {
-        const results = await searchSymbols(searchQuery);
+        const results = await searchSymbols(searchQuery, selectedCategory === 'Crypto');
         setSearchResults(results.slice(0, 10));
         setSearchState(results.length > 0 ? 'RESULTS' : 'EMPTY');
       } catch (error: any) {
@@ -200,17 +276,23 @@ export default function Portfolio() {
   const handleSymbolSelect = async (result: SymbolResult) => {
     setSearchResults([]);
     setIsFetchingPrice(true);
+    setPriceError(null);
     try {
-      const price = await fetchMarketPrice(result.symbol);
+      const isCrypto = selectedCategory === 'Crypto';
+      const price = await fetchMarketPrice(result.symbol, isCrypto);
       setFormData(prev => ({
         ...prev,
         assetName: result.description || result.symbol,
         symbol: result.symbol,
-        lastPrice: price?.toString() || '0',
-        currentValue: price ? (price * (Number(prev.quantity) || 1)).toString() : prev.currentValue
+        coinId: isCrypto ? result.symbol.toLowerCase() : '', // Mapping symbol to coinId if crypto
+        lastPrice: price?.toString() || '0'
       }));
-    } catch (error) {
+      if (price === null) {
+        setPriceError('Live pricing is temporarily unavailable. Manual entry enabled for continuity.');
+      }
+    } catch (error: any) {
       console.error('Error fetching price for selection:', error);
+      setPriceError(error.message || 'Failed to fetch market price.');
     } finally {
       setIsFetchingPrice(false);
     }
@@ -224,9 +306,12 @@ export default function Portfolio() {
     
     try {
       const symbolsToFetch = assetsToRefresh
-        .filter(a => a.category === 'Stocks' || a.category === 'Crypto' || a.category === 'MF')
-        .map(a => a.symbol)
-        .filter(Boolean);
+        .filter(a => a.trackingMode === 'api')
+        .map(a => ({ 
+          symbol: a.symbol, 
+          isCrypto: a.assetType === 'crypto' 
+        }))
+        .filter(a => Boolean(a.symbol));
 
       if (symbolsToFetch.length === 0) {
         setIsRefreshing(false);
@@ -236,10 +321,12 @@ export default function Portfolio() {
       const priceData = await fetchBatchPrices(symbolsToFetch, isManual);
       
       for (const asset of assetsToRefresh) {
+        if (asset.trackingMode !== 'api') continue;
+        
         const symbol = asset.symbol;
         if (!symbol) continue;
 
-          const newPrice = priceData[symbol];
+        const newPrice = priceData[symbol];
         if (newPrice !== null && newPrice !== undefined) {
           const qty = asset.quantity || 1;
           const newCurrentValue = newPrice * qty;
@@ -304,45 +391,44 @@ export default function Portfolio() {
       };
       
       const currentCategory = CATEGORIES.find(c => c.id === selectedCategory);
-      const assetType = currentCategory?.type || 'other';
+      const assetType = currentCategory?.type || 'others';
 
       if (selectedCategory === 'Stocks') {
         metadata.investmentDate = formData.investmentDate;
       } else if (selectedCategory === 'Crypto') {
         metadata.symbol = formData.symbol;
-      } else if (selectedCategory === 'MF') {
-        metadata.symbol = formData.symbol;
+        metadata.coinId = formData.coinId;
       } else if (selectedCategory === 'Real Estate') {
-        metadata.propertyName = formData.propertyName;
-        metadata.rentalIncome = Number(formData.rentalIncome);
+        metadata.propertyName = formData.assetName; // Use assetName consistently
       } else if (selectedCategory === 'Gold') {
-        metadata.weight = Number(formData.weight);
+        metadata.weight = Number(formData.quantity); // Use quantity as weight
       }
 
-      const qty = Number(formData.quantity) || 1;
-      const avgPrice = Number(formData.avgBuyPrice) || Number(formData.investedAmount) / qty;
-      const lastP = Number(formData.lastPrice) || avgPrice;
+      const { qty, avgPrice, lastPrice, investedAmount, currentValue } = getDerivedFinancials(formData);
+
+      if (investedAmount < 0 || currentValue < 0) {
+        throw new Error('Financial values cannot be negative');
+      }
 
       const assetData: Omit<PortfolioAsset, 'id'> = {
         userId: user.uid,
         category: selectedCategory,
-        assetName: formData.assetName || formData.coinName || formData.propertyName || formData.bondName || formData.symbol,
+        assetName: formData.assetName || (selectedCategory === 'Crypto' ? formData.coinId : formData.symbol) || 'Untitled Asset',
         symbol: formData.symbol || '',
         assetType: assetType as any,
+        trackingMode: formData.trackingMode,
         quantity: qty,
         avgBuyPrice: avgPrice,
-        lastPrice: lastP,
-        investedAmount: Number(formData.investedAmount) || (qty * avgPrice),
-        currentValue: qty * lastP,
+        lastPrice: lastPrice,
+        investedAmount: investedAmount,
+        currentValue: currentValue,
         lastUpdatedAt: Timestamp.now(),
+        manualValuationAt: formData.trackingMode === 'manual' ? Timestamp.now() : null,
         metadata,
         timestamp: Timestamp.now()
       };
 
       if (editingAssetId) {
-        // Optimistic update for edit
-        setAssets(prev => prev.map(a => a.id === editingAssetId ? { ...a, ...assetData } : a));
-        
         await updateDoc(doc(db, `users/${user.uid}/portfolio`, editingAssetId), assetData);
         toast.success('Asset Successfully Updated');
       } else {
@@ -361,26 +447,29 @@ export default function Portfolio() {
   };
 
   const handleEdit = (asset: PortfolioAsset) => {
-    setEditingAssetId(asset.id);
+    setEditingAssetId(asset.id!);
     setSelectedCategory(asset.category);
     setFormData({
       assetName: asset.assetName,
       symbol: asset.symbol || '',
       assetType: asset.assetType,
+      trackingMode: asset.trackingMode || 'manual',
       quantity: asset.quantity?.toString() || '',
       avgBuyPrice: asset.avgBuyPrice?.toString() || '',
       lastPrice: asset.lastPrice?.toString() || '',
       investedAmount: asset.investedAmount.toString(),
       currentValue: asset.currentValue.toString(),
-      investmentDate: asset.metadata.investmentDate || new Date().toISOString().split('T')[0],
-      coinName: asset.metadata.coinName || '',
-      propertyName: asset.metadata.propertyName || '',
-      rentalIncome: asset.metadata.rentalIncome?.toString() || '',
-      bondName: asset.metadata.bondName || '',
-      interestRate: asset.metadata.interestRate?.toString() || '',
-      maturityDate: asset.metadata.maturityDate || '',
-      weight: asset.metadata.weight?.toString() || ''
+      investmentDate: asset.metadata?.investmentDate || new Date().toISOString().split('T')[0],
+      coinName: asset.metadata?.coinName || '',
+      coinId: asset.metadata?.coinId || '',
+      propertyName: asset.metadata?.propertyName || '',
+      rentalIncome: asset.metadata?.rentalIncome?.toString() || '',
+      bondName: asset.metadata?.bondName || '',
+      interestRate: asset.metadata?.interestRate?.toString() || '',
+      maturityDate: asset.metadata?.maturityDate || '',
+      weight: asset.metadata?.weight?.toString() || ''
     });
+    setModalStep('form');
     setIsModalOpen(true);
     setActiveMenuId(null);
   };
@@ -428,7 +517,8 @@ export default function Portfolio() {
     setFormData({
       assetName: '',
       symbol: '',
-      assetType: 'stock',
+      assetType: 'equity',
+      trackingMode: 'api',
       quantity: '',
       avgBuyPrice: '',
       lastPrice: '',
@@ -436,6 +526,7 @@ export default function Portfolio() {
       currentValue: '',
       investmentDate: new Date().toISOString().split('T')[0],
       coinName: '',
+      coinId: '',
       propertyName: '',
       rentalIncome: '',
       bondName: '',
@@ -445,12 +536,12 @@ export default function Portfolio() {
     });
     setSelectedCategory('Stocks');
     setEditingAssetId(null);
+    setModalStep('category');
   };
 
   const totalInvested = assets.reduce((sum, a) => sum + a.investedAmount, 0);
   const totalCurrentValue = assets.reduce((sum, a) => sum + a.currentValue, 0);
-  const totalGainLoss = totalCurrentValue - totalInvested;
-  const totalGainLossPercentage = totalInvested > 0 ? (totalGainLoss / totalInvested) * 100 : 0;
+  const { gainLoss: totalGainLoss, percentage: totalGainLossPercentage } = calculateSafeGainLoss(totalCurrentValue, totalInvested);
 
   // Asset Allocation Logic
   const categoryTotals = assets.reduce((acc, asset) => {
@@ -464,7 +555,7 @@ export default function Portfolio() {
     color: cat.id === 'Stocks' ? '#4F46E5' : 
            cat.id === 'Crypto' ? '#F59E0B' : 
            cat.id === 'Real Estate' ? '#10B981' : 
-           cat.id === 'Bonds' ? '#6366F1' : '#EC4899'
+           cat.id === 'Gold' ? '#EAB308' : '#94A3B8'
   })).filter(d => d.value > 0);
 
   // Smart Insights Logic
@@ -772,7 +863,7 @@ export default function Portfolio() {
               <thead>
                 <tr className="text-left border-b border-gray-50">
                   <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider pl-4">Asset Detail</th>
-                  <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Market Price</th>
+                  <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Price / Units</th>
                   <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Invested</th>
                   <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Current Value</th>
                   <th className="pb-4 pt-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider text-right">Profit / Loss</th>
@@ -782,8 +873,7 @@ export default function Portfolio() {
               <tbody className="divide-y divide-gray-50">
                 {assets.map((asset) => {
                   const CategoryIcon = CATEGORIES.find(c => c.id === asset.category)?.icon || Activity;
-                  const profit = asset.currentValue - asset.investedAmount;
-                  const profitPercentage = asset.investedAmount > 0 ? (profit / asset.investedAmount) * 100 : 0;
+                  const { gainLoss: profit, percentage: profitPercentage } = calculateSafeGainLoss(asset.currentValue, asset.investedAmount);
                   
                   return (
                     <tr key={asset.id} className="group hover:bg-gray-50/50 transition-colors">
@@ -796,6 +886,9 @@ export default function Portfolio() {
                             <p className="font-bold text-gray-900">{asset.assetName}</p>
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{asset.symbol || asset.category}</span>
+                              <span className={`text-[8px] px-1 rounded font-black uppercase ${asset.category === 'Stocks' || asset.category === 'Crypto' ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'}`}>
+                                {asset.category}
+                              </span>
                               {asset.lastUpdatedAt && (
                                 <>
                                   <span className="w-1 h-1 bg-gray-300 rounded-full" />
@@ -811,17 +904,30 @@ export default function Portfolio() {
                       </td>
                       <td className="py-5 text-right">
                         <div className="space-y-0.5">
-                          <p className="text-sm font-bold text-gray-900">
-                            {asset.lastPrice ? <CurrencyDisplay value={asset.lastPrice} /> : '—'}
-                          </p>
-                          <p className="text-[10px] text-gray-500 font-medium">{asset.quantity} units</p>
+                          {asset.category === 'Stocks' || asset.category === 'Crypto' ? (
+                            <>
+                              <p className="text-sm font-bold text-gray-900">
+                                {asset.lastPrice ? <CurrencyDisplay value={asset.lastPrice} /> : '—'}
+                              </p>
+                              <p className="text-[10px] text-gray-500 font-medium">{asset.quantity} {asset.category === 'Crypto' ? 'units' : 'units'}</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm font-bold text-gray-600">{asset.category}</p>
+                              {asset.quantity > 0 && asset.category === 'Gold' && (
+                                <p className="text-[10px] text-gray-500 font-medium">{asset.quantity} grams</p>
+                              )}
+                            </>
+                          )}
                         </div>
                       </td>
                       <td className="py-5 text-right">
                         <p className="text-sm font-bold text-gray-900 whitespace-nowrap">
                           <CurrencyDisplay value={asset.investedAmount} />
                         </p>
-                        <p className="text-[10px] text-gray-400 font-medium">Avg. <CurrencyDisplay value={asset.avgBuyPrice} /></p>
+                        {asset.avgBuyPrice > 0 && asset.quantity > 0 && (
+                          <p className="text-[10px] text-gray-400 font-medium">Avg. <CurrencyDisplay value={asset.avgBuyPrice} /></p>
+                        )}
                       </td>
                       <td className="py-5 text-right">
                         <p className="text-sm font-bold text-gray-900">
@@ -900,8 +1006,7 @@ export default function Portfolio() {
             </div>
           ) : (
             assets.map((asset) => {
-              const profit = asset.currentValue - asset.investedAmount;
-              const profitPercentage = asset.investedAmount > 0 ? (profit / asset.investedAmount) * 100 : 0;
+              const { gainLoss: profit, percentage: profitPercentage } = calculateSafeGainLoss(asset.currentValue, asset.investedAmount);
               const CategoryIcon = CATEGORIES.find(c => c.id === asset.category)?.icon || Activity;
 
               return (
@@ -917,6 +1022,9 @@ export default function Portfolio() {
                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">
                              {asset.symbol || asset.category}
                            </p>
+                           <span className={`text-[8px] px-1 rounded font-black uppercase ${asset.category === 'Stocks' || asset.category === 'Crypto' ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'}`}>
+                             {asset.category}
+                           </span>
                            {asset.lastUpdatedAt && (
                              <span className="text-[10px] text-gray-400 flex items-center gap-1">
                                <Clock className="w-2.5 h-2.5" />
@@ -953,10 +1061,19 @@ export default function Portfolio() {
                       </p>
                     </div>
                     <div className="space-y-1 text-right">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Last Price</p>
-                      <p className="text-sm font-bold text-gray-900 italic text-gray-400">
-                        {asset.lastPrice ? <CurrencyDisplay value={asset.lastPrice} /> : '—'}
-                      </p>
+                      {asset.category === 'Stocks' || asset.category === 'Crypto' ? (
+                        <>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Market Price</p>
+                          <p className="text-sm font-bold text-indigo-600">
+                            {asset.lastPrice ? <CurrencyDisplay value={asset.lastPrice} /> : '—'}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Asset Class</p>
+                          <p className="text-sm font-bold text-amber-600">{asset.category}</p>
+                        </>
+                      )}
                     </div>
                   </div>
                   
@@ -1012,8 +1129,12 @@ export default function Portfolio() {
             >
               <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{editingAssetId ? 'Edit Asset' : 'Add New Asset'}</h2>
-                  <p className="text-sm text-gray-500">{editingAssetId ? 'Update your asset details.' : 'Enter the details of your investment.'}</p>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {editingAssetId ? 'Edit Asset' : (modalStep === 'category' ? 'Add Asset' : `Add ${selectedCategory}`)}
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    {editingAssetId ? 'Update your asset details.' : (modalStep === 'category' ? 'What would you like to track?' : 'Enter the details of your investment.')}
+                  </p>
                 </div>
                 <button
                   onClick={() => setIsModalOpen(false)}
@@ -1023,287 +1144,288 @@ export default function Portfolio() {
                 </button>
               </div>
 
-                <form onSubmit={handleAddAsset} className="p-6 space-y-6 overflow-y-auto flex-1 pb-32 md:pb-6 custom-scrollbar">
-                  {priceError && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-2 text-[10px] font-bold text-amber-700"
-                    >
-                      <AlertCircle className="w-4 h-4" />
-                      {priceError}
-                    </motion.div>
-                  )}
-
-                  {/* Category Selector */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">Asset Category</label>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {modalStep === 'category' && !editingAssetId ? (
+                  <div className="p-6 grid grid-cols-1 gap-3">
                     {CATEGORIES.map((cat) => {
                       const Icon = cat.icon;
-                      const isSelected = selectedCategory === cat.id;
                       return (
                         <button
                           key={cat.id}
-                          type="button"
-                          onClick={() => setSelectedCategory(cat.id)}
-                          className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                            isSelected 
-                              ? 'border-indigo-600 bg-indigo-50 text-indigo-600' 
-                              : 'border-gray-100 hover:border-gray-200 text-gray-400'
-                          }`}
+                          onClick={() => {
+                            setSelectedCategory(cat.id);
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              trackingMode: cat.defaultMode,
+                              assetType: cat.type as any 
+                            }));
+                            setModalStep('form');
+                          }}
+                          className="flex items-center gap-4 p-5 bg-white border-2 border-gray-100 rounded-2xl hover:border-indigo-600 hover:bg-indigo-50/30 transition-all text-left group"
                         >
-                          <Icon className="w-5 h-5" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">{cat.id}</span>
+                          <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-white group-hover:scale-110 transition-all">
+                            <Icon className="w-6 h-6 text-gray-600 group-hover:text-indigo-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-gray-900">{cat.label}</h3>
+                            <p className="text-xs text-gray-500 font-medium">{cat.subtitle}</p>
+                          </div>
+                          <ArrowUpRight className="w-5 h-5 text-gray-300 group-hover:text-indigo-600 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
                         </button>
                       );
                     })}
                   </div>
-                </div>
+                ) : (
+                  <form onSubmit={handleAddAsset} className="p-6 space-y-6 pb-32 md:pb-6">
+                    {priceError && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-2 text-[10px] font-bold text-amber-700"
+                      >
+                        <AlertCircle className="w-4 h-4" />
+                        {priceError}
+                      </motion.div>
+                    )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Dynamic Fields based on Category */}
-                  {(selectedCategory === 'Stocks' || selectedCategory === 'Crypto' || selectedCategory === 'MF') && (
-                    <>
-                      <div className="space-y-2 md:col-span-2 relative">
-                        <label className="text-sm font-bold text-gray-700 flex justify-between items-center">
-                          Search Symbol / Asset Name
-                          {searchState === 'LOADING' && <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />}
-                        </label>
-                        <div className="relative group">
-                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors">
-                            <Search className="w-4 h-4" />
-                          </div>
-                          <input
-                            type="text"
-                            required
-                            placeholder="e.g. Reliance, Apple, Bitcoin"
-                            className={`w-full pl-11 pr-4 py-3 rounded-xl border outline-none transition-all ${
-                              searchState === 'ERROR' || searchState === 'RATE_LIMIT' 
-                                ? 'border-red-200 focus:ring-red-500' 
-                                : 'border-gray-200 focus:ring-indigo-500'
-                            }`}
-                            value={formData.assetName}
-                            onChange={(e) => handleSymbolSearch(e.target.value)}
-                          />
-                        </div>
-                        
-                        {/* Search Results Dropdown (Step 6 & 7) */}
-                        <AnimatePresence>
-                          {searchQuery.length >= 2 && searchState !== 'IDLE' && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 5 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 5 }}
-                              className="absolute z-[10001] left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
-                            >
-                              {searchState === 'LOADING' && (
-                                <div className="p-8 text-center">
-                                  <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
-                                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Searching Market...</p>
-                                </div>
-                              )}
-
-                              {searchState === 'RESULTS' && searchResults.map((result, idx) => (
-                                <button
-                                  key={`${result.symbol}-${idx}`}
-                                  type="button"
-                                  onClick={() => {
-                                    handleSymbolSelect(result);
-                                    setSearchQuery('');
-                                    setSearchState('IDLE');
-                                  }}
-                                  className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors"
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* LIVE ASSETS: STOCKS & CRYPTO */}
+                      {(selectedCategory === 'Stocks' || selectedCategory === 'Crypto') && (
+                        <>
+                          <div className="space-y-2 md:col-span-2 relative">
+                            <label className="text-sm font-bold text-gray-700 flex justify-between items-center">
+                              Search {selectedCategory === 'Stocks' ? 'Stock' : 'Coin'}
+                              {searchState === 'LOADING' && <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />}
+                            </label>
+                            <div className="relative group">
+                              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors">
+                                <Search className="w-4 h-4" />
+                              </div>
+                              <input
+                                type="text"
+                                required
+                                placeholder={selectedCategory === 'Stocks' ? 'e.g. Reliance, Apple, HDFC' : 'e.g. Bitcoin, Ethereum, Solana'}
+                                className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                value={formData.assetName}
+                                onChange={(e) => handleSymbolSearch(e.target.value)}
+                              />
+                            </div>
+                            
+                            {/* Search Results Dropdown */}
+                            <AnimatePresence>
+                              {searchQuery.length >= 2 && searchState !== 'IDLE' && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: 5 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: 5 }}
+                                  className="absolute z-[10001] left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
                                 >
-                                  <div className="min-w-0 pr-4">
-                                    <p className="font-bold text-gray-900 truncate">{result.description}</p>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded uppercase tracking-wider">{result.symbol}</span>
-                                      <span className="text-[10px] text-gray-400 font-medium">{result.type}</span>
-                                    </div>
+                                  {searchState === 'RESULTS' && searchResults.map((result, idx) => (
+                                    <button
+                                      key={`${result.symbol}-${idx}`}
+                                      type="button"
+                                      onClick={() => {
+                                        handleSymbolSelect(result);
+                                        setSearchQuery('');
+                                        setSearchState('IDLE');
+                                      }}
+                                      className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors"
+                                    >
+                                      <div className="min-w-0 pr-4">
+                                        <p className="font-bold text-gray-900 truncate">{result.description}</p>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded uppercase tracking-wider">{result.symbol}</span>
+                                          <span className="text-[10px] text-gray-400 font-medium">{result.type}</span>
+                                        </div>
+                                      </div>
+                                      <Plus className="w-4 h-4 text-gray-300 shrink-0" />
+                                    </button>
+                                  ))}
+                                  {searchState === 'EMPTY' && (
+                                    <div className="p-8 text-center text-gray-400 text-xs font-bold uppercase">No results found</div>
+                                  )}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-700">Quantity</label>
+                            <input
+                              type="number"
+                              required
+                              step="any"
+                              placeholder="0.00"
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                              value={formData.quantity}
+                              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-700">Avg Buy Price</label>
+                            <div className="relative">
+                              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</div>
+                              <input
+                                type="number"
+                                required
+                                step="any"
+                                placeholder="0.00"
+                                className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={formData.avgBuyPrice}
+                                onChange={(e) => setFormData({ ...formData, avgBuyPrice: e.target.value })}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Visual Summary or Fallback Manual Input */}
+                          <div className="md:col-span-2 p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+                            {(!formData.lastPrice || formData.lastPrice === '0' || priceError) ? (
+                              <div className="space-y-2">
+                                <label className="text-sm font-bold text-indigo-700">Current Market Price (Manual Entry)</label>
+                                <div className="relative">
+                                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</div>
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    placeholder="0.00"
+                                    className="w-full pl-8 pr-4 py-3 rounded-xl border border-indigo-200 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    value={formData.lastPrice}
+                                    onChange={(e) => setFormData({ ...formData, lastPrice: e.target.value })}
+                                  />
+                                </div>
+                                <p className="text-[10px] text-indigo-400 font-medium">Live market data is temporarily disconnected. Your portfolio will remain accurate with manual values.</p>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Est. Invested</p>
+                                  <p className="text-lg font-black text-indigo-900">
+                                    <CurrencyDisplay value={Number(formData.quantity) * Number(formData.avgBuyPrice)} />
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Market Price</p>
+                                  <div className="flex flex-col items-end">
+                                    <p className="text-lg font-black text-indigo-900">
+                                      <CurrencyDisplay value={Number(formData.lastPrice)} />
+                                    </p>
+                                    <button 
+                                      type="button"
+                                      onClick={() => setFormData({ ...formData, lastPrice: '0' })}
+                                      className="text-[8px] font-bold text-indigo-500 uppercase hover:underline"
+                                    >
+                                      Edit Manually
+                                    </button>
                                   </div>
-                                  <Plus className="w-4 h-4 text-gray-300 shrink-0" />
-                                </button>
-                              ))}
-
-                              {searchState === 'EMPTY' && (
-                                <div className="p-8 text-center">
-                                  <Search className="w-6 h-6 text-gray-300 mx-auto mb-2" />
-                                  <p className="text-xs text-gray-500 font-bold">No assets found for "{searchQuery}"</p>
                                 </div>
-                              )}
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
 
-                              {(searchState === 'ERROR' || searchState === 'RATE_LIMIT' || searchState === 'AUTH_FAILURE') && (
-                                <div className="p-8 text-center bg-rose-50/30">
-                                  <AlertCircle className="w-6 h-6 text-rose-500 mx-auto mb-2" />
-                                  <p className="text-xs text-rose-600 font-bold">{searchError || 'Search unavailable'}</p>
-                                  <button 
-                                    onClick={() => handleSymbolSearch(searchQuery)}
-                                    className="mt-2 text-[10px] font-black uppercase text-indigo-600 hover:underline"
-                                  >
-                                    Try Again
-                                  </button>
-                                </div>
-                              )}
-                            </motion.div>
+                      {/* MANUAL ASSETS: PROPERTY, GOLD, OTHERS */}
+                      {(selectedCategory === 'Real Estate' || selectedCategory === 'Gold' || selectedCategory === 'Others') && (
+                        <>
+                          <div className="space-y-2 md:col-span-2">
+                            <label className="text-sm font-bold text-gray-700">
+                              {selectedCategory === 'Real Estate' ? 'Property Name / Address' : 'Asset Name'}
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder={
+                                selectedCategory === 'Real Estate' ? 'e.g. Downtown Apartment, 2BHK Mumbai' :
+                                selectedCategory === 'Gold' ? 'e.g. 24K Gold Bar, Jewelry' :
+                                'e.g. Private Equity, Collectibles'
+                              }
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                              value={formData.assetName}
+                              onChange={(e) => setFormData({ ...formData, assetName: e.target.value })}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-700">Purchase Value</label>
+                            <div className="relative">
+                              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</div>
+                              <input
+                                type="number"
+                                required
+                                step="any"
+                                placeholder="0.00"
+                                className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={formData.investedAmount}
+                                onChange={(e) => setFormData({ ...formData, investedAmount: e.target.value })}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-700">Current Estimate</label>
+                            <div className="relative">
+                              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</div>
+                              <input
+                                type="number"
+                                required
+                                step="any"
+                                placeholder="0.00"
+                                className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={formData.currentValue}
+                                onChange={(e) => setFormData({ ...formData, currentValue: e.target.value })}
+                              />
+                            </div>
+                          </div>
+
+                          {selectedCategory === 'Gold' && (
+                            <div className="space-y-2 md:col-span-2">
+                              <label className="text-sm font-bold text-gray-700">Weight (Grams) - Optional</label>
+                              <input
+                                type="number"
+                                step="any"
+                                placeholder="e.g. 10.5"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={formData.quantity}
+                                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                              />
+                            </div>
                           )}
-                        </AnimatePresence>
-                      </div>
 
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Quantity</label>
-                        <input
-                          type="number"
-                          required
-                          step="any"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.quantity}
-                          onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Avg Buy Price</label>
-                        <input
-                          type="number"
-                          required
-                          step="any"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.avgBuyPrice}
-                          onChange={(e) => setFormData({ ...formData, avgBuyPrice: e.target.value })}
-                        />
-                      </div>
-                    </>
-                  )}
+                          {/* P/L Summary for Manual Assets */}
+                          {Number(formData.investedAmount) > 0 && Number(formData.currentValue) > 0 && (
+                            <div className="md:col-span-2 p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
+                              <div>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Est. Profit/Loss</p>
+                                <p className={`text-lg font-black ${Number(formData.currentValue) >= Number(formData.investedAmount) ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                  <CurrencyDisplay value={Number(formData.currentValue) - Number(formData.investedAmount)} />
+                                </p>
+                              </div>
+                              <div className={`px-4 py-1 rounded-full text-xs font-black ${(Number(formData.currentValue) / Number(formData.investedAmount) - 1) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                {((Number(formData.currentValue) / Number(formData.investedAmount) - 1) * 100).toFixed(2)}%
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
 
-                  {selectedCategory === 'Real Estate' && (
-                    <>
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-bold text-gray-700">Property Name / Address</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. Downtown Apartment"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.propertyName}
-                          onChange={(e) => setFormData({ ...formData, propertyName: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Rental Income (Monthly)</label>
-                        <input
-                          type="number"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.rentalIncome}
-                          onChange={(e) => setFormData({ ...formData, rentalIncome: e.target.value })}
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {selectedCategory === 'Bonds' && (
-                    <>
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-bold text-gray-700">Bond Name</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. Govt Bond 2030"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.bondName}
-                          onChange={(e) => setFormData({ ...formData, bondName: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Interest Rate (%)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.interestRate}
-                          onChange={(e) => setFormData({ ...formData, interestRate: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Maturity Date</label>
-                        <input
-                          type="date"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.maturityDate}
-                          onChange={(e) => setFormData({ ...formData, maturityDate: e.target.value })}
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {selectedCategory === 'Gold' && (
-                    <>
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-bold text-gray-700">Asset Type</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. 24K Gold, Silver Bar"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.assetType}
-                          onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Weight / Quantity</label>
-                        <input
-                          type="number"
-                          step="any"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                          value={formData.weight}
-                          onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {/* Common Fields */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700">Invested Amount</label>
-                    <input
-                      type="number"
-                      required
-                      step="any"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                      value={formData.investedAmount}
-                      onChange={(e) => setFormData({ ...formData, investedAmount: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700">Current Value</label>
-                    <input
-                      type="number"
-                      step="any"
-                      placeholder="Optional"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                      value={formData.currentValue}
-                      onChange={(e) => setFormData({ ...formData, currentValue: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-4 flex gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    fullWidth
-                    onClick={() => setIsModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    loading={isSubmitting}
-                    fullWidth
-                  >
-                    {editingAssetId ? 'Update Asset' : 'Save Asset'}
-                  </Button>
-                </div>
-              </form>
+                    <div className="pt-6 border-t border-gray-100 flex gap-3">
+                      <Button 
+                        variant="outline" 
+                        fullWidth 
+                        type="button" 
+                        onClick={() => editingAssetId ? setIsModalOpen(false) : setModalStep('category')}
+                      >
+                        {editingAssetId ? 'Cancel' : 'Back'}
+                      </Button>
+                      <Button type="submit" loading={isSubmitting} fullWidth>
+                        {editingAssetId ? 'Update Asset' : 'Add to Portfolio'}
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </motion.div>
           </div>
         )}

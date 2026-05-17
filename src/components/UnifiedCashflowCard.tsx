@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { CurrencyDisplay } from './CurrencyDisplay';
 import { formatCurrencyShort } from '../lib/formatCurrency';
@@ -22,13 +22,35 @@ const UnifiedCashflowCard: React.FC<UnifiedCashflowCardProps> = ({
   transactions 
 }) => {
   const navigate = useNavigate();
-  // Aggregate data for the last 4 months
-  const chartData = [
-    { name: 'Jan', in: income * 0.8, out: expenses * 0.9, net: (income * 0.8) - (expenses * 0.9) },
-    { name: 'Feb', in: income * 0.9, out: expenses * 0.85, net: (income * 0.9) - (expenses * 0.85) },
-    { name: 'Mar', in: income * 1.1, out: expenses * 1.2, net: (income * 1.1) - (expenses * 1.2) },
-    { name: 'Apr', in: income, out: expenses, net: cashflow },
-  ];
+  // Aggregate data for real months from transactions
+  const chartData = useMemo(() => {
+    const historical: { [key: string]: { in: number, out: number } } = {};
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // Default to current month only if no transactions
+    if (transactions.length === 0) {
+      const now = new Date();
+      historical[months[now.getMonth()]] = { in: income, out: expenses };
+    } else {
+      transactions.forEach(t => {
+        const date = t.date instanceof Date ? t.date : t.date.toDate?.() || new Date(t.date);
+        const monthKey = months[date.getMonth()];
+        if (!historical[monthKey]) historical[monthKey] = { in: 0, out: 0 };
+        
+        if (t.type === 'income') historical[monthKey].in += t.amount;
+        else historical[monthKey].out += t.amount;
+      });
+    }
+
+    return Object.entries(historical)
+      .map(([name, vals]) => ({
+        name,
+        in: vals.in,
+        out: vals.out,
+        net: vals.in - vals.out
+      }))
+      .slice(-6); // Only show last 6 active months
+  }, [transactions, income, expenses]);
 
   const savingsRate = income > 0 ? Math.round((cashflow / income) * 100) : 0;
 

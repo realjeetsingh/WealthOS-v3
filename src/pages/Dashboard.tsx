@@ -317,6 +317,19 @@ const Dashboard: React.FC = () => {
     value: s.netWorth || 0
   })), [snapshots]);
 
+  // Dynamic AI Power Score calculation
+  const aiPowerScore = useMemo(() => {
+    if (monthlyIncome === 0) return 0;
+    const savingsRate = Math.max(0, (monthlyIncome - monthlyExpenses) / monthlyIncome);
+    const investmentRatio = portfolioValue / (netWorth || 1);
+    const debtRatio = Math.max(0, 1 - (loanBalance / (monthlyIncome * 12 || 1)));
+    
+    const score = (savingsRate * 40) + (investmentRatio * 40) + (debtRatio * 20);
+    return Math.min(100, Math.round(score));
+  }, [monthlyIncome, monthlyExpenses, portfolioValue, netWorth, loanBalance]);
+
+  const scoreLabel = aiPowerScore > 80 ? 'Elite' : aiPowerScore > 60 ? 'Stable' : 'Risk';
+
   const isDashboardEmpty = transactions.length === 0 && portfolioAssets.length === 0 && loans.length === 0;
 
   const hasActiveAlerts = useMemo(() => {
@@ -430,6 +443,8 @@ const Dashboard: React.FC = () => {
         currency={userCurrency}
         userName={userProfile?.fullName?.split(' ')[0]}
         healthSummary={healthSummary}
+        income={monthlyIncome}
+        expenses={monthlyExpenses}
       />
       
       {/* 2.5 INTELLIGENCE LAYER: Pending Alerts */}
@@ -555,12 +570,15 @@ const Dashboard: React.FC = () => {
 
                 <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-6 rounded-[2rem] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group cursor-pointer">
                   <Zap className="absolute top-0 right-0 -mt-2 -mr-2 w-16 h-16 text-white/5 opacity-40 group-hover:rotate-45 transition-transform" />
-                  <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">Financial Health</p>
+                  <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1" id="ai-power-score-label">Financial Health</p>
                   <h4 className="text-lg font-black mb-4">AI Power Score</h4>
                   <div className="flex items-end justify-between">
-                    <p className="text-4xl font-black">78</p>
-                    <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-1 rounded-md">
-                      Stable <Activity className="w-3 h-3" />
+                    <p className="text-4xl font-black">{aiPowerScore}</p>
+                    <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${
+                      scoreLabel === 'Elite' ? 'bg-emerald-500/20 text-emerald-300' : 
+                      scoreLabel === 'Stable' ? 'bg-white/20' : 'bg-rose-500/20 text-rose-300'
+                    }`}>
+                      {scoreLabel} <Activity className="w-3 h-3" />
                     </div>
                   </div>
                 </div>

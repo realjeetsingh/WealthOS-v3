@@ -13,6 +13,8 @@ interface DashboardHeroProps {
   currency: string;
   userName?: string;
   healthSummary: FinancialHealthSummary;
+  income: number;
+  expenses: number;
 }
 
 const DashboardHero: React.FC<DashboardHeroProps> = ({ 
@@ -23,10 +25,15 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
   savingsTrend, 
   currency,
   userName = 'Buddy',
-  healthSummary
+  healthSummary,
+  income,
+  expenses
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const isPositive = netWorth > 0 && healthSummary.isPositive;
+
+  const savingsEfficiency = income > 0 ? ((income - expenses) / income) * 100 : 0;
+  const growthVelocity = netWorth !== 0 ? (savingsTrend / Math.abs(netWorth)) * 100 : 0;
   
   return (
     <div className="relative mb-8 md:mb-12">
@@ -131,8 +138,8 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
               <div className="space-y-1">
                 <p className="text-white/30 text-[8px] md:text-[9px] font-black uppercase tracking-widest">Growth Velocity</p>
                 <div className="flex items-center gap-2">
-                  <div className={`w-6 md:w-8 h-1 rounded-full ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                  <span className="text-xs md:text-sm font-bold text-white/80">{isPositive ? '+12.4%' : '-2.8%'}</span>
+                  <div className={`w-6 md:w-8 h-1 rounded-full ${growthVelocity >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                  <span className="text-xs md:text-sm font-bold text-white/80">{growthVelocity >= 0 ? '+' : ''}{growthVelocity.toFixed(1)}%</span>
                 </div>
               </div>
               <div className="space-y-1">
@@ -150,7 +157,7 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
               </div>
               <div className="hidden md:block space-y-1">
                 <p className="text-white/30 text-[9px] font-black uppercase tracking-widest">Savings Efficiency</p>
-                <p className="text-sm font-black text-white">42.5%</p>
+                <p className="text-sm font-black text-white">{savingsEfficiency.toFixed(1)}%</p>
               </div>
               <div className="hidden md:block space-y-1">
                 <p className="text-white/30 text-[9px] font-black uppercase tracking-widest">Economic Risk</p>

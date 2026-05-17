@@ -258,7 +258,8 @@ export const processIncomingNotification = async (notification: RawNotification)
     const combinedText = notification.title + ' ' + notification.body;
     const normalized = normalizeSMS(combinedText);
     
-    const type = detectType(normalized);
+    const detection = detectType(normalized);
+    const type = detection.type || 'expense';
     const amount = extractAmount(normalized);
     let merchant = extractMerchant(normalized);
     const date = extractDate(normalized);
@@ -286,6 +287,13 @@ export const processIncomingNotification = async (notification: RawNotification)
     
     // Adaptive Confidence: Boost confidence if it's a learned pattern
     let confidence = validation.confidence;
+    
+    // Incorporate parsing confidence
+    if (detection.confidence < 0.8 && confidence === 'high') {
+      confidence = 'medium';
+      logs.push(`[Intelligence] Downgrading confidence due to ambiguous parsing`);
+    }
+
     let isMatchedViaMemory = false;
     if (catResult.confidence === 1.0) {
       confidence = 'high';
@@ -293,12 +301,12 @@ export const processIncomingNotification = async (notification: RawNotification)
       logs.push(`[Intelligence] Learned pattern matched: ${catResult.category}`);
     }
 
-    logs.push(`[Parse] Extracted: Type=${type || 'expense'}, Amount=${amount}, Merchant=${merchant}`);
+    logs.push(`[Parse] Extracted: Type=${type}, Amount=${amount}, Merchant=${merchant}`);
     logs.push(`[Parse] Categorized: ${catResult.category} (${(catResult.confidence * 100).toFixed(0)}% confidence)`);
 
     // 3. Normalize
     const parsed: Partial<DetectedTransaction> = {
-      type: type || 'expense',
+      type: type,
       amount,
       merchant: merchant,
       category: catResult.category,

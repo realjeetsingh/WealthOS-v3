@@ -113,16 +113,18 @@ export interface FinancialSnapshot {
 export interface PortfolioAsset {
   id?: string;
   userId: string;
-  category: 'Stocks' | 'Crypto' | 'Real Estate' | 'Bonds' | 'Gold';
+  category: 'Stocks' | 'Crypto' | 'Real Estate' | 'Bonds' | 'Gold' | 'Others';
   assetName: string;
-  symbol: string; // Standard symbol (REQUIRED for stocks/crypto)
-  assetType: 'stock' | 'crypto' | 'mf' | 'other';
+  symbol: string; // Ticker for Stocks/Crypto
+  assetType: 'equity' | 'crypto' | 'mf' | 'precious_metals' | 'real_estate' | 'fixed_income' | 'others';
+  trackingMode: 'api' | 'manual';
   quantity: number;
   avgBuyPrice: number;
-  lastPrice: number;
+  lastPrice: number; // For API tracked, this is the market price. For manual, it's the last recorded valuation.
   investedAmount: number;
   currentValue: number;
   lastUpdatedAt?: Timestamp;
+  manualValuationAt?: Timestamp | null; // Specifically for manual modes
   metadata: {
     investmentDate?: string;
     propertyName?: string;
@@ -132,6 +134,7 @@ export interface PortfolioAsset {
     maturityDate?: string;
     weight?: number;
     coinName?: string;
+    coinId?: string; // For CoinGecko etc.
   };
   timestamp: Timestamp;
 }

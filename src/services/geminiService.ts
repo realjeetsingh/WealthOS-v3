@@ -1,4 +1,3 @@
-import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { trackEvent, reportError, AnalyticsEvents } from "./analytics";
 
 export interface SmartFinancialInsight {
@@ -74,8 +73,6 @@ export const generateChatResponse = async (
     userProfile?: any;
   }
 ): Promise<AIChatResponse | string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  
   const systemInstruction = `
     You are a world-class AI Financial Assistant. Your goal is to provide personalized, actionable financial advice based on the user's specific data.
     
@@ -103,24 +100,18 @@ export const generateChatResponse = async (
   `;
 
   try {
-    const chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
-      config: {
-        systemInstruction,
-      },
-      history: history.map(msg => ({
-        role: msg.role,
-        parts: [{ text: msg.text }]
-      }))
-    });
-    
     trackEvent(AnalyticsEvents.AI_CHAT_REQUEST, { query });
 
-    const result = await chat.sendMessage({
-      message: query,
+    const fetchResponse = await fetch("/api/ai/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, history, systemInstruction })
     });
 
-    let text = result.text;
+    if (!fetchResponse.ok) throw new Error("AI Chat Proxy failed");
+    
+    const result = await fetchResponse.json();
+    let text = result.text || "";
     
     // Clean up text if it contains markdown code blocks
     if (text.includes("```")) {
@@ -173,8 +164,6 @@ export const getSmartFinancialAnalysis = async (data: {
     };
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  
   // PART 5 — FIX AI PROMPT ROLE
   const prompt = `
     You are a world-class financial advisor. Analyze the following financial data for a user named ${data.userProfile?.name || 'User'}.
@@ -223,105 +212,22 @@ export const getSmartFinancialAnalysis = async (data: {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
-      contents: prompt,
-      config: {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            projectedNetWorth: {
-              type: Type.NUMBER,
-              description: "The 10-year base projection provided in the prompt."
-            },
-            confidenceScore: { 
-              type: Type.NUMBER, 
-              description: "Confidence score from 0 to 100 based on data quality."
-            },
-            confidenceReason: {
-              type: Type.STRING,
-              description: "Reasoning for the confidence score."
-            },
-            keyInsights: { 
-              type: Type.ARRAY, 
-              items: { 
-                type: Type.OBJECT,
-                properties: {
-                  type: { type: Type.STRING, enum: ["risk", "warning", "optimization"] },
-                  problem: { type: Type.STRING },
-                  impact: { type: Type.STRING },
-                  fix: { type: Type.STRING },
-                  action: {
-                    type: Type.OBJECT,
-                    properties: {
-                      label: { type: Type.STRING },
-                      path: { type: Type.STRING }
-                    },
-                    required: ["label", "path"]
-                  }
-                },
-                required: ["type", "problem", "impact", "fix", "action"]
-              },
-              description: "3-5 prioritized insights with data proof."
-            },
-            strategicPlan: {
-              type: Type.OBJECT,
-              properties: {
-                shortTerm: { 
-                  type: Type.ARRAY, 
-                  items: { type: Type.STRING },
-                  description: "Immediate actions for the next 6-12 months."
-                },
-                longTerm: { 
-                  type: Type.ARRAY, 
-                  items: { type: Type.STRING },
-                  description: "Strategic goals for the next 5-10 years."
-                },
-              },
-              required: ["shortTerm", "longTerm"],
-            },
-            riskAssessment: { 
-              type: Type.STRING,
-              description: "Analysis of potential financial risks (e.g., inflation, debt, lack of diversification)."
-            },
-            futureScenarios: {
-              type: Type.OBJECT,
-              properties: {
-                optimistic: { 
-                  type: Type.STRING,
-                  description: "Explanation of the Optimized Projection path."
-                },
-                conservative: { 
-                  type: Type.STRING,
-                  description: "Explanation of the Base Projection path."
-                },
-              },
-              required: ["optimistic", "conservative"],
-            },
-            suggestedModule: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING, description: "The name of the module (e.g., Budgets, Portfolio, Goals)." },
-                path: { type: Type.STRING, description: "The app path (e.g., /budgets, /portfolio, /goals)." },
-                label: { type: Type.STRING, description: "A short label for the action button (e.g., Manage Budgets)." },
-              },
-              required: ["name", "path", "label"],
-            },
-          },
-          required: ["projectedNetWorth", "confidenceScore", "keyInsights", "strategicPlan", "riskAssessment", "futureScenarios", "suggestedModule"],
-        },
-      },
+    const fetchResponse = await fetch("/api/ai/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt })
     });
 
-    if (!response.text) {
+    if (!fetchResponse.ok) throw new Error("AI Analysis Proxy failed");
+    
+    const result = await fetchResponse.json();
+    if (!result.text) {
       return { status: "failed", message: "We need more data to generate a detailed analysis", type: "insufficient_data" };
     }
 
-    const result = JSON.parse(response.text);
-    trackEvent('smart_analysis_success', { score: result.confidenceScore });
-    return result as SmartFinancialAnalysis;
+    const parsedResult = JSON.parse(result.text);
+    trackEvent('smart_analysis_success', { score: parsedResult.confidenceScore });
+    return parsedResult as SmartFinancialAnalysis;
   } catch (error) {
     console.error("AI Service Failure:", error);
     reportError(error, "GeminiService:getSmartFinancialAnalysis");

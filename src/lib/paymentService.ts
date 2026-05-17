@@ -8,6 +8,7 @@ interface RazorpayOptions {
   currency: string;
   name: string;
   description: string;
+  order_id: string; // Add this
   handler: (response: any) => void;
   prefill?: {
     name?: string;
@@ -29,8 +30,8 @@ export const handleUpgrade = async (userId: string, userEmail?: string, userName
   console.log("Razorpay Key ID present:", !!key);
 
   if (!key || key === 'rzp_test_placeholder') {
-    console.error("Razorpay Key ID is missing or invalid. Current value:", key);
-    toast.error("Payment configuration error. Please ensure VITE_RAZORPAY_KEY_ID is set in the Settings menu.");
+    console.error("Razorpay Key ID is missing or invalid.");
+    toast.error("Payment configuration error. Please ensure VITE_RAZORPAY_KEY_ID is set.");
     return;
   }
 
@@ -40,53 +41,76 @@ export const handleUpgrade = async (userId: string, userEmail?: string, userName
     return;
   }
 
-  console.log("Opening Razorpay modal for user:", userId);
-  console.log("Current Auth UID:", auth.currentUser?.uid);
-
-  const options: RazorpayOptions = {
-    key: key,
-    amount: 29900, // ₹299 in paise
-    currency: "INR",
-    name: "WealthOS",
-    description: "Premium Upgrade",
-    prefill: {
-      name: userName,
-      email: userEmail,
-    },
-    theme: {
-      color: "#4f46e5", // indigo-600
-    },
-    handler: async (response: any) => {
-      console.log("Payment successful:", response);
-      const paymentId = response.razorpay_payment_id;
-      
-      try {
-        const userDocRef = doc(db, 'users', userId);
-        console.log("Updating Firestore: isPremium -> true for user:", userId);
-        await updateDoc(userDocRef, {
-          isPremium: true,
-          plan: 'pro',
-          paymentId: paymentId,
-          premiumSince: serverTimestamp()
-        });
-        console.log("Firestore update complete. Real-time snapshot should trigger UI refresh.");
-        toast.success("Upgrade successful. Premium unlocked.");
-      } catch (error) {
-        console.error("Error updating premium status:", error);
-        toast.error("Payment successful, but failed to update status. Please contact support.");
-      }
-    },
-  };
-
   try {
+    toast.loading("Initializing payment...");
+    
+    // STEP 1: Create Order on Backend
+    const orderResponse = await fetch("/api/payments/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    });
+
+    if (!orderResponse.ok) throw new Error("Could not create payment order");
+    
+    const order = await orderResponse.json();
+    toast.dismiss();
+
+    const options: RazorpayOptions = {
+      key: key,
+      amount: order.amount,
+      currency: order.currency,
+      name: "WealthOS",
+      description: "Premium Upgrade",
+      order_id: order.id, // THE CRITICAL PRODUCTION ADDITION
+      prefill: {
+        name: userName,
+        email: userEmail,
+      },
+      theme: {
+        color: "#4f46e5",
+      },
+      handler: async (response: any) => {
+        console.log("Payment successful, verifying signature...");
+        
+        try {
+          // STEP 2: Verify Payment on Backend
+          const verifyResponse = await fetch("/api/payments/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+
+          if (!verifyResponse.ok) throw new Error("Payment verification failed");
+
+          // STEP 3: Update local state via Firestore (verified)
+          const userDocRef = doc(db, 'users', userId);
+          await updateDoc(userDocRef, {
+            isPremium: true,
+            plan: 'pro',
+            paymentId: response.razorpay_payment_id,
+            premiumSince: serverTimestamp()
+          });
+          
+          toast.success("Upgrade successful. Premium unlocked.");
+        } catch (error) {
+          console.error("Verification error:", error);
+          toast.error("Payment received, but verification failed. Please contact support.");
+        }
+      },
+    };
+
     const rzp = new (window as any).Razorpay(options);
     rzp.on('payment.failed', function (response: any) {
-      console.error("Payment failed:", response.error);
       toast.error("Payment failed: " + response.error.description);
     });
     rzp.open();
   } catch (err) {
-    console.error("Razorpay initialization error:", err);
-    toast.error("Could not open payment window. Please check your internet connection.");
+    toast.dismiss();
+    console.error("Razorpay workflow error:", err);
+    toast.error("Could not start payment process. Please try again.");
   }
 };

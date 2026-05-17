@@ -1,5 +1,5 @@
 {
   "name": "WealthOS",
-  "description": "A production-ready authentication system using React, Firebase Auth, and Firestore.",
+  "description": "A production-grade personal wealth management system with real-time portfolio tracking, AI insights, and secure payment infrastructure.",
   "requestFramePermissions": []
 }

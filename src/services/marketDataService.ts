@@ -50,8 +50,9 @@ export const normalizeSymbol = (nameOrSymbol: string): string => {
 /**
  * Searches for symbols matching a query (via internal proxy)
  */
-export const searchSymbols = async (query: string): Promise<SymbolResult[]> => {
-  console.info(`WealthOS Search: Initiating lookup for "${query}" via internal proxy`);
+export const searchSymbols = async (query: string, isCrypto = false): Promise<SymbolResult[]> => {
+  const flavor = isCrypto ? 'Crypto' : 'Stock';
+  console.info(`WealthOS Search: Initiating ${flavor} lookup for "${query}" via internal proxy`);
   
   if (!query || query.trim().length === 0) {
     return [];
@@ -59,7 +60,8 @@ export const searchSymbols = async (query: string): Promise<SymbolResult[]> => {
 
   try {
     const encodedQuery = encodeURIComponent(query.trim());
-    const url = `${API_BASE_URL}/search?q=${encodedQuery}`;
+    const endpoint = isCrypto ? "/crypto/search" : "/search";
+    const url = `${API_BASE_URL}${endpoint}?q=${encodedQuery}`;
     
     const response = await fetch(url);
     const data = await response.json();
@@ -70,14 +72,13 @@ export const searchSymbols = async (query: string): Promise<SymbolResult[]> => {
       throw new Error(errorMsg);
     }
     
-    // Finnhub returns { count: number, result: [] } via our proxy
+    // Both Finnhub and our new Crypto proxy return { result: [] }
     const results = data.result || []; 
-    console.info(`WealthOS Search: Found ${results.length} results for "${query}"`);
+    console.info(`WealthOS Search: Found ${results.length} ${flavor} results for "${query}"`);
     
     return results;
   } catch (error: any) {
     console.error('WealthOS Search: Critical failure in search pipeline:', error);
-    // Protect these specific error types so the UI can react
     if (error.message === 'RATE_LIMIT' || error.message === 'AUTH_FAILURE' || error.message === 'API_FAILURE') {
       throw error;
     }
@@ -85,11 +86,77 @@ export const searchSymbols = async (query: string): Promise<SymbolResult[]> => {
   }
 };
 
+export interface MarketPriceResult {
+  price: number;
+  change24h?: number;
+  lastUpdated: number;
+}
+
+/**
+ * Fetches the latest crypto price from CoinMarketCap (via server proxy)
+ */
+export const fetchCryptoPrice = async (symbol: string): Promise<number | null> => {
+  if (!symbol) return null;
+  const s = symbol.toLowerCase().trim();
+  const now = Date.now();
+
+  const cacheKey = `crypto_${s}`;
+  if (priceCache[cacheKey] && (now - priceCache[cacheKey].timestamp < CACHE_DURATION)) {
+    return priceCache[cacheKey].price;
+  }
+
+  try {
+    // Note: The proxy now handles CoinMarketCap predominantly using symbols
+    const response = await fetch(`${API_BASE_URL}/crypto/quote?symbol=${s.toUpperCase()}`);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    const price = data[s]?.usd;
+    
+    if (price) {
+      priceCache[cacheKey] = {
+        price,
+        timestamp: now
+      };
+      return price;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching crypto price for ${s}:`, error);
+    return null;
+  }
+};
+
+/**
+ * Validates and sanitizes Profit/Loss calculations to prevent absurd UI values.
+ */
+export const calculateSafeGainLoss = (current: number, invested: number): { gainLoss: number; percentage: number } => {
+  if (invested <= 0) {
+    return { gainLoss: 0, percentage: 0 };
+  }
+
+  const gainLoss = current - invested;
+  const percentage = (gainLoss / invested) * 100;
+
+  // Safeguards for absurd values (e.g., +9999900%)
+  const SANITY_LIMIT = 5000; // 5000% is a lot but possible in crypto, +99999% is usually bad data
+  
+  return {
+    gainLoss,
+    percentage: Math.min(percentage, SANITY_LIMIT)
+  };
+};
+
 /**
  * Fetches the latest quote for a symbol (via internal proxy)
  */
-export const fetchMarketPrice = async (symbol: string): Promise<number | null> => {
+export const fetchMarketPrice = async (symbol: string, isCrypto = false): Promise<number | null> => {
   if (!symbol) return null;
+  
+  if (isCrypto) {
+    return fetchCryptoPrice(symbol);
+  }
+
   const standardSymbol = symbol.toUpperCase().trim();
   const now = Date.now();
 
@@ -99,7 +166,8 @@ export const fetchMarketPrice = async (symbol: string): Promise<number | null> =
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/quote?symbol=${standardSymbol}`);
+    const encodedSymbol = encodeURIComponent(standardSymbol);
+    const response = await fetch(`${API_BASE_URL}/quote?symbol=${encodedSymbol}`);
     
     if (response.status === 429) {
       console.error("WealthOS Market: Rate Limit Reached (429)");
@@ -107,7 +175,9 @@ export const fetchMarketPrice = async (symbol: string): Promise<number | null> =
     }
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error || response.statusText || `Status ${response.status}`;
+      throw new Error(`API Error: ${errorMessage}`);
     }
 
     const data = await response.json();
@@ -131,15 +201,18 @@ export const fetchMarketPrice = async (symbol: string): Promise<number | null> =
  * Batch fetch helper (sequential for rate limit control)
  * Implements Step 7: Rate Limit Protection & Cooldown
  */
-export const fetchBatchPrices = async (symbols: string[], isManual = false): Promise<{ [symbol: string]: number | null }> => {
+export const fetchBatchPrices = async (
+  symbols: { symbol: string; isCrypto?: boolean }[], 
+  isManual = false
+): Promise<{ [symbol: string]: number | null }> => {
   const now = Date.now();
   
   if (isManual && (now - lastBulkRefresh < BATCH_COOLDOWN)) {
     console.warn(`Bulk refresh on cooldown. Please wait ${Math.ceil((BATCH_COOLDOWN - (now - lastBulkRefresh)) / 1000)}s`);
-    // Return cached values for all symbols
     const results: { [symbol: string]: number | null } = {};
     symbols.forEach(s => {
-      results[s] = priceCache[s.toUpperCase()]?.price || null;
+      const cacheKey = s.isCrypto ? `crypto_${s.symbol.toLowerCase()}` : s.symbol.toUpperCase();
+      results[s.symbol] = priceCache[cacheKey]?.price || null;
     });
     return results;
   }
@@ -149,8 +222,8 @@ export const fetchBatchPrices = async (symbols: string[], isManual = false): Pro
   const results: { [symbol: string]: number | null } = {};
   
   // Use a simple loop with a small delay between calls to be respectful to the API
-  for (const symbol of symbols) {
-    results[symbol] = await fetchMarketPrice(symbol);
+  for (const item of symbols) {
+    results[item.symbol] = await fetchMarketPrice(item.symbol, item.isCrypto);
     await new Promise(resolve => setTimeout(resolve, 150)); // 150ms delay
   }
   

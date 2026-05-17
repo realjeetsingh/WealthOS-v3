@@ -20,7 +20,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ isVisible = true }) => {
 
   const navLinksLeft = [
     { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
-    { to: '/transactions', label: 'Cashflow', icon: ReceiptText },
+    { to: '/transactions', label: 'Transactions', icon: ReceiptText },
   ];
 
   const navLinksRight = [

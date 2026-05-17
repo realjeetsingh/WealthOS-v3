@@ -22,25 +22,40 @@ export const normalizeSMS = (text: string) => {
     .toLowerCase();
 };
 
-export const detectType = (text: string) => {
-  if (text.includes("credited") || text.includes("received")) {
-    return "income";
+export const detectType = (text: string): { type: 'income' | 'expense' | null; confidence: number } => {
+  const expenseSignals = [
+    'debited', 'spent', 'paid', 'withdrawn', 'sent', 'purchase', 'dr', 
+    'payment to', 'transfer to', 'withdraw', 'spent on', 'ref no'
+  ];
+  const incomeSignals = [
+    'credited', 'received', 'salary', 'cashback', 'refund', 'deposit', 'cr',
+    'received from', 'added to', 'refunded'
+  ];
+
+  let expenseMatches = 0;
+  let incomeMatches = 0;
+
+  expenseSignals.forEach(signal => {
+    if (text.includes(signal)) expenseMatches++;
+  });
+
+  incomeSignals.forEach(signal => {
+    if (text.includes(signal)) incomeMatches++;
+  });
+
+  // Calculate local confidence based on signals
+  if (expenseMatches > incomeMatches) {
+    return { type: 'expense', confidence: expenseMatches > 1 ? 0.9 : 0.7 };
+  } else if (incomeMatches > expenseMatches) {
+    return { type: 'income', confidence: incomeMatches > 1 ? 0.9 : 0.7 };
   }
 
-  if (
-    text.includes("debited") ||
-    text.includes("sent") ||
-    text.includes("paid")
-  ) {
-    return "expense";
-  }
-
-  return null;
+  return { type: null, confidence: 0 };
 };
 
 export const extractAmount = (text: string) => {
-  // Support formats: Rs.120.00, Rs 999, ₹500
-  const match = text.match(/(?:rs\.?|₹)\s?([\d,]+\.?\d*)/i);
+  // Support formats: Rs.120.00, Rs 999, ₹500, INR 1200
+  const match = text.match(/(?:rs\.?|₹|inr)\s?([\d,]+\.?\d*)/i);
   return match ? parseFloat(match[1].replace(/,/g, "")) : null;
 };
 
@@ -82,7 +97,8 @@ export const parseSMS = (rawText: string, sender: string = ''): ParsedSMS | { er
     };
   }
 
-  const type = detectType(text);
+  const detection = detectType(text);
+  const type = detection.type;
   const amount = extractAmount(text);
   const date = extractDate(text);
   const merchant = extractMerchant(text);
@@ -94,7 +110,9 @@ export const parseSMS = (rawText: string, sender: string = ''): ParsedSMS | { er
     };
   }
 
-  const status = (!type || !merchant) ? 'review' : 'verified';
+  // Force review if type is null or confidence is low
+  const needsReview = !type || !merchant || detection.confidence < 0.8;
+  const status = needsReview ? 'review' : 'verified';
   
   // High-quality fallback naming
   const fallbackName = type === 'income' ? 'Bank Transfer' : 'UPI Payment';
@@ -106,7 +124,7 @@ export const parseSMS = (rawText: string, sender: string = ''): ParsedSMS | { er
     date,
     status,
     source: 'sms',
-    confidence: validation.confidence,
+    confidence: detection.confidence < 0.8 ? 'medium' : 'high',
     rawSMS: rawText,
     senderId: sender
   };
