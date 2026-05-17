@@ -26,8 +26,8 @@ export const handleUpgrade = async (userId: string, userEmail?: string, userName
     return;
   }
 
-  const key = (import.meta as any).env.VITE_RAZORPAY_KEY_ID;
-  console.log("Razorpay Key ID present:", !!key);
+  const key = import.meta.env.VITE_RAZORPAY_KEY_ID;
+  console.log("WealthOS Payments: Initializing Razorpay modal with public Key ID");
 
   if (!key || key === 'rzp_test_placeholder') {
     console.error("Razorpay Key ID is missing or invalid.");
