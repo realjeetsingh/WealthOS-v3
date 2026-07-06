@@ -7,8 +7,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/[[...routes]].ts",
-      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+      "dest": "/api/[[...routes]].ts"
     },
     {
       "handle": "filesystem"
