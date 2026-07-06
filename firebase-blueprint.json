@@ -1,0 +1,266 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile information stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The user's phone number (optional)."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "admin"],
+          "description": "The user's role in the application."
+        },
+        "isPremium": {
+          "type": "boolean",
+          "description": "Whether the user has a premium subscription."
+        },
+        "profileImage": {
+          "type": "string",
+          "description": "The user's profile image URL (base64 or hosted)."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The user's preferred currency code (e.g., USD, INR)."
+        },
+        "emailAlerts": {
+          "type": "boolean",
+          "description": "Whether the user has enabled email alerts."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the user profile was created."
+        }
+      },
+      "required": ["name", "email", "role", "isPremium", "createdAt"]
+    },
+    "Transaction": {
+      "title": "Financial Transaction",
+      "description": "A single financial transaction (income or expense).",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["income", "expense"],
+          "description": "The type of transaction."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the transaction."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the transaction (e.g., Food, Salary)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional notes for the transaction."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the transaction occurred."
+        }
+      },
+      "required": ["type", "amount", "category", "timestamp"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "A financial asset owned by the user.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "number" },
+        "type": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "value", "type", "timestamp"]
+    },
+    "Liability": {
+      "title": "Liability",
+      "description": "A financial liability (debt) owed by the user.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "remainingBalance": { "type": "number" },
+        "type": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "remainingBalance", "type", "timestamp"]
+    },
+    "Loan": {
+      "title": "Loan",
+      "description": "A loan managed by the user.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "principalAmount": { "type": "number" },
+        "tenureMonths": { "type": "number" },
+        "paidMonths": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "totalInterest": { "type": "number" },
+        "emi": { "type": "number" },
+        "remainingAmount": { "type": "number" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "completed"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "principalAmount", "tenureMonths", "paidMonths", "totalAmount", "totalInterest", "emi", "remainingAmount", "endDate", "status", "timestamp"]
+    },
+    "PortfolioAsset": {
+      "title": "Portfolio Asset",
+      "description": "An asset in the user's investment portfolio.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "category": { "type": "string", "enum": ["Stocks", "Crypto", "Real Estate", "Bonds", "Gold"] },
+        "assetName": { "type": "string" },
+        "symbol": { "type": "string" },
+        "assetType": { "type": "string", "enum": ["stock", "crypto", "mf", "other"] },
+        "quantity": { "type": "number" },
+        "avgBuyPrice": { "type": "number" },
+        "lastPrice": { "type": "number" },
+        "investedAmount": { "type": "number" },
+        "currentValue": { "type": "number" },
+        "lastUpdatedAt": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "category", "assetName", "symbol", "assetType", "quantity", "avgBuyPrice", "lastPrice", "investedAmount", "currentValue", "timestamp"]
+    },
+    "NetWorthSnapshot": {
+      "title": "Net Worth Snapshot",
+      "description": "A snapshot of the user's net worth at a specific point in time.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "netWorth": { "type": "number" },
+        "cashBalance": { "type": "number" },
+        "portfolioValue": { "type": "number" },
+        "loanBalance": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "netWorth", "cashBalance", "portfolioValue", "loanBalance", "timestamp"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "A monthly budget limit for a specific category.",
+      "type": "object",
+      "properties": {
+        "category": { "type": "string" },
+        "limit": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["category", "limit", "timestamp"]
+    },
+    "LegalConsent": {
+      "title": "Legal Consent Record",
+      "description": "Consolidated legal consent record for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "termsAccepted": { "type": "boolean" },
+        "privacyAccepted": { "type": "boolean" },
+        "acceptedAt": { "type": "string", "format": "date-time" },
+        "policyVersion": { "type": "string" },
+        "appVersion": { "type": "string" },
+        "status": { "type": "string", "enum": ["accepted", "revoked"] }
+      },
+      "required": ["userId", "termsAccepted", "privacyAccepted", "acceptedAt", "policyVersion", "status"]
+    },
+    "DetectedTransaction": {
+      "title": "Detected Transaction",
+      "description": "Transactions detected from notifications pending user approval.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "amount": { "type": "number" },
+        "merchant": { "type": "string" },
+        "date": { "type": "string" },
+        "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+        "source": { "type": "string" },
+        "app": { "type": "string" },
+        "rawBody": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "ignored"] },
+        "detectedAt": { "type": "string", "format": "date-time" },
+        "fingerprint": { "type": "string" }
+      },
+      "required": ["userId", "type", "amount", "merchant", "status", "fingerprint"]
+    },
+    "LearnedPattern": {
+      "title": "Learned Intelligence Pattern",
+      "description": "User-specific corrections and patterns learned from transaction verification.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "patternType": { "type": "string", "enum": ["merchant_category", "recurring_transaction"] },
+        "key": { "type": "string" },
+        "value": { "type": "string" },
+        "confidenceImpact": { "type": "number" },
+        "lastObservedAt": { "type": "string", "format": "date-time" },
+        "occurrenceCount": { "type": "number" }
+      },
+      "required": ["userId", "patternType", "key", "value", "occurrenceCount"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles."
+    },
+    "/users/{uid}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Subcollection of financial transactions for a specific user."
+    },
+    "/users/{uid}/detected_transactions/{txId}": {
+      "schema": "DetectedTransaction",
+      "description": "Pending queue for transactions detected via automation."
+    },
+    "/users/{uid}/intelligence_memory/{patternId}": {
+      "schema": "LearnedPattern",
+      "description": "User-specific behavioral intelligence memory."
+    },
+    "/users/{uid}/assets/{assetId}": {
+      "schema": "Asset",
+      "description": "Subcollection of assets for a specific user."
+    },
+    "/users/{uid}/liabilities/{liabilityId}": {
+      "schema": "Liability",
+      "description": "Subcollection of liabilities for a specific user."
+    },
+    "/users/{uid}/loans/{loanId}": {
+      "schema": "Loan",
+      "description": "Subcollection of loans for a specific user."
+    },
+    "/users/{uid}/portfolio/{assetId}": {
+      "schema": "PortfolioAsset",
+      "description": "Subcollection of portfolio assets for a specific user."
+    },
+    "/users/{uid}/netWorthSnapshots/{snapshotId}": {
+      "schema": "NetWorthSnapshot",
+      "description": "Subcollection of net worth snapshots for a specific user."
+    },
+    "/users/{uid}/budgets/{budgetId}": {
+      "schema": "Budget",
+      "description": "Subcollection of monthly budgets for a specific user."
+    },
+    "/users/{uid}/consents/legal": {
+      "schema": "LegalConsent",
+      "description": "Consolidated legal documentation acceptance status."
+    }
+  }
+}

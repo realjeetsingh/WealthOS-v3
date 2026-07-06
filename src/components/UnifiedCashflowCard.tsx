@@ -1,0 +1,287 @@
+import React, { useMemo } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
+import { CurrencyDisplay } from './CurrencyDisplay';
+import { formatCurrencyShort } from '../lib/formatCurrency';
+import { TrendingUp, TrendingDown, Wallet, Activity, ArrowRight, Zap } from 'lucide-react';
+import { Transaction } from '../types';
+import { useNavigate } from 'react-router-dom';
+import { toDate } from '../lib/dateUtils';
+
+const format = (date: Date, formatStr: string): string => {
+  if (formatStr === "MMM yyyy") {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[date.getMonth()]} ${date.getFullYear()}`;
+  }
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+};
+
+interface UnifiedCashflowCardProps {
+  income: number;
+  expenses: number;
+  cashflow: number;
+  currency: string;
+  transactions: Transaction[];
+}
+
+const UnifiedCashflowCard: React.FC<UnifiedCashflowCardProps> = ({ 
+  income, 
+  expenses, 
+  cashflow, 
+  currency,
+  transactions 
+}) => {
+  const navigate = useNavigate();
+  // Aggregate data for real months from transactions
+  const chartData = useMemo(() => {
+    const historical: { [key: string]: { in: number, out: number } } = {};
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // Default to current month only if no transactions
+    if (!transactions || transactions.length === 0) {
+      const now = new Date();
+      const monthLabel = format(now, "MMM yyyy");
+      historical[monthLabel] = { in: income, out: expenses };
+    } else {
+      transactions.forEach(t => {
+        let dateObj: Date;
+        try {
+          if (t.timestamp) {
+            dateObj = toDate(t.timestamp);
+          } else if (t.date) {
+            dateObj = toDate(t.date);
+          } else {
+            dateObj = new Date();
+          }
+        } catch (err) {
+          dateObj = new Date();
+        }
+
+        if (!dateObj || isNaN(dateObj.getTime())) {
+          dateObj = new Date();
+        }
+
+        const monthLabel = format(dateObj, "MMM yyyy");
+        if (!historical[monthLabel]) historical[monthLabel] = { in: 0, out: 0 };
+        
+        const amt = Number(t.amount) || 0;
+        if (t.type === 'income') {
+          historical[monthLabel].in += amt;
+        } else {
+          historical[monthLabel].out += amt;
+        }
+      });
+    }
+
+    const results = Object.entries(historical).map(([monthLabel, vals]) => {
+      let finalLabel = monthLabel;
+      if (!finalLabel || finalLabel === 'undefined' || finalLabel === 'null') {
+        finalLabel = '';
+      }
+      
+      const safeLabel = finalLabel || format(new Date(), "MMM yyyy");
+      if (!finalLabel) {
+        console.warn("UnifiedCashflowCard: monthLabel is empty or invalid. Falling back to current month format.", { original: monthLabel, fallback: safeLabel });
+      }
+
+      const entry = {
+        name: safeLabel,
+        label: safeLabel,
+        in: Number(vals.in) || 0,
+        out: Number(vals.out) || 0,
+        net: (Number(vals.in) || 0) - (Number(vals.out) || 0)
+      };
+
+      // Ensure validation explicitly as requested
+      if (!entry.label) {
+        console.warn("UnifiedCashflowCard: Validation failed, applying fallback label on entry.");
+        entry.label = format(new Date(), "MMM yyyy");
+      }
+      if (!entry.name) {
+        entry.name = format(new Date(), "MMM yyyy");
+      }
+
+      return entry;
+    });
+
+    results.sort((a, b) => {
+      const parseLabel = (lbl: string) => {
+        const parts = lbl.split(' ');
+        const mIdx = months.indexOf(parts[0]);
+        const yr = parseInt(parts[1], 10);
+        return new Date(yr, mIdx, 1).getTime();
+      };
+      try {
+        return parseLabel(a.label) - parseLabel(b.label);
+      } catch {
+        return 0;
+      }
+    });
+
+    return results.slice(-6); // Only show last 6 active months
+  }, [transactions, income, expenses]);
+
+  const savingsRate = income > 0 ? Math.round((cashflow / income) * 100) : 0;
+
+  return (
+    <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-gray-100 shadow-xl shadow-black/5 overflow-hidden flex flex-col lg:flex-row">
+      {/* Visual Side */}
+      <div className="flex-1 p-6 md:p-10 border-b lg:border-b-0 lg:border-r border-gray-50 flex flex-col">
+        <div className="flex items-center justify-between mb-6 md:mb-8">
+          <div>
+             <h3 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Financial Flow</h3>
+             <p className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Cash In vs Out</p>
+          </div>
+          <div className="flex items-center gap-3 md:gap-4">
+             <div className="flex items-center gap-1.5">
+               <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-indigo-600" />
+               <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">In</span>
+             </div>
+             <div className="flex items-center gap-1.5">
+               <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-rose-400" />
+               <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Out</span>
+             </div>
+          </div>
+        </div>
+
+        <div className="h-48 md:h-80 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#6334FD" stopOpacity={0.1}/>
+                  <stop offset="95%" stopColor="#6334FD" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#FB7185" stopOpacity={0.1}/>
+                  <stop offset="95%" stopColor="#FB7185" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <XAxis 
+                dataKey="label" 
+                axisLine={false} 
+                tickLine={false} 
+                tickFormatter={(value) => {
+                  if (!value || value === "undefined" || value === "null") {
+                    console.warn("UnifiedCashflowCard XAxis: invalid tick value detected, falling back to current formatted date", value);
+                    return format(new Date(), "MMM yyyy");
+                  }
+                  return value;
+                }}
+                tick={{ fontSize: 9, fontWeight: 800, fill: '#9CA3AF' }} 
+                dy={10}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 9, fontWeight: 800, fill: '#9CA3AF' }}
+              />
+              <Tooltip 
+                cursor={{ stroke: '#6334FD', strokeWidth: 1 }}
+                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                itemStyle={{ fontSize: '11px', fontWeight: 'bold' }}
+                labelFormatter={(label) => {
+                  if (!label || label === "undefined" || label === "null") {
+                    console.warn("UnifiedCashflowCard Tooltip: invalid label detected, falling back to current formatted date", label);
+                    return format(new Date(), "MMM yyyy");
+                  }
+                  return label;
+                }}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="in" 
+                stroke="#6334FD" 
+                strokeWidth={2} 
+                fillOpacity={1} 
+                fill="url(#colorIn)" 
+                animationDuration={2000}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="out" 
+                stroke="#FB7185" 
+                strokeWidth={2} 
+                fillOpacity={1} 
+                fill="url(#colorOut)" 
+                animationDuration={2000}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Metrics Side */}
+      <div className="w-full lg:w-[380px] bg-gray-50/50 p-6 md:p-10 flex flex-col justify-between">
+        <div className="space-y-6 md:space-y-10">
+          <div>
+            <p className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 md:mb-6">Monthly Summary</p>
+            <div className="space-y-5 md:space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-xl shadow-sm">
+                    <TrendingUp className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Total Income</h4>
+                    <p className="text-[10px] font-bold text-gray-400">All sources</p>
+                  </div>
+                </div>
+                <p className="text-base md:text-lg font-black text-gray-900">
+                  <CurrencyDisplay value={income} currency={currency} />
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-xl shadow-sm">
+                    <TrendingDown className="w-4 h-4 text-rose-500" />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Gross Burn</h4>
+                    <p className="text-[10px] font-bold text-gray-400">Expenses & EMI</p>
+                  </div>
+                </div>
+                <p className="text-base md:text-lg font-black text-gray-900">
+                  <CurrencyDisplay value={expenses} currency={currency} />
+                </p>
+              </div>
+
+              <div className="pt-5 md:pt-6 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-1.5 md:mb-2">
+                  <h4 className="text-xs md:text-sm font-black text-indigo-600 uppercase tracking-[0.1em]">Monthly Net Savings</h4>
+                  <div className={`px-2 py-0.5 rounded-md text-[9px] md:text-[10px] font-black uppercase tracking-widest ${savingsRate > 20 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {savingsRate}% Saved
+                  </div>
+                </div>
+                <p className={`text-2xl md:text-4xl font-black tracking-tighter ${cashflow >= 0 ? 'text-gray-900' : 'text-rose-600'}`}>
+                  <CurrencyDisplay value={cashflow} currency={currency} />
+                </p>
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Available for wealth building</p>
+              </div>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => navigate('/insights')}
+            className="w-full text-left bg-gradient-to-br from-[#5B3DF5] to-[#7B61FF] rounded-2xl md:rounded-3xl p-5 md:p-6 text-white shadow-xl shadow-[#5B3DF5]/20 relative overflow-hidden group active:scale-[0.98] transition-all"
+          >
+            <Zap className="absolute top-0 right-0 -mt-2 -mr-2 w-12 md:w-16 h-12 md:h-16 text-white/10 rotate-12 group-hover:rotate-45 transition-transform duration-500" />
+            <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-1">FINANCIAL ANALYTICS</p>
+            <h4 className="text-base md:text-lg font-black mb-1.5">Financial Health</h4>
+            <p className="text-xs text-white/80 leading-relaxed mb-3">
+              Track spending patterns, savings growth, goal progress and debt performance.
+            </p>
+            <div className="mb-4 text-[10px] font-bold text-white/90 bg-white/10 backdrop-blur-sm rounded-lg px-2.5 py-1.5 inline-block">
+              {cashflow > 0 ? `Monthly Savings: ${formatCurrencyShort(cashflow, currency)}` : "View your financial analysis"}
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-bold text-white/80">
+              View Analysis <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default UnifiedCashflowCard;

@@ -1,0 +1,6 @@
+{
+  "name": "WealthOS",
+  "description": "A production-grade personal wealth management system with real-time portfolio tracking, AI insights, and secure payment infrastructure.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

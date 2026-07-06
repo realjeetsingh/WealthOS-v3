@@ -1,0 +1,297 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin' ||
+          (request.auth.token.email == "realjeetsingh@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.email is string &&
+             data.role in ['user', 'admin'] &&
+             data.isPremium is bool &&
+             (!('profileImage' in data) || data.profileImage is string) &&
+             (!('currency' in data) || data.currency is string) &&
+             (!('paymentId' in data) || data.paymentId is string) &&
+             (!('phone' in data) || data.phone is string) &&
+             (!('emailAlerts' in data) || data.emailAlerts is bool) &&
+             (!('budgetAlerts' in data) || data.budgetAlerts is bool) &&
+             (!('investmentAlerts' in data) || data.investmentAlerts is bool) &&
+             (!('premiumSince' in data) || data.premiumSince is timestamp) &&
+             (!('lastLogin' in data) || data.lastLogin is timestamp) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidTransaction(data) {
+      return data.type in ['income', 'expense'] &&
+             data.amount is number && data.amount > 0 &&
+             data.category is string && data.category.size() > 0;
+    }
+
+    function isValidAsset(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.value is number && data.value >= 0 &&
+             data.type is string;
+    }
+
+    function isValidLiability(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.remainingBalance is number && data.remainingBalance >= 0 &&
+             data.type is string;
+    }
+
+    function isValidAccount(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.balance is number &&
+             data.type is string;
+    }
+
+    function isValidGoal(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.targetAmount is number && data.targetAmount > 0 &&
+             data.currentAmount is number && data.currentAmount >= 0;
+    }
+
+    function isValidDetectedTransaction(data) {
+      return data.userId == request.auth.uid &&
+             data.type in ['income', 'expense'] &&
+             data.amount is number && data.amount > 0 &&
+             data.merchant is string &&
+             data.status in ['pending', 'approved', 'ignored'] &&
+             data.fingerprint is string &&
+             data.source == 'notification' &&
+             data.detectedAt is timestamp &&
+             (!('category' in data) || data.category is string) &&
+             (!('date' in data) || data.date is string) &&
+             (!('confidence' in data) || data.confidence in ['high', 'medium', 'low']) &&
+             (!('app' in data) || data.app is string) &&
+             (!('rawBody' in data) || data.rawBody is string);
+    }
+
+    function isValidLoan(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.principalAmount is number && data.principalAmount >= 0 &&
+             data.tenureMonths is number && data.tenureMonths >= 0 &&
+             data.paidMonths is number && data.paidMonths >= 0 &&
+             data.totalAmount is number && data.totalAmount >= 0 &&
+             data.totalInterest is number &&
+             data.emi is number && data.emi >= 0 &&
+             data.remainingAmount is number && data.remainingAmount >= 0 &&
+             (!('endDate' in data) || data.endDate is string) &&
+             (!('startDate' in data) || data.startDate is string) &&
+             (!('emiDueDate' in data) || data.emiDueDate is number) &&
+             (!('lenderName' in data) || data.lenderName is string) &&
+             (!('interestRate' in data) || data.interestRate is number) &&
+             data.status in ['active', 'completed'] &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidPortfolioAsset(data) {
+      return data.category in ['Stocks', 'Crypto', 'Real Estate', 'Bonds', 'Gold'] &&
+             data.assetName is string && data.assetName.size() > 0 &&
+             data.investedAmount is number && data.investedAmount >= 0 &&
+             (!('currentValue' in data) || data.currentValue is number) &&
+             (!('metadata' in data) || data.metadata is map) &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidNetWorthSnapshot(data) {
+      return data.userId is string &&
+             data.netWorth is number &&
+             data.cashBalance is number &&
+             data.portfolioValue is number &&
+             data.loanBalance is number &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidBudget(data) {
+      return data.category is string && data.category.size() > 0 &&
+             data.limit is number && data.limit >= 0 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidLearnedPattern(data) {
+      return data.userId == request.auth.uid &&
+             data.patternType in ['merchant_category', 'recurring_transaction'] &&
+             data.key is string &&
+             data.value is string &&
+             data.occurrenceCount is number &&
+             (!('confidenceImpact' in data) || data.confidenceImpact is number) &&
+             (!('lastObservedAt' in data) || data.lastObservedAt is timestamp);
+    }
+
+    function isValidLegalConsent(data) {
+      return data.userId == request.auth.uid &&
+             data.termsAccepted is bool &&
+             data.termsAccepted == true &&
+             data.privacyAccepted is bool &&
+             data.privacyAccepted == true &&
+             data.policyVersion is string &&
+             data.appVersion is string &&
+             data.acceptedAt is timestamp &&
+             data.status == 'accepted';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidFeedback(data) {
+      return data.keys().hasAll(['userId', 'type', 'message', 'timestamp', 'appVersion']) &&
+             data.keys().size() <= 7 &&
+             data.userId == request.auth.uid &&
+             data.type in ['feedback', 'bug', 'feature'] &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 2000 &&
+             data.timestamp is timestamp &&
+             data.appVersion is string &&
+             (!('userEmail' in data) || data.userEmail is string) &&
+             (!('rating' in data) || data.rating == null || (data.rating is number && data.rating >= 1 && data.rating <= 5));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /feedback/{feedbackId} {
+      allow create: if isAuthenticated() && isValidId(feedbackId) && isValidFeedback(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && 
+                      isValidUser(request.resource.data) &&
+                      request.resource.data.isPremium == false && 
+                      request.resource.data.role == 'user';
+      allow update: if (isOwner(userId) && 
+                        isValidUser(request.resource.data) &&
+                        (
+                          // normal profile update
+                          request.resource.data.isPremium == resource.data.get('isPremium', false)
+                          ||
+                          // premium upgrade
+                          (
+                            resource.data.get('isPremium', false) == false &&
+                            request.resource.data.isPremium == true &&
+                            request.resource.data.paymentId is string &&
+                            request.resource.data.premiumSince == request.time
+                          )
+                        )) || isAdmin();
+
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidTransaction(request.resource.data);
+        allow update: if isOwner(userId) && isValidTransaction(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /assets/{assetId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidAsset(request.resource.data);
+        allow update: if isOwner(userId) && isValidAsset(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /liabilities/{liabilityId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidLiability(request.resource.data);
+        allow update: if isOwner(userId) && isValidLiability(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /meta/{metaId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      match /accounts/{accountId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidAccount(request.resource.data);
+        allow update: if isOwner(userId) && isValidAccount(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /goals/{goalId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidGoal(request.resource.data);
+        allow update: if isOwner(userId) && isValidGoal(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /loans/{loanId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidLoan(request.resource.data);
+        allow update: if isOwner(userId) && isValidLoan(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /portfolio/{assetId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidPortfolioAsset(request.resource.data);
+        allow update: if isOwner(userId) && isValidPortfolioAsset(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /netWorthSnapshots/{snapshotId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidNetWorthSnapshot(request.resource.data);
+        allow update: if isOwner(userId) && isValidNetWorthSnapshot(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /budgets/{budgetId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidBudget(request.resource.data);
+        allow update: if isOwner(userId) && isValidBudget(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+      
+      match /detected_transactions/{txId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidDetectedTransaction(request.resource.data);
+        allow update: if isOwner(userId) && isValidDetectedTransaction(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+      
+      match /intelligence_memory/{patternId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId) && isValidLearnedPattern(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /consents/legal {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId) && isValidLegalConsent(request.resource.data);
+        allow delete: if isAdmin();
+      }
+
+      match /consents/{otherId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isAdmin();
+      }
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+
+  }
+}
