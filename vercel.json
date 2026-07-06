@@ -1,8 +1,13 @@
 {
+  "functions": {
+    "api/[[...routes]].ts": {
+      "runtime": "nodejs22.x"
+    }
+  },
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index.ts",
+      "dest": "/api/[[...routes]].ts",
       "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
     },
     {
