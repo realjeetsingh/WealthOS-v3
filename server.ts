@@ -1,4 +1,3 @@
-import express from 'express';
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import app from "./api/index"; // Import the centralized backend router app
@@ -33,6 +32,9 @@ async function startServer() {
     console.info(`[Startup] WealthOS Server running at http://localhost:${PORT}`);
   });
 }
+
+// Handle Express imports safety if needed
+import express from 'express';
 
 startServer().catch((err) => {
   console.error("[Startup] Fatal server crash during bootstrap:", err);

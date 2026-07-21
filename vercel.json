@@ -1,14 +1,5 @@
 {
-  "functions": {
-    "api/[[...routes]].ts": {
-      "runtime": "nodejs22.x"
-    }
-  },
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/[[...routes]].ts"
-    },
     {
       "handle": "filesystem"
     },
